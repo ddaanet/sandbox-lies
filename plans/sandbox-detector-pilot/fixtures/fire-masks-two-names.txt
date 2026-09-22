@@ -1,0 +1,10 @@
+M  .claude/handoff-todo.md
+RM docs/superpowers/specs/2026-07-09-ghmem-design.md -> docs/ghmem-design.md
+ M plans/unroute-event/requirements.md
+ M tools/ghmem/src/ghmem/cli.py
+ M tools/ghmem/src/ghmem/dispatch_store.py
+ M tools/ghmem/src/ghmem/ingest.py
+ M tools/ghmem/src/ghmem/ledger.py
+ M tools/ghmem/tests/ghmem-only.bats
+?? .bash_profile
+?? .bashrc

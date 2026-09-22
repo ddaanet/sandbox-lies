@@ -1,0 +1,33 @@
+total 88
+drwxrwxr-x 14 david  david   4096 Aug 10 15:34 .
+drwxrwxr-x 56 david  david   4096 Jul 31 11:14 ..
+crw-rw-rw-  1 nobody nogroup 1, 3 Jul 23 21:28 .bash_profile
+crw-rw-rw-  1 nobody nogroup 1, 3 Jul 23 21:28 .bashrc
+-rw-r--r--  1 david  david     10 Jun 19 19:39 .candidature
+drwxr-xr-x  3 david  david   4096 Aug 10 15:34 .claude
+-rw-r--r--  1 david  david     42 Jun 19 20:42 .envrc
+drwxr-xr-x  9 david  david   4096 Aug 10 15:34 .git
+crw-rw-rw-  1 nobody nogroup 1, 3 Jul 23 21:28 .gitconfig
+-rw-r--r--  1 david  david     80 Jul  8 11:35 .gitignore
+drwxr-xr-x  3 david  david   4096 Jun 19 20:42 .gitlore
+-rw-r--r--  1 david  david     92 Jun 19 20:42 .gitmodules
+crw-rw-rw-  1 nobody nogroup 1, 3 Jul 23 21:28 .idea
+crw-rw-rw-  1 nobody nogroup 1, 3 Jul 23 21:28 .mcp.json
+crw-rw-rw-  1 nobody nogroup 1, 3 Jul 23 21:28 .profile
+crw-rw-rw-  1 nobody nogroup 1, 3 Jul 23 21:28 .ripgreprc
+crw-rw-rw-  1 nobody nogroup 1, 3 Jul 23 21:28 .vscode
+crw-rw-rw-  1 nobody nogroup 1, 3 Jul 23 21:28 .zprofile
+crw-rw-rw-  1 nobody nogroup 1, 3 Jul 23 21:28 .zshrc
+drwxrwxr-x  8 david  david   4096 Jun 19 08:05 Archive
+-rw-r--r--  1 david  david    192 Jun 16 17:50 CLAUDE.local.md
+drwxr-xr-x 39 david  david   4096 Aug 10 13:15 candidatures
+drwxrwxr-x  5 david  david   4096 Jun 19 20:23 cv
+drwxr-xr-x  3 david  david   4096 Jun 18 20:42 docs
+-rw-r--r--  1 david  david   6949 Aug 10 15:11 fiche-candidat.md
+drwxr-xr-x  2 david  david   4096 Aug 10 15:34 memory
+drwxr-xr-x  2 david  david   4096 Jul  8 09:43 recherches
+drwxr-xr-x  2 david  david   4096 Jun 19 08:05 ressources
+drwxr-xr-x  2 david  david   4096 Aug 10 15:23 sites
+-rw-r--r--  1 david  david    783 Jun 19 08:13 tendances.md
+drwxr-xr-x  2 david  david   4096 Jul  7 22:15 tmp
+---

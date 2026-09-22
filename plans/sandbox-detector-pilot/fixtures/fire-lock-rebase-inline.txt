@@ -1,0 +1,21 @@
+Exit code 1
+Rebasing (1/7)Rebasing (2/7)error: Unable to create '/Users/david/code/claudeutils/.git/index.lock': File exists.
+
+Another git process seems to be running in this repository, e.g.
+an editor opened by 'git commit'. Please make sure all processes
+are terminated then try again. If it still fails, a git process
+may have crashed in this repository earlier:
+remove the file manually to continue.
+hint: Could not execute the todo command
+hint:
+hint:     reword 0b17968728aa23ba12d5eebd8f5c19d1eef4d12d # Update session.md: mark uv run cleanup complete
+hint:
+hint: It has been rescheduled; To edit the command before continuing, please
+hint: edit the todo list first:
+hint:
+hint:     git rebase --edit-todo
+hint:     git rebase --continue
+
+[detached HEAD 09fac03] Remove uv run references throughout codebase
+ Date: Tue Jan 27 19:21:49 2026 +0100
+ 14 files changed, 47 insertions(+), 47 deletions(-)

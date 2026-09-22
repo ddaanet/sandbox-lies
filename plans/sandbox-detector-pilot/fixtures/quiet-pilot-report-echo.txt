@@ -1,0 +1,111 @@
+=============== A1f_followon
+2026-08-13 [Users-david-code-claude-plugin-dev] err=True reader=False
+   $ git commit --amend --no-edit
+2026-01-27 [Users-david-code-edify] err=True reader=False
+   $ rm -rf plans/docs-to-skills && git restore .
+2026-01-27 [Users-david-code-edify] err=True reader=False
+   $ rm -rf plans/docs-to-skills && git restore .
+2026-01-05 [Users-david-code-edify] err=True reader=False
+   $ git commit -m "$(cat <<'EOF'
+2026-01-05 [Users-david-code-edify] err=True reader=False
+   $ git commit -m "Document segmentation bugs: bare fence protection and regex issues" -m "After Phases 4-5, \`just format\`
+2026-01-28 [Users-david-code-edify] err=True reader=False
+   $ GIT_SEQUENCE_EDITOR='sed -i "" "s/^pick/reword/"' git rebase -i HEAD~7
+2026-01-28 [Users-david-code-edify] err=True reader=False
+   $ GIT_SEQUENCE_EDITOR='sed -i "" "s/^pick/reword/"' GIT_EDITOR="$PWD/tmp/commit-msg-editor.sh" git rebase -i HEAD~7
+2026-08-13 [Users-david-code-gitlore] err=False reader=False
+   $ git commit --amend --no-edit 2>&1 | tail -20
+2026-09-02 [Users-david-code-gitlore] err=False reader=False
+   $ python3 - <<'EOF'
+2026-07-20 [Users-david-code-micro] err=False reader=False
+   $ git add tools/ghmem && git commit -q -F - <<'MSG'
+2026-08-28 [Users-david-code-shell-gotchas] err=False reader=False
+   $ bash /tmp/claude/index-handoff-probe.sh 2>&1
+=============== A1s_anchored
+2026-08-13 [Users-david-code-claude-plugin-dev] err=True reader=False
+   $ git commit --amend --no-edit
+2026-01-27 [Users-david-code-edify] err=True reader=False
+   $ rm -rf plans/docs-to-skills && git restore .
+2026-01-27 [Users-david-code-edify] err=True reader=False
+   $ rm -rf plans/docs-to-skills && git restore .
+2026-01-05 [Users-david-code-edify] err=True reader=False
+   $ git commit -m "$(cat <<'EOF'
+2026-01-05 [Users-david-code-edify] err=True reader=False
+   $ git commit -m "Document segmentation bugs: bare fence protection and regex issues" -m "After Phases 4-5, \`just format\`
+2026-08-13 [Users-david-code-gitlore] err=False reader=False
+   $ git commit --amend --no-edit 2>&1 | tail -20
+2026-07-20 [Users-david-code-micro] err=False reader=False
+   $ git add tools/ghmem && git commit -q -F - <<'MSG'
+=============== A2 + B1 + B2 detail
+B2_chardev_listing   2026-08-10 [Users-david-code-Emploi] err=False reader=False
+   $ ls -la /Users/david/code/Emploi/ && echo "---" && cat /Users/david/code/Emploi/CLAUDE.md 2>/dev/null | head -1
+   > total 88\ndrwxrwxr-x 14 david  david   4096 Aug 10 15:34 .\ndrwxrwxr-x 56 david  david   4096 Jul 31 11:14 ..\ncrw-rw-rw-  1 nobody nogroup 1, 3 Jul 2
+B2_chardev_listing   2026-08-11 [Users-david-code-claude-plugin-dev] err=False reader=False
+   $ ls -la && echo "--- VERSION ---" && cat VERSION
+   >  4096 Aug 10 16:36 ..\n-rw-r--r--  1 david  david    6148 Jun  5 16:39 .DS_Store\n-rw-r--r--  1 david  david    4096 Jun  4 15:28 ._.DS_Store\ncrw-rw-
+B2_chardev_listing   2026-08-04 [Users-david-code-edify] err=False reader=False
+   $ ls -la && ls plugin/ 2>/dev/null && cat .gitmodules 2>/dev/null
+   > Jun  2 21:09 .gitlore\n-rw-r--r--   1 david  david       91 Jul 16 21:23 .gitmodules\n-r--r--r--   1 david  david        0 Feb 16 11:47 .idea\ncrw-rw-
+B1_gitadd_refused    2026-08-10 [Users-david-code-edify] err=True reader=False
+   $ git add -A
+   > Exit code 128\nerror: .claude/launch.json: can only add regular files, symbolic links or git-directories\nfatal: adding files failed
+B2_chardev_listing   2026-08-10 [Users-david-code-edify] err=False reader=False
+   $ ls -la .claude/launch.json 2>&1; file .claude/launch.json 2>&1
+   > crw-rw-rw- 1 nobody nogroup 1, 3 Jul 23 21:28 .claude/launch.json\n.claude/launch.json: character special (1/3)\n
+B2_chardev_listing   2026-08-03 [Users-david-code-edify] err=False reader=False
+   $ ls -la .claude/ .claude/hooks 2>&1; echo ===; grep -rl "edify-cli is unavailable" /Users/david/.claude /Users/
+   > crw-rw-rw- 1 nobody nogroup 1, 3 Jul 23 21:28 .claude/hooks\n\n.claude/:\ntotal 48\ndrwxr-xr-x  5 david  david   4096 Aug  3 17:18 .\ndrwxr-xr-x 28 da
+B2_chardev_listing   2026-08-16 [Users-david-code-gitlore] err=False reader=False
+   $ ls -la *.md .claude/*.md 2>/dev/null
+   > w-r--r-- 1 david  david    1320 Aug 16 19:46 .claude/handoff-task.md\n-rw-r--r-- 1 david  david    3118 Aug 16 19:46 .claude/handoff-todo.md\ncrw-rw-r
+B1_gitadd_refused    2026-08-25 [Users-david-code-gitlore] err=False reader=False
+   $ grep -n "justfile" tests/justfile_gates.bats | head -30; grep -rn "precommit_inputs\|distribution_inputs\|eval
+   > will not index. The Claude Code sandbox surfaces phantom home dotfiles in the working directory, and that is enough: `error: .bash_profile: can only a
+B2_chardev_listing   2026-08-11 [Users-david-code-gitlore] err=False reader=False
+   $ ls -la .claude/ 2>/dev/null; echo "=== rules ==="; ls .claude/rules/ 2>/dev/null; echo "=== memory ==="; ls me
+   > id  david   4096 Aug 11 19:58 .\ndrwxr-xr-x 17 david  david   4096 Aug 11 19:58 ..\ndrwx------  2 david  david   4096 Aug  4 08:03 .cc-writes\ncrw-rw-
+B2_chardev_listing   2026-08-15 [Users-david-code-gitlore] err=False reader=False
+   $ ls -la /Users/david/code/gitlore/.bashrc /Users/david/code/gitlore/.gitconfig /Users/david/code/gitlore/.mcp.j
+   > crw-rw-rw- 1 nobody nogroup 1, 3 Jul 23 21:28 /Users/david/code/gitlore/.bashrc\ncrw-rw-rw- 1 nobody nogroup 1, 3 Jul 23 21:28 /Users/david/code/gitlo
+B2_chardev_listing   2026-08-13 [Users-david-code-gitmoji] err=False reader=False
+   $ echo "=== root ==="; ls -la /Users/david/code/gitmoji
+   >  4096 Aug 10 16:36 ..\n-rw-r--r--  1 david  david    8196 Jun  7 23:26 .DS_Store\n-rw-r--r--  1 david  david    4096 Jun  5 16:58 ._.DS_Store\ncrw-rw-
+B2_chardev_listing   2026-08-09 [Users-david-code-handoff] err=True reader=False
+   $ ls -la .claude/ 2>&1 | head -20; echo "=== autodrive ==="; cat .claude/autodrive 2>&1; echo "=== failed ==="; 
+   > id  david   4096 Aug  9 17:03 .\ndrwxr-xr-x 21 david  david   4096 Aug  9 17:03 ..\ndrwx------  2 david  david   4096 Aug  5 17:13 .cc-writes\ncrw-rw-
+B2_chardev_listing   2026-08-14 [Users-david-code-handoff] err=False reader=False
+   $ find /tmp/claude -maxdepth 1 -mmin -60 2>/dev/null; echo ---; ls -la /Users/david/code/handoff/.claude/ 2>/dev
+   > id  david   4096 Aug 15 00:28 .\ndrwxr-xr-x 21 david  david   4096 Aug 15 00:28 ..\ndrwx------  2 david  david   4096 Aug  5 17:13 .cc-writes\ncrw-rw-
+B2_chardev_listing   2026-08-10 [Users-david-code-handoff] err=False reader=False
+   $ cd /Users/david/code/claude-plugin-dev && ls -la; echo "---"; find . -maxdepth 2 -iname "brief-*.md" -o -iname
+   >  Jul 29 18:30 .gitignore\ndrwxr-xr-x  3 david  david   4096 Jul 29 18:30 .gitlore\n-rw-r--r--  1 david  david    103 Jul 29 18:30 .gitmodules\ncrw-rw-
+B1_gitadd_refused    2026-07-21 [Users-david-code-micro] err=False reader=False
+   $ (git add -A && git commit -q -F - <<'MSG'
+   > error: .bash_profile: can only add regular files, symbolic links or git-directories\nfatal: adding files failed\n2f40f9b ✅ ghmem: give the status and 
+A2_configlock        2026-08-13 [Users-david-code-onekeys] err=False reader=False
+   $ git config fetch.recurseSubmodules no
+   > error: could not lock config file .git/config: File exists\nFrom github.com:ddaanet/claude-plugin-dev\n * tag               v0.5.3     -> FETCH_HEAD\n
+B2_chardev_listing   2026-08-13 [Users-david-code-onekeys] err=False reader=False
+   $ ls -la /Users/david/code/onekeys
+   >    4096 Aug 10 16:36 ..\n-rw-r--r--  1 david  david   6148 Jun  4 15:44 .DS_Store\n-rw-r--r--  1 david  david   4096 Jun  4 15:44 ._.DS_Store\ncrw-rw-
+A2_configlock        2026-08-11 [Users-david-code-prohibitions] err=True reader=False
+   $ git remote add origin git@github.com:ddaanet/prohibitions.git && git remote -v
+   > Exit code 128\nerror: could not lock config file .git/config: File exists\nfatal: could not set 'remote.origin.url' to 'git@github.com:ddaanet/prohibi
+B2_chardev_listing   2026-08-11 [Users-david-code-prohibitions] err=False reader=False
+   $ ls -la .git/config.lock 2>&1
+   > crw-rw-rw- 1 nobody nogroup 1, 3 Jul 23 21:28 .git/config.lock\n
+A2_configlock        2026-08-11 [Users-david-code-prohibitions] err=True reader=False
+   $ git config fetch.recurseSubmodules no && just update-plugin-dev v0.5.1 2>&1; status=$?; git config --unset fet
+   > Exit code 255\nerror: could not lock config file .git/config: File exists\nerror: could not lock config file .git/config: File exists
+A2_configlock        2026-08-11 [Users-david-code-prohibitions] err=True reader=False
+   $ git config fetch.recurseSubmodules no
+   > Exit code 1\nerror: could not lock config file .git/config: File exists\nFrom github.com:ddaanet/claude-plugin-dev\n * tag               v0.5.2     ->
+B2_chardev_listing   2026-08-10 [Users-david-code-prohibitions] err=False reader=False
+   $ echo "=== prohibitions dir ==="; ls -la /Users/david/code/prohibitions/ 2>&1; echo; echo "=== code dir ==="; l
+   > === prohibitions dir ===\ntotal 20\ndrwxr-xr-x  3 david  david   4096 Aug 10 16:55 .\ndrwxrwxr-x 57 david  david   4096 Aug 10 16:36 ..\ncrw-rw-rw-  1
+B2_chardev_listing   2026-08-10 [Users-david-code-prohibitions] err=False reader=False
+   $ echo "--- plugin.json ---" && cat .claude-plugin/plugin.json && echo "--- .claude/settings.json ---" && cat .c
+   > id  david   4096 Aug 10 20:21 .\ndrwxr-xr-x 11 david  david   4096 Aug 10 20:21 ..\ndrwx------  2 david  david   4096 Aug 10 16:52 .cc-writes\ncrw-rw-
+B2_chardev_listing   2026-08-10 [Users-david-code-prohibitions] err=False reader=False
+   $ cat .gitignore 2>/dev/null; echo ---; ls -la .claude/
+   > id  david   4096 Aug 10 19:47 .\ndrwxr-xr-x 11 david  david   4096 Aug 10 19:47 ..\ndrwx------  2 david  david   4096 Aug 10 16:52 .cc-writes\ncrw-rw-

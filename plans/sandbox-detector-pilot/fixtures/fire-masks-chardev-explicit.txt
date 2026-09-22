@@ -1,0 +1,5 @@
+crw-rw-rw- 1 nobody nogroup 1, 3 Jul 23 21:28 /Users/david/code/gitlore/.bashrc
+crw-rw-rw- 1 nobody nogroup 1, 3 Jul 23 21:28 /Users/david/code/gitlore/.gitconfig
+crw-rw-rw- 1 nobody nogroup 1, 3 Jul 23 21:28 /Users/david/code/gitlore/.idea
+crw-rw-rw- 1 nobody nogroup 1, 3 Jul 23 21:28 /Users/david/code/gitlore/.mcp.json
+crw-rw-rw- 1 nobody nogroup 1, 3 Jul 23 21:28 /Users/david/code/gitlore/.vscode

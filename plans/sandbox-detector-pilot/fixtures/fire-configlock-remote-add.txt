@@ -1,0 +1,3 @@
+Exit code 128
+error: could not lock config file .git/config: File exists
+fatal: could not set 'remote.origin.url' to 'git@github.com:ddaanet/prohibitions.git'

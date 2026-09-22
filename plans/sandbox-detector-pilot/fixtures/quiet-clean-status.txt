@@ -1,0 +1,25 @@
+patched
+fire-masks-chardev-incidental       1748B  Users-david-code-Emploi 2026-08-10
+fire-masks-gitadd-refused            130B  Users-david-code-edify 2026-08-10
+quiet-memory-file-read             18979B  Users-david-code-micro 2026-07-31
+quiet-index-line-read              21812B  Users-david-code-onekeys 2026-08-13
+quiet-bats-fixture-grep             6070B  Users-david-code-gitlore 2026-08-25
+quiet-clean-status                   971B  Users-david-code-gitlore 2026-08-11
+quiet-clean-ls                      3817B  Users-david-code-gitlore 2026-08-17
+quiet-heredoc-claude-p               910B  Users-david-code-prohibitions 2026-08-27
+=== clean-status head ===
+Exit code 2
+=== parent ===
+## main...origin/main [ahead 2]
+ M memory
+?? plans/brief-push-misreads-behind-as-diverged.md
+?? plans/context-rules-vs-hooks-audit.md
+=== index-line-read head ===
+  188 memory/MEMORY.md
+  119 memory/ddaanet/MEMORY.md
+  307 total
+46111 memory/MEMORY.md
+24836 memory/ddaanet/MEMORY.md
+70947 total
+=== any stale prefixed pointers left? ===
+memory/MEMORY.md:105:- [sa

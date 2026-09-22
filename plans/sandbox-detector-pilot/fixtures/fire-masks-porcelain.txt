@@ -1,0 +1,39 @@
+?? .bash_profile
+?? .bashrc
+?? .claude/agents
+?? .claude/commands
+?? .claude/hooks
+?? .claude/launch.json
+?? .claude/loop.md
+?? .claude/output-styles
+?? .claude/routines
+?? .claude/skills
+?? .claude/workflows
+?? .gitconfig
+?? .idea
+?? .mcp.json
+?? .profile
+?? .ripgreprc
+?? .vscode
+?? .zprofile
+?? .zshrc
+?? brief-index-compose-drops-unterminated-final-line.md
+?? brief-orphaned-merge-head-no-state-file.md
+?? brief-plugin-dev-0.5.3.md
+?? brief-stale-plugin-root-detector-confirmed.md
+?? plans/brief-push-misreads-behind-as-diverged.md
+--- current plugin-dev version ---
+0.5.0
+CLAUDE.md
+LICENSE
+README.md
+VERSION
+check-version.sh
+docs
+install.sh
+justfile
+plans
+release.just
+release.sh
+tests
+version-guard.sh

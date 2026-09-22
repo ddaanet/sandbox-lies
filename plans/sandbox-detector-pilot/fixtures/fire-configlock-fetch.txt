@@ -1,0 +1,10 @@
+error: could not lock config file .git/config: File exists
+From github.com:ddaanet/claude-plugin-dev
+ * tag               v0.5.3     -> FETCH_HEAD
+Fetching submodule memory
+fatal: remote error: upload-pack: not our ref 0033b4c37eb798b57306815da656dc7c7c596ae1
+Errors during submodule fetch:
+	gitlore-memory
+pull exit=1
+error: could not lock config file .git/config: File exists
+post-unset=1
