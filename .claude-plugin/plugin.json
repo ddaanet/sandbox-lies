@@ -1,6 +1,6 @@
 {
   "name": "sandbox-lies",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Hooks that watch Bash tool output for results the command sandbox has distorted, and annotate them so the reader stops trusting a confidently wrong result.",
   "author": {
     "name": "David Allouche",
