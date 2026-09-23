@@ -24,7 +24,7 @@ is_exempt() {
 
 @test "no tracked file outside the fixtures fires a detector" {
   local index="$BATS_TEST_TMPDIR/index" meta path mode verdicts firing=""
-  local checked=0 e
+  local checked=0 e status
   # The exemptions quote live diagnostics whole: each must still fire, or the
   # sweep below could be passing because the matchers never ran.
   for e in "${EXEMPT[@]}"; do
@@ -43,14 +43,19 @@ is_exempt() {
     case "$mode" in 120000|160000) continue ;; esac
     case "$path" in tests/fixtures/*) continue ;; esac
     is_exempt "$path" && continue
-    verdicts=$(bash "$MATCHERS" <"$ROOT/$path" || true)
+    status=0
+    verdicts=$(bash "$MATCHERS" <"$ROOT/$path") || status=$?
     checked=$((checked + 1))
     [ -z "$verdicts" ] ||
       firing="$firing"$'\n'"  $path: ${verdicts//$'\n'/, }"
+    # `detect` exits 1 when quiet; above that the matchers failed on this
+    # file (a full $TMPDIR mid-sweep), which must not read as quiet.
+    [ "$status" -le 1 ] ||
+      firing="$firing"$'\n'"  $path: matchers exited $status"
   done <"$index"
   [ "$checked" -gt 0 ]
   [ -z "$firing" ] || {
-    echo "files firing a detector:$firing" >&2
+    echo "files firing a detector or failing the matchers:$firing" >&2
     return 1
   }
 }
