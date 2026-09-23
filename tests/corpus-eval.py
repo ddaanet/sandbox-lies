@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Layer 2 corpus replay: measure the shipped shell matchers
-(lib/matchers.sh) against the full local transcript
-corpus, running the real shell code as the arbiter on every candidate.
+"""Layer 2 corpus replay: measure the shipped shell matchers (lib/matchers.sh)
+against the full local transcript corpus, running the real shell code as the
+arbiter on every candidate.
 
 Two-phase, because invoking matchers.sh once per Bash tool result (~21,000 of
 them) is ~21,000 process spawns and blows the 10-minute cap:
 
   extract   - walk ~/.claude/projects, reconstruct Bash tool_use/tool_result
-              pairs (same pairing as 2026-09-02-sandbox-detector-replay.py),
-              apply an over-broad substring prefilter, write survivors to
+              pairs (same pairing as
+              plans/2026-09-02-sandbox-detector-replay.py), apply an
+              over-broad substring prefilter, write survivors to
               individual files under a scratch dir plus a JSONL manifest.
   aggregate - given the verdicts a shell loop produced by running matchers.sh
               over each survivor file, join back to the manifest and print

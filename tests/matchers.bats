@@ -11,9 +11,12 @@
 # starts firing on another detector's symptom fails here rather than silently
 # double-reporting.
 
-PILOT="${BATS_TEST_DIRNAME}/.."
-MATCHERS="$PILOT/lib/matchers.sh"
-FIXTURES="$PILOT/tests/fixtures"
+ROOT="${BATS_TEST_DIRNAME}/.."
+MATCHERS="$ROOT/lib/matchers.sh"
+FIXTURES="$ROOT/tests/fixtures"
+
+# `run !` needs 1.5.0; without this bats warns BW02 on every such case.
+bats_require_minimum_version 1.5.0
 
 load helpers/bsd-stubs
 
