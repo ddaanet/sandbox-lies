@@ -1,7 +1,7 @@
 # sandbox-lies — design
 
 **Status:** Planned. Nothing in this document is live; the five measured
-matchers exist as pilot code under `plans/sandbox-detector-pilot/`.
+matchers exist as pilot code in `lib/matchers.sh`.
 **Verified against:** `52e6dd82b831a1cc2b7b516d4c248df6fb1ebc8c` (2026-09-22).
 
 Changelog: [changelog.md](changelog.md). Per-detector mechanism:
@@ -54,8 +54,7 @@ not. It reads output text only — never the command, never the exit status.
 `detect` runs the set over one buffered copy and prints one verdict name per
 firing matcher. Where · pinned by: `lib/matchers.sh` · `tests/matchers.bats`,
 which asserts the full verdict set per fixture so a matcher that starts firing
-on a neighbour's symptom fails rather than double-reporting. Planned
-(pilot code exists, 26 cases green, fault-injected).
+on a neighbour's symptom fails rather than double-reporting. Done.
 
 **FR-3 — One hook composes everything.** The hook script parses the payload,
 rebuilds the tool-result text — the `error` string on a failure payload,
@@ -111,7 +110,7 @@ verbatim tool result cut by `tests/extract-fixtures.py` from
 `~/.claude/projects`; every `quiet-*` fixture is a recorded near-miss. Hand
 writing a fixture encodes what the output was expected to look like. Where ·
 pinned by: `tests/extract-fixtures.py` · the fixture set is reproducible from
-the script. Planned.
+the script. Done.
 
 **FR-9 — The symptom-less knowledge is a skill.** `excludedCommands`
 whole-call semantics, the two escapes and their costs, strict mode, `$TMPDIR`
@@ -138,7 +137,8 @@ when read back. Source files build each diagnostic literal from fragments so
 the bytes on disk never hold a whole follow-on sentence. Two residuals are
 exempt by name: `tests/fixtures/` and the dated pilot evidence under `plans/`
 (D-10). Where · pinned by: `tests/docs.bats` runs `detect` over every other
-tracked file. Planned.
+tracked file. Partial (fragment-built literals; the
+`tests/docs.bats` sweep is pending).
 
 ## Non-functional requirements
 
@@ -146,12 +146,11 @@ tracked file. Planned.
 its last replay, and every false positive is classified. Corpus figures carry
 their date and how much pilot traffic the corpus had absorbed, because the
 corpus is self-polluting. Where · pinned by: `references/detectors.md` per
-detector · the replay harness under `tests/`. Planned.
+detector · the replay harness under `tests/`. Partial (harness promoted).
 
 **NFR-2 — Portability.** bash 3.2, BSD `grep`/`sed`/`mktemp`, `jq`. The
 suite re-runs itself with BSD-strict stubs on `PATH`. Where · pinned by:
-`tests/helpers/bsd-stubs.bash` · every bats file loads it. Planned (helper
-exists).
+`tests/helpers/bsd-stubs.bash` · every bats file loads it. Done.
 
 **NFR-3 — Cost.** No verdict, no output: the hook exits 0 silently, and
 that path runs after every Bash call, so its wall time on a quiet result is

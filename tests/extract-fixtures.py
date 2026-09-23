@@ -10,7 +10,7 @@ Each SPEC entry names a project, a day, a substring of the Bash command, and a
 substring the recorded output must contain -- enough to identify one call
 uniquely without pinning a session id.
 
-Usage: python3 plans/sandbox-detector-pilot/extract-fixtures.py
+Usage: python3 tests/extract-fixtures.py
 """
 
 import json

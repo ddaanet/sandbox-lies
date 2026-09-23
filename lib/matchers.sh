@@ -39,13 +39,17 @@ detect() {
 # Exit status is deliberately NOT used as the gate. It cuts the corpus hits to
 # 7 but drops two real failures where the git call was piped through `tail`,
 # which reports the pipeline's status. See fire-lock-piped-tail.
+#
+# The follow-on is assembled from two fragments so this file never holds the
+# sentence whole and does not fire on itself.
 match_git_lock() {
-    local text
+    local text follow
+    follow='Another git process seems to be running'
+    follow="$follow in this repository"
     text=$(cat)
     printf '%s\n' "$text" \
         | grep -q "[Uu]nable to create '.*\.lock': File exists" || return 1
-    printf '%s\n' "$text" \
-        | grep -q 'Another git process seems to be running in this repository'
+    printf '%s\n' "$text" | grep -qF "$follow"
 }
 
 # The `git config` / `git remote add` / `just update-plugin-dev` shape, from

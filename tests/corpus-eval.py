@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Layer 2 corpus replay: measure the shipped shell matchers
-(plans/sandbox-detector-pilot/matchers.sh) against the full local transcript
+(lib/matchers.sh) against the full local transcript
 corpus, running the real shell code as the arbiter on every candidate.
 
 Two-phase, because invoking matchers.sh once per Bash tool result (~21,000 of
@@ -15,13 +15,13 @@ them) is ~21,000 process spawns and blows the 10-minute cap:
               per-verdict hit counts, top projects, and self-reference stats.
 
 Usage:
-  python3 plans/2026-09-03-sandbox-matcher-corpus-eval.py extract --outdir DIR
+  python3 tests/corpus-eval.py extract --outdir DIR
   # then, in bash:
   #   for f in DIR/survivors/*; do
-  #     v=$(bash plans/sandbox-detector-pilot/matchers.sh <"$f")
+  #     v=$(bash lib/matchers.sh <"$f")
   #     [ -n "$v" ] && printf '%s\t%s\n' "$(basename "$f")" "$v" >>DIR/verdicts.tsv
   #   done
-  python3 plans/2026-09-03-sandbox-matcher-corpus-eval.py aggregate --outdir DIR
+  python3 tests/corpus-eval.py aggregate --outdir DIR
 """
 
 import argparse

@@ -11,11 +11,11 @@
 # starts firing on another detector's symptom fails here rather than silently
 # double-reporting.
 
-PILOT="${BATS_TEST_DIRNAME}"
-MATCHERS="$PILOT/matchers.sh"
-FIXTURES="$PILOT/fixtures"
+PILOT="${BATS_TEST_DIRNAME}/.."
+MATCHERS="$PILOT/lib/matchers.sh"
+FIXTURES="$PILOT/tests/fixtures"
 
-load ../../tests/helpers/bsd-stubs
+load helpers/bsd-stubs
 
 # fixture name -> expected verdicts, newline-separated, empty for quiet.
 expected_for() {
@@ -175,7 +175,7 @@ assert_fixture() {
   # largest false-positive class was the store documenting its own error
   # strings, so the file the hook would replace must stay quiet as it is
   # edited. If it ever fires, the hook's injected text would too.
-  local store="$PILOT/../../memory/ddaanet/sandbox-effects.md"
+  local store="$BATS_TEST_DIRNAME/../memory/ddaanet/sandbox-effects.md"
   [ -f "$store" ] || skip "ddaanet memory tier not mounted yet; activates at repo init"
   run bash "$MATCHERS" < "$store"
   [ "$status" -eq 1 ]
@@ -188,11 +188,12 @@ assert_fixture() {
   # `Another git process / seems to be running` across two lines. A future
   # edit that lands the whole clause on one line breaks the discriminator, and
   # this goes red before the matcher does.
-  local store="$PILOT/../../memory/ddaanet/sandbox-effects.md"
+  local store="$BATS_TEST_DIRNAME/../memory/ddaanet/sandbox-effects.md"
   [ -f "$store" ] || skip "ddaanet memory tier not mounted yet; activates at repo init"
+  local follow='Another git process seems to be running'
+  follow="$follow in this repository"
   grep -q 'Another git process' "$store"
-  run ! grep -q 'Another git process seems to be running in this repository' \
-    "$store"
+  run ! grep -qF "$follow" "$store"
 }
 
 @test "nothing fires on reading the always-loaded memory index" {
