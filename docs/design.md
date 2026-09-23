@@ -132,9 +132,11 @@ Planned.
 **FR-11 — Self-quiet.** No live file in this repository fires a detector when
 read back. Source files build each diagnostic literal from fragments so the
 bytes on disk never hold a whole follow-on sentence. Two residuals are exempt by
-name: `tests/fixtures/` and the dated pilot evidence under `plans/` (D-10).
-Where · pinned by: `tests/docs.bats` runs `detect` over every other tracked
-file. Partial (fragment-built literals; the `tests/docs.bats` sweep is pending).
+name: `tests/fixtures/`, and three dated pilot files that quote live diagnostics
+(`plans/2026-09-02-sandbox-detector-replay.py`,
+`plans/2026-09-02-sandbox-detector-hits.jsonl`,
+`plans/2026-09-03-sandbox-matcher-corpus-eval.md`) (D-10). Where · pinned by:
+`tests/docs.bats` runs `detect` over every other tracked file. Done.
 
 ## Non-functional requirements
 
