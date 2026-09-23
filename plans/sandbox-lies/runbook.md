@@ -22,7 +22,7 @@ Cross-cutting, bounded:
 - **"Same commit" in a tdd item** means the item's final slice commit: a
   retirement or status flip rides the slice that completes the item.
 - **Retirement.** Memory sections leave `memory/ddaanet/sandbox-effects.md`
-  in Items 2.3, 4.1, 4.2–4.5, 6.1 and 7.1; Item 8.2 deletes the file. Each
+  in Items 2.3, 4.1, 4.2, 6.1 and 7.1; Item 8.2 deletes the file. Each
   retiring item also removes the retired symptoms from the file's
   frontmatter `description`, its symptom table, and the index line in both
   `memory/MEMORY.md` and `memory/ddaanet/MEMORY.md`. Memory is committed
@@ -48,18 +48,18 @@ Cross-cutting, bounded:
 
 | Requirement | Phase | Items | Notes |
 |---|---|---|---|
-| FR-1 | 2 | 2.3 | hooks.json on both events; emitted key set asserted |
+| FR-1 | 2, 8 | 2.3, 8.1 | hooks.json on both events; emitted key set asserted; dogfood |
 | FR-2 | 1 | 1.1 | promoted matchers and suite |
 | FR-3 | 1, 2, 4 | 1.4, 2.3, 4.1 | recorded payloads; payload → text → detect → JSON; probe call |
-| FR-4 | 2, 3, 4, 5, 6 | 2.4, 3.1, 4.1, 4.6, 5.1, 6.1 | probe, live proof, then wiring |
-| FR-5 | 1, 2, 4, 6 | 1.4, 2.3, 4.1–4.5, 6.1 | flag shape recorded; per-detector flag policy in the hook |
-| FR-6 | 2, 4, 6 | 2.3, 4.1–4.5, 6.1 | verdict text, 2 KB cap |
-| FR-7 | 3, 4, 6 | 3.2, 4.2–4.6, 6.1 | candidates under D-15 |
+| FR-4 | 2, 3, 4, 5, 6 | 2.4, 3.1, 4.1, 4.3, 5.1, 6.1 | probe, live proof, then wiring |
+| FR-5 | 1, 2, 4, 6 | 1.4, 2.3, 4.1, 4.2, 6.1 | flag shape recorded; per-detector flag policy in the hook |
+| FR-6 | 2, 4, 6 | 2.3, 4.1, 4.2, 6.1 | verdict text, 2 KB cap |
+| FR-7 | 3, 4, 6 | 3.2, 4.2, 4.3, 6.1 | candidates under D-15 |
 | FR-8 | 1, 3 | 1.1, 3.2 | fixture cutter promoted and extended |
 | FR-9 | 7 | 7.1, 7.2 | the skill; README points at it |
-| FR-10 | 2, 4, 6, 7, 8 | 2.3, 4.1–4.5, 6.1, 7.1, 8.2 | per-section retirement, then file deletion |
-| FR-11 | 1, 8 | 1.1, 1.3, 8.2 | literal split, docs guard, retired-path guard |
-| NFR-1 | 1, 3 | 1.1, 3.2 | corpus harness under `tests/` |
+| FR-10 | 2, 4, 6, 7, 8 | 2.3, 4.1, 4.2, 6.1, 7.1, 8.2 | per-section retirement, then file deletion |
+| FR-11 | 1, 7, 8 | 1.1, 1.3, 7.1, 7.2, 8.2 | literal split, docs guard, quiet skill and prose, retired-path guard |
+| NFR-1 | 1, 3, 4 | 1.1, 3.2, 4.2, 4.3 | corpus harness under `tests/`; shipped matchers re-measured |
 | NFR-2 | 1, 2 | 1.1, 2.1–2.4 | BSD stubs; `stat` stub added; one stubbed case per suite |
 | NFR-3 | 2 | 2.3 | quiet path empty; quiet and verdict wall times recorded |
 | NFR-4 | 2 | 2.3 | hook holds text in memory, writes nothing |
@@ -181,7 +181,8 @@ Cross-cutting, bounded:
   `docs/` and the root. Wired into `precommit` after the rumdl check; done
   when the gate passes on the real tree. If `docs/design.md` is over its cap
   there, stop and escalate: splitting the living design doc is a design-doc
-  decision, not the executor's. Requirements: NFR-5. Depends on: Item 1.2
+  decision, not the executor's. Requirements: NFR-2, NFR-5.
+  Depends on: Item 1.2
   Interfaces:
   - `scripts/check-line-limits.sh [ROOT]` — ROOT a git work tree, default
     `.`; stdout one `oversized-file: <path>: <n> lines > <cap>` line per
@@ -204,7 +205,7 @@ Cross-cutting, bounded:
 - Item 2.2: `scripts/check-links.sh`, `tests/check-links.bats` — every
   relative markdown link in the same tracked markdown scope as Item 2.1
   resolves to an existing path, relative to the linking file. Wired into
-  `precommit` after the line-limit check. Requirements: NFR-5.
+  `precommit` after the line-limit check. Requirements: NFR-2, NFR-5.
   Depends on: Item 1.2
   Interfaces:
   - `scripts/check-links.sh [ROOT]` — ROOT a git work tree, default `.`;
@@ -266,7 +267,7 @@ Cross-cutting, bounded:
     line; exit 0. `<name>` is the detector name with `-` as `_`; phantom
     verdicts take no outcome
   - `tests/verdicts.bats` — a `name outcome` row table, one row per
-    verdict and outcome (`-` for none), extended by Items 4.1–4.5 and 6.1
+    verdict and outcome (`-` for none), extended by Items 4.1, 4.2 and 6.1
   - `tests/helpers/hook.bash` — loaded by every hook suite:
     `failure_payload <text> [flag]` and `post_payload <stdout> [stderr]
     [flag]` printing a payload; `stub_lib <file> <body>` appending to the
@@ -413,8 +414,8 @@ Cross-cutting, bounded:
   with the candidate's string and join the flag from the paired tool-use
   input; run it with a scratch shell matcher implementing the
   discriminator as arbiter (under `/tmp/claude/<job>/`, not committed —
-  Items 4.2–4.6 rebuild it test-first). Record under the candidate, in the
-  shape the shipped entries use (the discriminator in its `Matcher.`
+  Items 4.2 and 4.3 rebuild it test-first). Record under the candidate, in
+  the shape the shipped entries use (the discriminator in its `Matcher.`
   paragraph, described, not quoted; one `Corpus.` line with hit count,
   true count, precision, date and pilot-traffic note, then each false
   positive's class), and the D-15 decision — `ships` or `stays a
@@ -429,7 +430,7 @@ Cross-cutting, bounded:
   such. Requirements: FR-7, FR-8, NFR-1. Depends on: Item 1.1
   Interfaces:
   - `detectors.md` candidate entry — a `Decision: ships` or `Decision:
-    stays a candidate` line, read by Items 4.2–4.6
+    stays a candidate` line, read by Items 4.2 and 4.3
   - `detectors.md` candidate entry — the discriminator stated precisely
     enough to implement as `match_<name>` (anchor, the tool prefix, the
     required substrings described)
@@ -439,13 +440,13 @@ Cross-cutting, bounded:
 
 ## Phase 4: Lock verdicts and shipped candidates (type: tdd)
 
-Items 4.2–4.6 run only for a candidate Item 3.2 records as `ships`. A
-candidate recorded `stays a candidate` closes its item with no code change
-and leaves its memory section in place; `/build` reports it as skipped.
-Each of Items 4.2–4.6: slice 1 flips the fire fixture's `expected_for` row
-from no verdict to the detector (its red); the item adds its
-`tests/verdicts.bats` rows (4.2–4.5); and before commit it re-runs Item
-3.2's `tests/corpus-eval.py` pass with the shipped matcher as arbiter,
+Items 4.2 and 4.3 build only candidates Item 3.2 records as `ships`. A
+candidate recorded `stays a candidate` gets no code change and keeps its
+memory section; `/build` reports it as skipped, and an item left with no
+shipping candidate is skipped whole. For each shipped candidate, slice 1
+flips its fire fixture's `expected_for` row from no verdict to the detector
+(its red), and before commit the item re-runs Item 3.2's
+`tests/corpus-eval.py` pass with the shipped matcher as arbiter,
 re-recording the `Corpus.` line if the hit count moved (NFR-1). Candidate
 hook cases go in `tests/hook-candidates.bats` (loading
 `helpers/hook.bash`), keeping `tests/hook.bats` under its 400-line cap;
@@ -503,56 +504,42 @@ when FR-5's status flips, its pinned-by names both files.
      call recorded.
 
 - Item 4.2: `lib/matchers.sh`, `lib/verdicts.sh`, `tests/matchers.bats`,
-  `tests/hook-candidates.bats`, `tests/verdicts.bats` — `tmpdir-unset`.
-  Matcher from Item 3.2's
-  discriminator; verdict from `detectors.md`; flag policy: fires only when
-  the flag is `true`. Same commit: delete cost 1 of `Leaving the sandbox`
-  except the instability clause (skill-mapped). Requirements: FR-5, FR-7,
-  FR-10. Depends on: Item 3.2, Item 4.1
-  Slices:
-  1. `fire and quiet fixtures` (`matchers.bats`) — the cut `fire-tmpdir-*`
-     yields exactly `tmpdir-unset`; the cut `quiet-tmpdir-*` yields nothing.
-  2. `fires only unsandboxed` (`hook-candidates.bats`) — the fire fixture
-     with the flag `true` yields context containing `/tmp/claude/`; flag
-     absent yields empty stdout.
-
-- Item 4.3: same targets — `resume-lost`; flag policy: fires only when the
-  flag is `false`. Same commit: delete the `--resume` section except the
-  eval-harness consequence (skill-mapped). Requirements: FR-5, FR-7, FR-10.
+  `tests/hook-candidates.bats`, `tests/verdicts.bats` — the four
+  verdict-only candidates, one row each below, built for every row whose
+  candidate ships. Per shipped row: `match_<name>` from Item 3.2's
+  discriminator; `verdict_<name>` (no outcome) from `detectors.md` and its
+  `tests/verdicts.bats` row; the row's flag policy in the hook; and, same
+  commit, the row's section deleted from the memory file. Each slice's
+  case runs once per shipped row.
+  | detector | flag policy | fires with | silent with | context contains | memory deletion |
+  |---|---|---|---|---|---|
+  | `tmpdir-unset` | fires only when `true` | `true` | absent | `/tmp/claude/` | cost 1 of `Leaving the sandbox`, except the instability clause (skill-mapped) |
+  | `resume-lost` | fires only when `false` | absent | `true` | `one unsandboxed call` | the `--resume` section, except the eval-harness consequence (skill-mapped) |
+  | `zellij-socket` | fires only when `false` | absent | `true` | `socket is outside the sandbox` | the zellij section |
+  | `seccomp-init` | silent when `true` | absent | `true` | `Retry the identical command once` | the sandbox-setup section |
+  Requirements: FR-5, FR-6, FR-7, FR-10, NFR-1.
   Depends on: Item 3.2, Item 4.1
   Slices:
-  1. `fire and quiet fixtures` — as Item 4.2 slice 1 for `resume-lost`.
-  2. `fires only sandboxed` — flag absent: context contains `one
-     unsandboxed call`; flag `true`: empty stdout.
+  1. `fire and quiet fixtures` (`matchers.bats`) — each cut
+     `fire-<detector>-*` fixture yields exactly the row's detector; each cut
+     `quiet-<detector>-*` yields nothing.
+  2. `<detector> flag policy` (`hook-candidates.bats`) — the fire fixture
+     with the flag set as the row's "fires with" yields context containing
+     the row's "context contains" string; with the flag as its "silent
+     with" yields empty stdout.
 
-- Item 4.4: same targets — `zellij-socket`; flag policy: fires only when
-  the flag is `false`. Same commit: delete the zellij section.
-  Requirements: FR-5, FR-7, FR-10. Depends on: Item 3.2, Item 4.1
-  Slices:
-  1. `fire and quiet fixtures` — as Item 4.2 slice 1 for `zellij-socket`.
-  2. `fires only sandboxed` — flag absent: context contains `socket is
-     outside the sandbox`; flag `true`: empty stdout.
-
-- Item 4.5: same targets — `seccomp-init`; flag policy: silent when the
-  flag is `true`. Same commit: delete the sandbox-setup section.
-  Requirements: FR-5, FR-7, FR-10. Depends on: Item 3.2, Item 4.1
-  Slices:
-  1. `fire and quiet fixtures` — as Item 4.2 slice 1 for `seccomp-init`.
-  2. `silent unsandboxed` — flag absent: context contains `Retry the
-     identical command once`; flag `true`: empty stdout.
-
-- Item 4.6: `lib/matchers.sh`, `lib/probes.sh`, `tests/matchers.bats`,
+- Item 4.3: `lib/matchers.sh`, `lib/probes.sh`, `tests/matchers.bats`,
   `tests/probes.bats`, `tests/hook-candidates.bats` — `readonly-path`
   matcher and probe, no verdict yet, so the hook stays silent on it and
   never runs the probe (Items 2.3 and 4.1's verdict-gated rules). Probe
   test texts reuse the cut fire fixture's refusal line with its quoted path
-  replaced. Requirements: FR-4, FR-7. Depends on: Item 2.4, Item 3.2,
-  Item 4.1
+  replaced. Requirements: FR-4, FR-7, NFR-1. Depends on: Item 2.4,
+  Item 3.2, Item 4.1
   Interfaces:
   - `probe_readonly_path <flag> <cwd>` — stdin: result text; stdout line 1
     one of `writable|readonly|nopath`, then `path=` when extracted; exit 0
   Slices:
-  1. `fire and quiet fixtures` — as Item 4.2 slice 1 for `readonly-path`.
+  1. `fire and quiet fixtures` — as Item 4.2 slice 1, for `readonly-path`.
   2. `writable path` — text naming a file under `$BATS_TEST_TMPDIR`:
      `writable`, `path=` that file.
   3. `absent file checks its parent` — text naming a missing file in a
@@ -575,7 +562,7 @@ when FR-5's status flips, its pinned-by names both files.
   run unsandboxed on that text prints `writable`. Remove the worktree
   unsandboxed afterwards. Record date, command shape and output under
   `readonly-path`. A write that succeeds, or any other probe output, stops
-  the phase and escalates. Requirements: FR-4. Depends on: Item 4.6
+  the phase and escalates. Requirements: FR-4. Depends on: Item 4.3
   Interfaces:
   - `detectors.md` `readonly-path` entry — a `Live reproduction
     (YYYY-MM-DD)` paragraph; its presence gates Item 6.1
@@ -608,7 +595,8 @@ when FR-5's status flips, its pinned-by names both files.
 - Item 7.1: `skills/sandbox-lies/SKILL.md`,
   `skills/sandbox-lies/references/` — the symptom-less knowledge, every
   row the `detectors.md` translation map sends to `skill`, including the
-  skill-mapped remainders Items 4.2, 4.3 and 6.1 leave — taken whether or
+  skill-mapped remainders Item 4.2 (`tmpdir-unset`, `resume-lost` rows)
+  and Item 6.1 leave — taken whether or
   not their candidate shipped. A stayed candidate's detector-mapped part is
   not copied: it stays in memory only (D-11: never both). `SKILL.md` under
   200 lines, third person `description` naming the authoring moments
@@ -621,7 +609,7 @@ when FR-5's status flips, its pinned-by names both files.
   `tests/docs.bats` and `precommit` are green and the memory file holds
   only its `## Context` paragraph plus the detector-mapped parts of
   candidates that stayed candidates. Requirements: FR-9, FR-10, FR-11.
-  Depends on: Item 4.1, and Items 4.2–4.5 and 6.1 where they ran
+  Depends on: Item 4.1, and Items 4.2 and 6.1 where they ran
   Interfaces:
   - `skills/sandbox-lies/SKILL.md` — the skill `sandbox-lies:sandbox-lies`;
     the name Items 7.2 and 8.2 point readers at
