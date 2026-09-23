@@ -60,7 +60,7 @@ Cross-cutting, bounded:
 | FR-10 | 2, 4, 6, 7, 8 | 2.3, 4.1, 4.2, 6.1, 7.1, 8.2 | per-section retirement, then file deletion |
 | FR-11 | 1, 7, 8 | 1.1, 1.3, 7.1, 7.2, 8.2 | literal split, docs guard, quiet skill and prose, retired-path guard |
 | NFR-1 | 1, 3, 4 | 1.1, 3.2, 4.2, 4.3 | corpus harness under `tests/`; shipped matchers re-measured |
-| NFR-2 | 1, 2 | 1.1, 2.1–2.4 | BSD stubs; `stat` stub added; one stubbed case per suite |
+| NFR-2 | 1, 2, 4 | 1.1, 2.1–2.4, 4.2/4.3 | BSD stubs; `stat` stub added; one stubbed case per suite |
 | NFR-3 | 2 | 2.3 | quiet path empty; quiet and verdict wall times recorded |
 | NFR-4 | 2 | 2.3 | hook holds text in memory, writes nothing |
 | NFR-5 | 1, 2 | 1.2, 2.1, 2.2 | formatter, line caps, links |
@@ -87,7 +87,8 @@ Cross-cutting, bounded:
   `plans/sandbox-detector-pilot/README.md` with the directory: its content
   is superseded by `docs/design.md` FR-2/FR-8 and the directory no longer
   exists. In `docs/design.md`, the header `Status:` line's pilot-path clause
-  names `lib/matchers.sh` instead, without adding a line. Done when
+  names `lib/matchers.sh` instead, without adding a line. `BRIEF.md` keeps
+  its pilot paths: it is the frozen input brief. Done when
   `scripts/run-bats.sh tests/matchers.bats` reports 26 passed, 0 failed,
   and the TAP log holds no `# skip` line (the wrapper counts a skip as a
   pass), and `bash lib/matchers.sh` over each of the two
@@ -135,7 +136,8 @@ Cross-cutting, bounded:
   through `lib/matchers.sh`; the case fails with a message listing every
   firing file and the verdicts it printed. Record the exemption list in
   `docs/design.md` FR-11 by path, replacing the "dated pilot evidence"
-  wording rather than adding beside it (the file is at the 400-line cap).
+  wording rather than adding beside it (the file sits just under Item 2.1's
+  400-line cap).
   Fault injection: append a whole git-lock diagnostic, built at run time
   from two fragments, to a tracked file; assert the case goes red naming
   that file; invert the edit. Requirements: FR-11. Depends on: Item 1.1
@@ -201,6 +203,9 @@ Cross-cutting, bounded:
      scope` — an untracked 401-line `docs/u.md` yields status 0.
   4. Whitespace: `path with a space` — a 401-line `docs/a b.md` is reported
      with its full path.
+  5. BSD tools: `oversized markdown under BSD stubs` — slice 1's 401-line
+     fixture with `make_bsd_stubs grep sed` on `PATH` yields the same stdout
+     and status 1.
 
 - Item 2.2: `scripts/check-links.sh`, `tests/check-links.bats` — every
   relative markdown link in the same tracked markdown scope as Item 2.1
@@ -223,6 +228,9 @@ Cross-cutting, bounded:
      broken target inside backticks or a fenced block yields status 0.
   4. Whitespace: `linking file with a space` — `docs/a b.md` with a broken
      link yields `broken-link: docs/a b.md -> missing.md`.
+  5. BSD tools: `broken link under BSD stubs` — slice 1's broken-link
+     fixture with `make_bsd_stubs grep sed` on `PATH` yields the same stdout
+     and status 1.
 
 - Item 2.3: `hooks/hooks.json`, `hooks/annotate.sh`, `lib/verdicts.sh`,
   `lib/matchers.sh`, `tests/hook.bats`, `tests/helpers/hook.bash`,
@@ -237,7 +245,9 @@ Cross-cutting, bounded:
   copied tree runs its copied lib), runs `detect`, calls `verdict_<name>`
   for each name that has one (a name with no verdict function contributes
   nothing; probe calls join in Item 4.1), and emits one object with `jq -n
-  --arg`. Any failure exits 0 with empty stdout. `hook.bats` runs a copy of
+  --arg`. When `phantom-chardev` and `phantom-untracked` both fire, only
+  `verdict_phantom_untracked` is called: its paragraph restates the chardev
+  one. Any failure exits 0 with empty stdout. `hook.bats` runs a copy of
   `hooks/` and `lib/` under `$BATS_TEST_TMPDIR` as `bash
   <copy>/hooks/annotate.sh`, so stubs can be appended to the copied lib
   files; it builds each payload from the Item 1.4 fixtures with `jq`. In
@@ -249,7 +259,11 @@ Cross-cutting, bounded:
   masks/who-sees-them, `git add -A` and visible-unsandboxed paragraphs, and
   the `/tmp reads full` section (untranslated, design rejected
   alternatives), from the memory file; the porcelain-gate and `## Context`
-  paragraphs stay. Record the hook's wall time on `quiet-clean-status` and
+  paragraphs stay, and so does the masks paragraph's sentence on the
+  zero-byte read-only regular-file shape, which no verdict carries (the
+  chardev matcher needs a `c` mode): it is a skill-mapped remainder for Item
+  7.1, and the translation-map row for masks gains `; zero-byte shape →
+  skill`. Record the hook's wall time on `quiet-clean-status` and
   on `fire-masks-porcelain` (NFR-3's 100 ms verdict-without-probe bound) in
   `docs/changelog.md` (not gated). `detect` in `lib/matchers.sh` stops
   using `mktemp`: it holds the text in a shell variable and feeds each
@@ -385,10 +399,11 @@ Cross-cutting, bounded:
   lock probes, recorded under `git-lock` and `config-lock` in place of the
   "Live reproduction owed" lines, each with the date, the command shape and
   the probe's printed output. In a scratch repo under `/tmp/claude/` with a
-  pre-commit hook that stages a file: a sandboxed `sh -c 'git add f && git
-  commit -m x'` produces the lock error; `probe_git_lock false <repo>` run
-  unsandboxed on that text prints `mask`. A hand-made lock prints `orphan`;
-  the same lock held by a background process prints `held`. The
+  pre-commit hook that stages a file, run the outcomes that need no sandbox
+  first: a hand-made lock prints `orphan`; the same lock held by a
+  background process prints `held`. Then a sandboxed `sh -c 'git add f &&
+  git commit -m x'` produces the lock error; `probe_git_lock false <repo>`
+  run unsandboxed on that text prints `mask`. The
   config-lock reproduction runs in this checkout's root, not the scratch
   repo: the `.git/config.lock` mask sits only in the session's project root
   (seen as a character device there on 2026-09-23). A sandboxed `sh -c`
@@ -396,7 +411,8 @@ Cross-cutting, bounded:
   error; `probe_config_lock false <this checkout>` prints `mask`; should the
   write succeed instead, unset the key unsandboxed. A sandboxed command
   that does not produce its error, or a probe that prints anything else,
-  stops the phase: record what happened and escalate (a 2026-09-23
+  stops the phase: record what happened beside the outcomes already proved
+  and escalate (a 2026-09-23
   review-time attempt of the git-lock shape under `/tmp/claude/` committed
   cleanly). Requirements: FR-4. Depends on: Item 2.4
   Interfaces:
@@ -419,7 +435,11 @@ Cross-cutting, bounded:
   paragraph, described, not quoted; one `Corpus.` line with hit count,
   true count, precision, date and pilot-traffic note, then each false
   positive's class), and the D-15 decision — `ships` or `stays a
-  candidate`. `detectors.md` is ~311 lines against Item 2.1's 400 cap, so
+  candidate`. The executor names no residual: a false positive that is
+  neither self-reference (D-10) nor a residual already named in the
+  candidate's `detectors.md` entry is recorded under the candidate and
+  escalated to my human partner before `Decision: ships` is written.
+  `detectors.md` is ~311 lines against Item 2.1's 400 cap, so
   keep each record to that shape. For each shipping candidate, extend
   `tests/extract-fixtures.py`'s cut list and cut at least one
   `fire-<detector>-*` and one `quiet-<detector>-*` fixture (names letters
@@ -450,13 +470,19 @@ flips its fire fixture's `expected_for` row from no verdict to the detector
 re-recording the `Corpus.` line if the hit count moved (NFR-1). Candidate
 hook cases go in `tests/hook-candidates.bats` (loading
 `helpers/hook.bash`), keeping `tests/hook.bats` under its 400-line cap;
-when FR-5's status flips, its pinned-by names both files.
+when FR-5's status flips, its pinned-by names both files. Whichever item
+first creates `tests/hook-candidates.bats` gives it one case re-running a
+fire case under `make_bsd_stubs grep sed` (Portability).
 
 - Item 4.1: `hooks/annotate.sh`, `lib/verdicts.sh`, `tests/hook.bats`,
   `tests/verdicts.bats`, `tests/matchers.bats` — `git-lock` and
   `config-lock` verdicts for all five outcomes, text from `detectors.md`;
-  the hook calls each probe per the interface below. Every case here that
-  fires a lock detector stubs its probe, so no fixture's absolute path
+  the hook calls each probe per the interface below. The config-lock
+  verdicts omit the `GIT_INDEX_FILE` leak clause, which concerns
+  `index.lock` only (with it the `mask` paragraph runs to 426 characters
+  against FR-6's 400); write the config-lock paragraphs out in full in
+  `detectors.md` in place of its `As git-lock` shorthand. Every case here
+  that fires a lock detector stubs its probe, so no fixture's absolute path
   reaches the host filesystem. Same commit: delete the `.git/index.lock`
   section, including its `.git/config.lock` paragraph, from the memory
   file, and delete the `tests/matchers.bats` case asserting the live file
@@ -595,10 +621,11 @@ when FR-5's status flips, its pinned-by names both files.
 - Item 7.1: `skills/sandbox-lies/SKILL.md`,
   `skills/sandbox-lies/references/` — the symptom-less knowledge, every
   row the `detectors.md` translation map sends to `skill`, including the
-  skill-mapped remainders Item 4.2 (`tmpdir-unset`, `resume-lost` rows)
-  and Item 6.1 leave — taken whether or
-  not their candidate shipped. A stayed candidate's detector-mapped part is
-  not copied: it stays in memory only (D-11: never both). `SKILL.md` under
+  skill-mapped remainders Item 2.3 (the zero-byte mask shape), Item 4.2
+  (`tmpdir-unset`, `resume-lost` rows) and Item 6.1 leave — the last two
+  taken whether or not their candidate shipped. A stayed candidate's
+  detector-mapped part is not copied: it stays in memory only (D-11: never
+  both). `SKILL.md` under
   200 lines, third person `description` naming the authoring moments
   (writing an exclusion, a recipe, a cleanliness gate, a subagent
   directive with a scratch path);
@@ -618,7 +645,9 @@ when FR-5's status flips, its pinned-by names both files.
     only
 
 - Item 7.2: `README.md`, `LICENSE`, `CLAUDE.md` — README: what the plugin
-  does, install, the detector list pointing at `detectors.md`, the skill;
+  does, install (the `--plugin-dir` route: a marketplace install aborts on
+  the memory submodule's relative url until the out-of-scope `.gitmodules`
+  fix lands), the detector list pointing at `detectors.md`, the skill;
   LICENSE: MIT, holder David Allouche, 2026; `CLAUDE.md`: a body for
   agents working here (precommit, the self-quiet rule, fixtures come from
   the cutter), the `@memory/ddaanet/shared-claude.md` import line kept
@@ -630,12 +659,14 @@ when FR-5's status flips, its pinned-by names both files.
   `--plugin-dir <this checkout>` and execs the next `claude` on `PATH` with
   `.bin` stripped from `PATH`; `.envrc` adds `PATH_add .bin` last.
   `direnv allow` is my human partner's step (see Cross-cutting). Verify
-  without waiting for it by invoking `./.bin/claude -p` unsandboxed from
-  this checkout, with a prompt asking it to list its skills, then run
-  `sh -c 'ls -la'` at the checkout root without the sandbox flag and quote
-  any additional context it received about that result: the reply names
-  `sandbox-lies:sandbox-lies` and carries the phantom-chardev verdict's
-  wording. Requirements: D-16, FR-1. Depends on: Item 2.3, Item 7.1
+  without waiting for it by invoking `./.bin/claude -p --output-format json`
+  unsandboxed from this checkout, with a prompt (naming no skill) asking it
+  to list its skills, then run `sh -c 'ls -la'` at the checkout root without
+  the sandbox flag: the reply names `sandbox-lies:sandbox-lies`, and the
+  session transcript under `~/.claude/projects/`, found by the reply's
+  `session_id`, holds the phantom-chardev verdict's wording as hook context
+  on that result — the model quoting its own context is corroboration, not
+  the evidence. Requirements: D-16, FR-1. Depends on: Item 2.3, Item 7.1
 
 - Item 8.2: `memory/ddaanet/sandbox-effects.md`, `memory/MEMORY.md`,
   `memory/ddaanet/MEMORY.md`, `memory/ddaanet/shared-claude.md`, six
@@ -665,5 +696,7 @@ when FR-5's status flips, its pinned-by names both files.
   comment in `tests/matchers.bats` names the file historically. Update
   `## Now` in `docs/design.md`. Then publish the tier with `/gitlore:push`
   once my human partner confirms (outward-facing: it retires the fact for
-  every ddaanet repo). Requirements: FR-10, FR-11.
+  every ddaanet repo), and report that other repos mounting the tier keep
+  their own root `memory/MEMORY.md` index line, which this item does not
+  edit (other repos stay read-only). Requirements: FR-10, FR-11.
   Depends on: Item 1.3, Item 7.1
