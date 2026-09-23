@@ -19,7 +19,7 @@ craft:test-discipline — fault-injection standard the suite inherits from the p
 
 ## Implementation entries (added by /runbook)
 
-memory/ddaanet/jsonl-reader-type-guard.md — `select(type == "object")` after the parse; a scalar payload otherwise kills the hook on every call (Item 3.1 malformed-payload slice)
+memory/ddaanet/jsonl-reader-type-guard.md — `select(type == "object")` after the parse; a scalar payload otherwise kills the hook on every call (Item 2.3 malformed-payload slice)
 memory/ddaanet/no-stderr-suppression.md — no blanket `2>/dev/null` in the hook or probes; the probes' `stat`/`lsof`/`fuser` failures are guarded, not silenced
 memory/ddaanet/markdown-formatter-choice.md — rumdl `fmt --check -q --no-cache` ahead of the line-limit check; `/*.md` for root files (Item 1.2)
 memory/ddaanet/uv-direnv-venv.md — rumdl comes from a `uv sync` venv activated by `.envrc`, never `uvx` under Claude (Item 1.2)
