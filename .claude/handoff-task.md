@@ -1,3 +1,3 @@
 ## Current task
 
-The sandbox-lies design phase is complete and committed: docs/design.md, docs/references/detectors.md and plans/sandbox-lies/outline.md carry every decision, with all eight validation questions resolved. The first build starts with /edify:runbook over the outline, whose six phases carry the per-section retirement of the sandbox-effects memory file.
+The sandbox-lies first-build runbook (plans/sandbox-lies/runbook.md, eight phases, 19 items) is drafted, corrected by runbook-corrector (0 critical remaining; report in plans/sandbox-lies/reports/runbook-review.md), consolidated by runbook-simplifier (report in plans/sandbox-lies/reports/runbook-simplification.md) and committed. The /edify:proof review has not started: no item has a verdict yet. The orientation list covered 21 review units — preamble, requirements mapping, then each item in document order. After proof applies, the next step is /build in a fresh session.
