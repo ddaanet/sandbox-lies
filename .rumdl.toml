@@ -1,0 +1,27 @@
+# rumdl — hard-wrap markdown prose at 80 columns, and nothing else.
+#
+# MD013 alone: the line-length rule, in reflow mode. `reflow-mode =
+# "normalize"` re-fills every paragraph, which is what the line-count cap in
+# `scripts/check-line-limits.sh` has to be measured against — the default mode
+# only breaks lines already over the column and leaves a paragraph hand-wrapped
+# narrower exactly as it is, so a doc wrapped at 60 passes a cap it should not.
+#
+# `headings`, `code-blocks` and `tables` are off because rumdl cannot wrap
+# them; left on they report lines no `fmt` pass can fix.
+#
+# Scope: `skills/`, `docs/` and root-level markdown. `plans/` and `memory/`
+# stay out (frozen work, and a submodule with its own gate). The root-level
+# pattern is `/*.md`, not `*.md`: an unanchored `*` crosses `/`, so `*.md`
+# pulls in `plans/`, `memory/` and every other tree.
+
+[global]
+enable = ["MD013"]
+include = ["skills/**/*.md", "docs/**/*.md", "/*.md"]
+
+[MD013]
+line-length = 80
+reflow = true
+reflow-mode = "normalize"
+headings = false
+code-blocks = false
+tables = false
