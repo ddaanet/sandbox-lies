@@ -187,10 +187,10 @@ assert_fixture() {
 
 @test "the live memory file's quotation never carries the full follow-on clause" {
   # This is exactly what match_git_lock leans on, and it holds for a reason
-  # worth naming: `just format-docs` hard-wraps the store at 80, which splits
-  # `Another git process / seems to be running` across two lines. A future
-  # edit that lands the whole clause on one line breaks the discriminator, and
-  # this goes red before the matcher does.
+  # worth naming: the store is hard-wrapped (this repo's `format-docs` does not
+  # reach memory/), which splits `Another git process / seems to be running`
+  # across two lines. A future edit that lands the whole clause on one line
+  # breaks the discriminator, and this goes red before the matcher does.
   local store="$BATS_TEST_DIRNAME/../memory/ddaanet/sandbox-effects.md"
   [ -f "$store" ] || skip "ddaanet memory tier not mounted yet; activates at repo init"
   local follow='Another git process seems to be running'

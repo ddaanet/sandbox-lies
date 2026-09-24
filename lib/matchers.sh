@@ -62,8 +62,8 @@ match_git_lock() {
 # the four real failures puts `error: ` at the head of a line.
 #
 # The current store does not fire the bare string either, but only because
-# `just format-docs` wraps `could not lock / config file` across two lines --
-# an accident, not a property. The anchor does not depend on it.
+# its hard-wrap splits `could not lock / config file` across two lines -- an
+# accident, not a property. The anchor does not depend on it.
 match_config_lock() {
     grep -qE '^error: could not lock config file .*: File exists'
 }

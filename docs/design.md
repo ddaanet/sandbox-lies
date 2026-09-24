@@ -106,8 +106,8 @@ has a `fire-*` and a `quiet-*` fixture per shipped detector. Planned.
 tool result cut by `tests/extract-fixtures.py` from `~/.claude/projects`; every
 `quiet-*` fixture is a recorded near-miss. Hand writing a fixture encodes what
 the output was expected to look like. Where · pinned by:
-`tests/extract-fixtures.py` · the fixture set is reproducible from the script.
-Done.
+`tests/extract-fixtures.py` · the `fire-*` and `quiet-*` set is reproducible
+from the script. Done.
 
 **FR-9 — The symptom-less knowledge is a skill.** `excludedCommands` whole-call
 semantics, the two escapes and their costs, strict mode, `$TMPDIR` scoping, a
@@ -197,10 +197,10 @@ character device treats it as a mask, never as a file — unsandboxed readers ha
 seen masks while another session's sandbox was live.
 
 **Paths.** A lock probe takes its path from the error text; git prints it
-absolute, and a relative one resolves against the payload's `cwd`, the directory
-the call ran in. Phantom masks sit in the session's project root only, and the
-`phantom-*` detectors read text and run no probe; their verdict says where the
-masks are.
+absolute, and a relative one resolves against the payload's `cwd` (what it holds
+after a `cd` inside the call is unrecorded). Phantom masks sit in the session's
+project root only, and the `phantom-*` detectors read text and run no probe;
+their verdict says where the masks are.
 
 The detector-by-detector mechanism — matcher shape, discriminator, probe,
 verdict outcomes, corpus figure — is in
@@ -383,8 +383,10 @@ second is the memory file's name and both would exist during the transition.
   annotated.
 - **L-4** Hooks load at session start; a change to this plugin needs a restart
   to observe.
-- **L-5** The harness appends its own sandbox-violation annotation to a
-  sandboxed failure's output; the recorded payloads bound what matchers see.
+- **L-5** The bundle shows the harness appending its own sandbox-violation
+  annotation to a sandboxed failure's output; a Linux write refused by the
+  allowlist carried none in the 2026-09-23 recording. The recorded payloads
+  bound what matchers see.
 
 ## Non-goals
 
