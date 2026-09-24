@@ -11,6 +11,7 @@ bats_require_minimum_version 1.5.0
 
 load helpers/bsd-stubs
 load helpers/hook
+load helpers/spy
 
 setup() {
   hook_copy_tree
@@ -277,6 +278,38 @@ run_hook() {
     [ -z "$output" ] || { echo "fired (failure, true): $f" >&2; return 1; }
   done
   [ "$count" -gt 0 ]
+}
+
+@test "hook needs no temp dir" {
+  # Slice 1's gitadd failure payload, unaltered -- same shape as "gitadd
+  # failure payload yields one verdict" above. TMPDIR names a directory that
+  # does not exist rather than an empty one to inspect afterwards: a mktemp
+  # buffer removes itself once detect returns, so an empty-directory check
+  # would pass against it. The mktemp spy catches a buffer that falls back to
+  # /tmp (residual as in "detect needs no temp dir", matchers.bats). expected
+  # is computed in this same run so the comparison is exact rather than
+  # merely nonempty. Both runs merge stderr into $output, and expected parses
+  # as one JSON document, so the equality also pins an empty stderr.
+  local text payload payload_file nonexistent expected
+  local spy="$BATS_TEST_TMPDIR/spy" calls="$BATS_TEST_TMPDIR/spy-calls"
+  text=$(cat "$FIXTURES/fire-masks-gitadd-refused.txt")
+  payload=$(failure_payload "$text")
+  payload_file="$BATS_TEST_TMPDIR/hook-needs-no-temp-dir.json"
+  printf '%s' "$payload" >"$payload_file"
+
+  run bash "$HOOK_COPY/hooks/annotate.sh" <"$payload_file"
+  [ "$status" -eq 0 ]
+  expected="$output"
+  [ -n "$expected" ]
+  printf '%s' "$expected" | jq -e . >/dev/null
+
+  nonexistent="$BATS_TEST_TMPDIR/does-not-exist"
+  make_spy "$spy" "$calls" mktemp
+  run env PATH="$spy:$PATH" TMPDIR="$nonexistent" \
+    bash "$HOOK_COPY/hooks/annotate.sh" <"$payload_file"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$expected" ]
+  [ ! -e "$calls" ] || { cat "$calls" >&2; return 1; }
 }
 
 @test "the command is not read" {

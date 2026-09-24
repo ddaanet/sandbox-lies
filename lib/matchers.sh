@@ -14,17 +14,18 @@
 set -u
 
 detect() {
-    # Buffer once; every matcher needs its own read of the same text.
-    local buf status
-    buf=$(mktemp "${TMPDIR:-/tmp}/sbx-detect.XXXXXX") || return 2
-    cat >"$buf"
+    # Hold the text once; every matcher needs its own read of the same text.
+    # `read -r -d ''` reads to EOF (its own exit status is EOF, not error,
+    # and is not checked) without writing a file (NFR-4) and without the
+    # NUL-byte warning `$(cat)` prints on stderr in bash >= 4.4.
+    local text status
+    IFS= read -r -d '' text
     status=1
-    match_git_lock <"$buf" && { printf 'git-lock\n'; status=0; }
-    match_config_lock <"$buf" && { printf 'config-lock\n'; status=0; }
-    match_phantom_chardev <"$buf" && { printf 'phantom-chardev\n'; status=0; }
-    match_phantom_untracked <"$buf" && { printf 'phantom-untracked\n'; status=0; }
-    match_phantom_gitadd <"$buf" && { printf 'phantom-gitadd\n'; status=0; }
-    rm -f "$buf"
+    printf '%s\n' "$text" | match_git_lock && { printf 'git-lock\n'; status=0; }
+    printf '%s\n' "$text" | match_config_lock && { printf 'config-lock\n'; status=0; }
+    printf '%s\n' "$text" | match_phantom_chardev && { printf 'phantom-chardev\n'; status=0; }
+    printf '%s\n' "$text" | match_phantom_untracked && { printf 'phantom-untracked\n'; status=0; }
+    printf '%s\n' "$text" | match_phantom_gitadd && { printf 'phantom-gitadd\n'; status=0; }
     return "$status"
 }
 

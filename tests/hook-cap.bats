@@ -180,3 +180,33 @@ cap_run() {
   [ "$ctx" = "$untracked_para" ]
   [ "$sys" = "$untracked_human $stub_human" ]
 }
+
+@test "all paragraphs dropped keeps the human line" {
+  # Finding 1 (item-2-3-s7-code-review.md): when every paragraph is dropped
+  # by the cap, an old `[ -n "$context" ] || exit 0` guard discarded the
+  # human lines FR-6 keeps. Runs the gitadd fixture alone, so only
+  # phantom-gitadd fires and its stubbed 2100-byte paragraph alone crosses
+  # 2048 bytes -- the degenerate case where $context ends up empty.
+  local marker='STUBMARKER-GITADD-ALONE' stub_human='stub — big'
+  local text payload ctx sys
+
+  text=$(cat "$FIXTURES/fire-masks-gitadd-refused.txt")
+  printf '%s\n' "$text" | bash -c '. "$1"; match_phantom_gitadd' \
+    _ "$HOOK_COPY/lib/matchers.sh"
+
+  stub_lib verdicts.sh \
+    "verdict_phantom_gitadd() { printf '%s\n' '$(stub_paragraph "$marker" 2100)' '$stub_human'; }"
+  payload=$(failure_payload "$text")
+
+  run bash -c 'printf "%s" "$1" | bash "$2"' \
+    _ "$payload" "$HOOK_COPY/hooks/annotate.sh"
+  [ "$status" -eq 0 ]
+  ctx=$(printf '%s' "$output" \
+    | jq -j '.hookSpecificOutput.additionalContext' && printf x)
+  ctx=${ctx%x}
+  sys=$(printf '%s' "$output" | jq -j '.systemMessage' && printf x)
+  sys=${sys%x}
+
+  [ "$ctx" = "" ]
+  [ "$sys" = "$stub_human" ]
+}

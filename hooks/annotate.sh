@@ -51,7 +51,7 @@ esac
 
 [ -n "$text" ] || exit 0
 
-# Non-zero is either nothing fired or detect failed: both are silent.
+# Non-zero means nothing fired; the hook stays silent either way.
 names=$(printf '%s\n' "$text" | detect) || exit 0
 
 context=""

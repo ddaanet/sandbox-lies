@@ -110,3 +110,48 @@ assert_no_failures() {
 
   assert_no_failures
 }
+
+@test "NUL in the text stays quiet on stderr" {
+  # F1 (item-2-3-s6-code-review.md): a well-formed payload whose
+  # tool_response.stdout holds \u0000 -- printed by e.g. `git ls-files -z` or
+  # `find -print0` run bare -- must not leak bash's NUL-drop warning onto
+  # stderr. Only bash >= 4.4 warns, so only there can this case red; under
+  # bash 3.2 the drop is silent and it checks just that the NUL does not stop
+  # the verdict. The NUL sits in the jq filter's own string literal, ahead of
+  # the firing text: a shell variable cannot hold the byte to splice it in
+  # via --arg.
+  local porcelain payload
+  porcelain=$(cat "$FIXTURES/fire-masks-porcelain.txt")
+  payload=$(jq --arg t "$porcelain" \
+    '.tool_response.stdout = ("\u0000" + $t)' "$FIXTURES/payload-post.json")
+  check_fires "NUL then firing text" "$payload"
+
+  assert_no_failures
+}
+
+@test "event name is one of two literals" {
+  # F2 (item-2-3-s6-code-review.md): hook_event_name must equal one of the
+  # two literal event names exactly, or nothing downstream reads the payload
+  # as text. The paired positive puts firing text in tool_response.stdout
+  # under the literal event. A string holding a newline before that text
+  # must not split into an event line and text; an object event must stay
+  # quiet on the positive's own payload, the event alone changed -- firing
+  # text inside the object would pretty-print JSON-escaped, on lines no
+  # line-anchored matcher reads, and stay quiet whatever the hook did.
+  local porcelain literal_event newline_event object_event
+  porcelain=$(cat "$FIXTURES/fire-masks-porcelain.txt")
+
+  literal_event=$(jq --arg t "$porcelain" \
+    '.tool_response.stdout = $t' "$FIXTURES/payload-post.json")
+  check_fires "literal event, firing stdout" "$literal_event"
+
+  newline_event=$(jq --arg t "$porcelain" \
+    '.hook_event_name = ("PostToolUse\n" + $t)' "$FIXTURES/payload-post.json")
+  check_quiet "newline then firing text" "$newline_event"
+
+  object_event=$(printf '%s' "$literal_event" \
+    | jq '.hook_event_name = {name: "PostToolUse"}')
+  check_quiet "event is an object" "$object_event"
+
+  assert_no_failures
+}

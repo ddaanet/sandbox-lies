@@ -19,6 +19,7 @@ FIXTURES="$ROOT/tests/fixtures"
 bats_require_minimum_version 1.5.0
 
 load helpers/bsd-stubs
+load helpers/spy
 
 # fixture name -> expected verdicts, newline-separated, empty for quiet.
 expected_for() {
@@ -253,4 +254,24 @@ assert_fixture() {
     name=$(basename "$f" .txt)
     PATH="$bsd:$PATH" assert_fixture "$name"
   done
+}
+
+# ------------------------------------------------------------ NFR-4: hermetic
+
+@test "detect needs no temp dir" {
+  # NFR-4: detect writes nothing. TMPDIR names a directory that does not
+  # exist, so a buffer under it fails outright -- mktemp's X's randomise only
+  # the leaf name, never the parent. The mktemp spy on PATH records any call
+  # at all, so a buffer that falls back to /tmp when TMPDIR fails reds on the
+  # last assertion. Residual: a write that calls no mktemp -- a hard-coded
+  # path, or a here-document, which bash spools to a temp file (falling back
+  # to /tmp itself) before 5.1 and above the pipe size after -- is unseen.
+  local nonexistent="$BATS_TEST_TMPDIR/does-not-exist"
+  local spy="$BATS_TEST_TMPDIR/spy" calls="$BATS_TEST_TMPDIR/spy-calls"
+  make_spy "$spy" "$calls" mktemp
+  run --separate-stderr env PATH="$spy:$PATH" TMPDIR="$nonexistent" \
+    "$MATCHERS" < "$FIXTURES/fire-lock-add-commit.txt"
+  [ "$status" -eq 0 ]
+  [ "$output" = "git-lock" ]
+  [ ! -e "$calls" ] || { cat "$calls" >&2; return 1; }
 }
