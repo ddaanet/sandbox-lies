@@ -437,6 +437,10 @@ Cross-cutting, bounded:
      `tool_response.stdout` holding `\u0000` yields the verdict with empty
      stderr; a `hook_event_name` holding a newline followed by firing text,
      and an object event, each yield empty stdout.
+     `all paragraphs dropped keeps the human line` (slice 7's code review;
+     proven by mutation) — a stubbed 2100-byte `verdict_phantom_gitadd` on
+     the gitadd fixture alone yields `additionalContext` `""` and the
+     stub's human line as `systemMessage`.
   9. Verdict-less name: `a name with no verdict contributes nothing` —
      `stub_lib matchers.sh` redefining `detect` to print `phantom-gitadd`
      then `no-such-detector`: `additionalContext` equals the gitadd
@@ -629,6 +633,11 @@ fire case under `make_bsd_stubs grep sed` (Portability).
   8. `no probe without a verdict` — `stub_lib` defining `probe_fake`
      (recording its calls) and a `detect` printing `fake`: empty stdout, no
      call recorded.
+  9. `cap skips and continues` (Item 2.3 slice 7's reviews: needs a third
+     paragraph, which the lock verdicts first supply) — three verdicts in
+     catalogue order where the second alone would cross 2 KB and the third
+     fits: the context holds the first and third paragraphs, and
+     `systemMessage` all three human lines.
 
 - Item 4.2: `lib/matchers.sh`, `lib/verdicts.sh`, `tests/matchers.bats`,
   `tests/hook-candidates.bats`, `tests/verdicts.bats` — the four
