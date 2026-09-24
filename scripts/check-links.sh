@@ -20,6 +20,12 @@ case "${BASH_SOURCE[0]}" in
 esac
 # shellcheck source-path=SCRIPTDIR source=lib/tracked.sh
 source "$LIB_DIR/tracked.sh" || exit 2
+# check_links_in runs the other helper once per file: missing, it would
+# fail the first file checked and name that file as the unreadable one.
+if [ ! -r "$LIB_DIR/strip-code.awk" ]; then
+    printf 'check-links: cannot read %s\n' "$LIB_DIR/strip-code.awk" >&2
+    exit 2
+fi
 
 parse_root check-links "$@"
 
@@ -30,7 +36,7 @@ EXIT_CODE=0
 # shellcheck disable=SC2317 # reached only through handle_file, itself
 # invoked indirectly by name via walk_tracked_files's $handler
 check_links_in() {
-    local file="$1" dir links link target scheme check_target status=0 mask
+    local file="$1" dir links link target scheme check_target
     # Parameter expansion, not `$(dirname …)`: a command substitution strips
     # a trailing newline from a directory name.
     case "$file" in
@@ -38,24 +44,10 @@ check_links_in() {
     *) dir=. ;;
     esac
     # A code span or a fenced block is not a link, even when its content
-    # would otherwise parse as one (scripts/lib/strip-code.awk). Its output
-    # goes to a temp file, not a shell variable: `mask=$(awk …)` would run
-    # the whole file's content — not just the small `](target)` matches
-    # below — through bash command substitution, which truncates at the
-    # first NUL byte the same way `walk_tracked_files` warns a process
-    # substitution loses `git ls-files`' exit status. Explicit mktemp
-    # template: BSD mktemp has no default one. A failed mktemp, or an
-    # unreadable file (awk exits non-zero the same way grep did before it),
-    # leaves the file unchecked: exit 2, not a silently empty mask.
-    if ! mask="$(mktemp "${TMPDIR:-/tmp}/check-links-mask.XXXXXX")"; then
-        printf 'check-links: cannot create a temp file\n' >&2
-        exit 2
-    fi
-    if ! LC_ALL=C awk -f "$LIB_DIR/strip-code.awk" -- "$ROOT/$file" >"$mask" 2>/dev/null; then
-        rm -f "$mask"
-        printf 'check-links: cannot read %s\n' "$file" >&2
-        exit 2
-    fi
+    # would otherwise parse as one: scripts/lib/strip-code.awk blanks them
+    # before grep sees the file. The file reaches awk by redirection, not as
+    # an operand: awk takes an operand shaped `name=value` — a ROOT named
+    # `x=y` — as a variable assignment and reads stdin in its place.
     # Only the `](target)` half of an inline link: the link text may hold
     # parentheses or nested brackets, and matching it too would cut the
     # target at the wrong `(` or miss the link outright. Residual: a target
@@ -64,13 +56,14 @@ check_links_in() {
     # in a UTF-8 locale a target with a non-UTF-8 byte fails `[^)]` and goes
     # unmatched, and a NUL byte makes grep print "binary file matches" in
     # place of the links, both exit 0 over links never checked.
-    # Captured rather than read from `< <(grep …)`: a process substitution
-    # discards grep's status. 1 is no match; 2 is an unreadable file, and
-    # leaves it unchecked: exit 2, since a bare `set -e` abort would surface
+    # Captured rather than read from `< <(…)`: a process substitution
+    # discards the pipeline's status. grep's 1 is no match, folded to 0;
+    # under `pipefail` any other failure — an unreadable file, which fails
+    # the redirection, awk's own, or grep's 2 — fails the capture and leaves
+    # the file unchecked: exit 2, since a bare `set -e` abort would surface
     # as 1 and read as a broken link.
-    links=$(LC_ALL=C grep -aoE -e '\]\([^)]*\)' -- "$mask") || status=$?
-    rm -f "$mask"
-    if [ "$status" -gt 1 ]; then
+    if ! links=$(LC_ALL=C awk -f "$LIB_DIR/strip-code.awk" <"$ROOT/$file" |
+        { LC_ALL=C grep -aoE -e '\]\([^)]*\)' || [ "$?" -eq 1 ]; }); then
         printf 'check-links: cannot read %s\n' "$file" >&2
         exit 2
     fi

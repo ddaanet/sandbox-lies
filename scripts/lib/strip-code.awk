@@ -11,17 +11,26 @@
 # rather than printed — none of the three can hold a link this script
 # should see. A backtick fence is not closed by a `~~~` line or vice
 # versa (CommonMark): that line is fence content, dropped like any other.
+# A backtick opener's info string holds no backtick (CommonMark), so a
+# line starting with a code span such as ```` ``` ```` opens nothing. A
+# trailing `\r` counts as whitespace: in a CRLF file no closer would match
+# otherwise, and the first fence would swallow the rest of the file. A
+# fence left open at the end of the file runs to the end, as in
+# CommonMark.
 #
 # Span: a single-backtick pair on one line is blanked to a space; text on
 # the same line outside the span is left in place.
 #
-# Residuals, left for a later slice, each of which fails loud — the link
-# inside is reported, not silently passed — rather than silently matching:
-# a closing marker shorter than the opener (a ```` fence closed by ```);
-# a double-backtick span (``code``); a span or a fence that a line break
-# would close in CommonMark but this line-at-a-time state machine does
-# not, so an unclosed fence swallows the rest of the file; and a 4-space
-# indented code block, which is not a fence at all.
+# Residuals of this line-at-a-time approximation. Loud — the link inside
+# is reported: a closing marker shorter than the opener (a ```` fence
+# closed by ```); a double-backtick span (``code``); a span crossing a
+# line break; and a 4-space indented code block, which is not a fence at
+# all. Silent — a link is skipped: a fence inside a list item or block
+# quote that the container's end would close in CommonMark swallows the
+# rest of the file, and so does a lone fence marker line inside an
+# indented code block, since any indentation opens a fence here (a list
+# item's fence may sit 4+ columns in); and a backslash-escaped backtick
+# (\`) still opens a span.
 
 BEGIN { in_fence = 0; fence_char = "" }
 
@@ -32,9 +41,9 @@ BEGIN { in_fence = 0; fence_char = "" }
 
     if (in_fence) {
         if (fence_char == "`") {
-            closes = (trimmed ~ /^```+[ \t]*$/)
+            closes = (trimmed ~ /^```+[ \t\r]*$/)
         } else {
-            closes = (trimmed ~ /^~~~+[ \t]*$/)
+            closes = (trimmed ~ /^~~~+[ \t\r]*$/)
         }
         if (closes) {
             in_fence = 0
@@ -43,7 +52,7 @@ BEGIN { in_fence = 0; fence_char = "" }
         next
     }
 
-    if (trimmed ~ /^```+/) {
+    if (trimmed ~ /^```+[^`]*$/) {
         in_fence = 1
         fence_char = "`"
         next
