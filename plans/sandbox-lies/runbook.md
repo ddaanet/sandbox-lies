@@ -508,7 +508,7 @@ Cross-cutting, bounded:
      lock open on an fd other than 3, with bats' fd 3 closed (`3>&-`) so
      the run does not wait on it: `held`, `pid=` equal to that job's pid;
      the job is killed in teardown. `held lock under a quoted, spaced path`
-     (slices 3's reviews: the only case pinning the holder tools' quoting)
+     (slice 3's reviews: the only case pinning the holder tools' quoting)
      — the same under `$BATS_TEST_TMPDIR/it's here/r`: `held`, `pid=`. The
      holder check runs before the size and age reads, or presence is
      re-checked after it, so a holder exiting mid-check reads `gone`, not
@@ -526,7 +526,21 @@ Cross-cutting, bounded:
      209901010000`: `age=0`.
   6. `no holder tool is unknown` — `PATH` set to a directory holding only
      the tools the probe needs, without `lsof` and `fuser`: `unknown`,
-     `bytes=7`.
+     `bytes=7`. Holder-tool stubs on that `PATH` (slice 4's code review;
+     proven by mutation, the behaviour landed in that review): `lock
+     vanishing during the holder check reads gone` — a `fuser` stub
+     removing `$1`, printing the missing-file line on stderr, exit 1:
+     `gone`, `path=`, empty stderr, both flags; `unexpected holder-tool
+     stderr is passed through` — a `fuser` stub printing `<path>:` and a
+     foreign line on stderr and a pid on stdout: `held`, that pid, the
+     foreign line on stderr, and a stub printing `<path>:ce` gives empty
+     stderr; `lsof decides when present` — an `lsof` stub printing two pids
+     one per line beside a `fuser` stub answering differently: `pid=` the
+     first, exactly one `pid=` line, the stub called with `-w -t <path>`
+     (settles several holders as first pid, one line). `tests/probes.bats`
+     stands at 256 lines: these cases open `tests/probes-holder.bats`, with
+     the shared error builder and `run_probe` moved to
+     `tests/helpers/probes.bash`, loaded by both.
   7. `relative path resolves against cwd` — text naming `.git/index.lock`,
      `$2` the repo dir holding a present lock: `orphan`, `path=` absolute;
      the probe runs from an unrelated working directory, so only `$2` can
@@ -538,7 +552,11 @@ Cross-cutting, bounded:
      `bytes=7`, an `age=` integer ≥ 0, within a minute of now minus the
      backdated mtime (slice 3's code review). `bsd-stubs.bash` also gains a
      `wc` stub left-padding its count as BSD does, and the case runs with
-     `make_bsd_stubs stat wc`, pinning the padding strip.
+     `make_bsd_stubs stat wc`, pinning the padding strip. `probe writes
+     nothing` (slice 4's code review: its `mktemp` passed every test; proven
+     by mutation) — with a `mktemp` spy on `PATH` and `TMPDIR` naming a
+     missing directory, held, unheld-present and absent locks each yield
+     their outcome, empty stderr, and no spy call.
 
 ## Phase 3: Evidence (type: general)
 
