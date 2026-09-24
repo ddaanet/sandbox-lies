@@ -383,6 +383,12 @@ Cross-cutting, bounded:
      with the phantom prohibition phrase `add, delete and report` stripped,
      no row's text matches `rm `, `remove` or `delete` case-insensitively
      (D-7; the phrase is the one sanctioned `delete`, from `detectors.md`).
+     As widened by the slice's test review: the quiet case also runs its
+     text as an `Exit code 1`-prefixed failure payload; the hooks.json case
+     asserts the exact command `bash "${CLAUDE_PLUGIN_ROOT}/hooks/annotate.sh"`,
+     exactly the two events, one registration each, `type` `command`; the
+     400-char case asserts the rows cover every `verdict_*` function and
+     each text is exactly two non-empty lines; `rm ` matches only as a word.
   2. Success text rebuild: `porcelain on stdout fires untracked` —
      `fire-masks-porcelain` in `tool_response.stdout`, event
      `PostToolUse`: `hookEventName` is `PostToolUse` and context contains
@@ -393,7 +399,10 @@ Cross-cutting, bounded:
      `fire-masks-porcelain`: `additionalContext` equals exactly line 1 of
      `verdict_phantom_untracked` (the untracked paragraph restates the
      chardev one, so "chardev absent" cannot be asserted by substring);
-     `systemMessage` equals its line 2.
+     `systemMessage` equals its line 2. `verdict text matches
+     detectors.md` (`verdicts.bats`; slice 1's code review found the text
+     unpinned) — each phantom row's line 1 and line 2 equal expected strings
+     held in the test, transcribed from `detectors.md`.
   4. Flag policy: `phantom verdicts ignore the flag` — each phantom fire
      fixture with `dangerouslyDisableSandbox` absent, `false` and `true`
      yields non-empty, byte-identical stdout.
@@ -421,7 +430,9 @@ Cross-cutting, bounded:
      then `no-such-detector`: `additionalContext` equals the gitadd
      paragraph alone; with `no-such-detector` alone: empty stdout.
   10. BSD tools: `hook under BSD stubs` — slice 1's gitadd payload with
-      `make_bsd_stubs grep sed` on `PATH` yields the same stdout.
+      `make_bsd_stubs grep` on `PATH` yields the same stdout (the hook
+      calls no `sed` since slice 1's code review; `grep` runs inside
+      `detect`; `mktemp` leaves with slice 8).
 
 - Item 2.4: `lib/probes.sh`, `tests/probes.bats`,
   `tests/helpers/bsd-stubs.bash` — `probe_git_lock` and `probe_config_lock`
