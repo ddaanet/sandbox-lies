@@ -35,9 +35,10 @@ _probe_lock_path() {
 # - fuser's "<path>:" line, then only access-code letters (psmisc c/e/r/m;
 #   other builds use their own): normal operation, not a diagnostic. POSIX
 #   has fuser print it on every call; psmisc only when it finds a holder.
-# - anything, once the lock is absent: git removed it after the presence
-#   test (a holder that exited), the tool reported the missing file, and the
-#   stat below reads the vanish as gone.
+# - anything, once nothing the tool can stat is at the path: either git
+#   removed the lock after the presence test (a holder that exited) and the
+#   stat below reads the vanish as gone, or the lock is a dangling symlink,
+#   which no process can hold open.
 # lsof runs with -w: its warnings are about other mounts it cannot stat
 # (/proc, FUSE), printed on every call on hosts that have such mounts; an
 # error about <path> itself is not a warning and still arrives. Residual:
@@ -56,14 +57,14 @@ _probe_holder_pids() {
     if [ "$rest" != "$err" ] && [ -z "${rest//[[:alpha:]]/}" ]; then
         return 0
     fi
-    if [ ! -e "$path" ] && [ ! -L "$path" ]; then
+    if [ ! -e "$path" ]; then
         return 0
     fi
     printf '%s\n' "$err" >&2
 }
 
 probe_git_lock() {
-    local flag="$1" text path
+    local flag="$1" text path pids holder_pid mtime bytes='' now age
     text=$(cat)
     path=$(printf '%s\n' "$text" | _probe_lock_path)
 
@@ -73,82 +74,77 @@ probe_git_lock() {
     # sandboxed call to retry unchanged.
     if [ ! -e "$path" ] && [ ! -L "$path" ]; then
         if [ "$flag" = true ]; then
-            printf 'gone\n'
+            printf '%s\n' gone "path=$path"
         else
-            printf 'mask\n'
+            printf '%s\n' mask "path=$path"
         fi
-        printf 'path=%s\n' "$path"
-    else
-        # A character device masks regardless of flag (docs/references/
-        # detectors.md git-lock table). `[ -c ]` follows a symlink, so a
-        # symlink to /dev/null lands here before the holder tool or stat/wc
-        # ever runs on it — /dev/null typically has many open holders, which
-        # would otherwise read held rather than mask.
-        if [ -c "$path" ]; then
-            printf 'mask\n'
-            printf 'path=%s\n' "$path"
-            return 0
-        fi
-
-        local pids holder_pid
-        # Runs before the size and age reads, so a lock removed while this
-        # check runs is absent at the stat below and reads gone, not orphan.
-        # The tools see open descriptors only: git closes a lock before it
-        # renames or removes it, and `commit -a` leaves index.lock present
-        # and closed while its pre-commit hook runs, so a lock in either
-        # state reads unheld. A holder exiting just after the tool saw it
-        # reads held.
-        pids=$(_probe_holder_pids "$path")
-        # First pid only (pid= is singular), parsed without word splitting
-        # or globbing: drop what precedes the first digit, keep that run.
-        pids=${pids#"${pids%%[0-9]*}"}
-        holder_pid=${pids%%[!0-9]*}
-        if [ -n "$holder_pid" ]; then
-            printf 'held\n'
-            printf 'pid=%s\n' "$holder_pid"
-            printf 'path=%s\n' "$path"
-            return 0
-        fi
-
-        local mtime bytes='' now age
-        # Git removes a lock when its holder exits, so the lock can vanish
-        # after the presence test. stat's stderr is captured, not silenced: a
-        # failure with the lock now absent is that vanish, and reads as gone
-        # under either flag (a real lock existed and git cleaned it); any
-        # other failure goes on to stderr and the age line is left out.
-        if ! mtime=$(stat -c %Y "$path" 2>&1); then
-            if [ ! -e "$path" ] && [ ! -L "$path" ]; then
-                printf 'gone\n'
-                printf 'path=%s\n' "$path"
-                return 0
-            fi
-            printf '%s\n' "$mtime" >&2
-            mtime=''
-        fi
-        # Size only of a readable regular file, else the bytes line is left
-        # out: reading a FIFO blocks until the hook times out, and a
-        # directory, an unreadable file or a dangling symlink errors.
-        # Residual: a lock vanishing between this test and the read still
-        # prints the shell's redirect error.
-        if [ -f "$path" ] && [ -r "$path" ]; then
-            # BSD wc left-pads its count with spaces; strip before printing.
-            bytes=$(wc -c <"$path" | tr -d '[:space:]')
-        fi
-        printf 'orphan\n'
-        if [ -n "$bytes" ]; then
-            printf 'bytes=%s\n' "$bytes"
-        fi
-        if [ -n "$mtime" ]; then
-            now=$(date +%s)
-            age=$((now - mtime))
-            # An mtime in the future (clock skew) reads as just written.
-            if [ "$age" -lt 0 ]; then
-                age=0
-            fi
-            printf 'age=%s\n' "$age"
-        fi
-        printf 'path=%s\n' "$path"
+        return 0
     fi
+
+    # A character device is a sandbox mask (a /dev/null bind, which
+    # unsandboxed readers have seen while another session's sandbox was
+    # live), never a lock git wrote: mask under either flag. Tested before
+    # the holder tool, stat or wc touches the path: /dev/null is open in
+    # many processes and would read held. `[ -c ]` follows a symlink, so a
+    # link to a device masks too.
+    if [ -c "$path" ]; then
+        printf '%s\n' mask "path=$path"
+        return 0
+    fi
+
+    # Runs before the size and age reads, so a lock removed while this
+    # check runs is absent at the stat below and reads gone, not orphan.
+    # The tools see open descriptors only: git closes a lock before it
+    # renames or removes it, and `commit -a` leaves index.lock present
+    # and closed while its pre-commit hook runs, so a lock in either
+    # state reads unheld. A holder exiting just after the tool saw it
+    # reads held.
+    pids=$(_probe_holder_pids "$path")
+    # First pid only (pid= is singular), parsed without word splitting
+    # or globbing: drop what precedes the first digit, keep that run.
+    pids=${pids#"${pids%%[0-9]*}"}
+    holder_pid=${pids%%[!0-9]*}
+    if [ -n "$holder_pid" ]; then
+        printf '%s\n' held "pid=$holder_pid" "path=$path"
+        return 0
+    fi
+
+    # Git removes a lock when its holder exits, so the lock can vanish
+    # after the presence test. stat's stderr is captured, not silenced: a
+    # failure with the lock now absent is that vanish, and reads as gone
+    # under either flag (a real lock existed and git cleaned it); any
+    # other failure goes on to stderr and the age line is left out.
+    if ! mtime=$(stat -c %Y "$path" 2>&1); then
+        if [ ! -e "$path" ] && [ ! -L "$path" ]; then
+            printf '%s\n' gone "path=$path"
+            return 0
+        fi
+        printf '%s\n' "$mtime" >&2
+        mtime=''
+    fi
+    # Size only of a readable regular file, else the bytes line is left
+    # out: reading a FIFO blocks until the hook times out, and a
+    # directory, an unreadable file or a dangling symlink errors.
+    # Residual: a lock vanishing between this test and the read still
+    # prints the shell's redirect error.
+    if [ -f "$path" ] && [ -r "$path" ]; then
+        # BSD wc left-pads its count with spaces; strip before printing.
+        bytes=$(wc -c <"$path" | tr -d '[:space:]')
+    fi
+    printf 'orphan\n'
+    if [ -n "$bytes" ]; then
+        printf 'bytes=%s\n' "$bytes"
+    fi
+    if [ -n "$mtime" ]; then
+        now=$(date +%s)
+        age=$((now - mtime))
+        # An mtime in the future (clock skew) reads as just written.
+        if [ "$age" -lt 0 ]; then
+            age=0
+        fi
+        printf 'age=%s\n' "$age"
+    fi
+    printf 'path=%s\n' "$path"
 }
 
 probe_config_lock() {
