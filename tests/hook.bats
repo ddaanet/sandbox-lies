@@ -16,6 +16,14 @@ setup() {
   hook_copy_tree
 }
 
+# run_hook <payload> — invokes annotate.sh on the copied tree, setting
+# $status and $output via bats' run. Used by the slice 4-5 sweeps below,
+# which each call the hook many times over a fixture set.
+run_hook() {
+  run bash -c 'printf "%s" "$1" | bash "$2"' \
+    _ "$1" "$HOOK_COPY/hooks/annotate.sh"
+}
+
 @test "gitadd failure payload yields one verdict" {
   local text payload
   text=$(cat "$FIXTURES/fire-masks-gitadd-refused.txt")
@@ -189,4 +197,120 @@ setup() {
     and one("PostToolUse") and one("PostToolUseFailure")
   ' "$ROOT/hooks/hooks.json"
   [ "$status" -eq 0 ]
+}
+
+@test "phantom verdicts ignore the flag" {
+  # `fire-masks-*.txt` is exactly the fixture set that fires a phantom
+  # detector: running `detect` over every file under tests/fixtures/ (see
+  # the RED report) shows chardev-explicit and chardev-incidental fire
+  # phantom-chardev, gitadd-refused fires phantom-gitadd, and porcelain and
+  # two-names fire phantom-untracked. The non-empty check below is what
+  # catches a fixture that stops firing: the sweep must not silently shrink
+  # to fewer live cases.
+  local f text payload absent count=0
+  for f in "$FIXTURES"/fire-masks-*.txt; do
+    count=$((count + 1))
+    text=$(cat "$f")
+
+    case "$text" in
+      "Exit code"*) payload=$(failure_payload "$text") ;;
+      *)            payload=$(post_payload "$text") ;;
+    esac
+    run_hook "$payload"
+    [ "$status" -eq 0 ]
+    absent="$output"
+    [ -n "$absent" ] || { echo "no output, flag absent: $f" >&2; return 1; }
+
+    case "$text" in
+      "Exit code"*) payload=$(failure_payload "$text" false) ;;
+      *)            payload=$(post_payload "$text" "" false) ;;
+    esac
+    run_hook "$payload"
+    [ "$status" -eq 0 ]
+    [ "$output" = "$absent" ] \
+      || { echo "flag false differs from absent: $f" >&2; return 1; }
+
+    case "$text" in
+      "Exit code"*) payload=$(failure_payload "$text" true) ;;
+      *)            payload=$(post_payload "$text" "" true) ;;
+    esac
+    run_hook "$payload"
+    [ "$status" -eq 0 ]
+    [ "$output" = "$absent" ] \
+      || { echo "flag true differs from absent: $f" >&2; return 1; }
+  done
+  [ "$count" -gt 0 ]
+}
+
+@test "every quiet fixture is silent" {
+  # A live failure payload's `error` always opens with its exit-code line
+  # (detectors.md Conventions), so the failure shape gets one unless the
+  # fixture already starts with it; without it, a hook that fires on that
+  # line would pass this sweep.
+  local f text failure payload count=0
+  for f in "$FIXTURES"/quiet-*.txt; do
+    count=$((count + 1))
+    text=$(cat "$f")
+    case "$text" in
+      "Exit code"*) failure="$text" ;;
+      *)            failure="Exit code 1"$'\n'"$text" ;;
+    esac
+
+    payload=$(post_payload "$text")
+    run_hook "$payload"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ] || { echo "fired (post, absent): $f" >&2; return 1; }
+
+    payload=$(post_payload "$text" "" true)
+    run_hook "$payload"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ] || { echo "fired (post, true): $f" >&2; return 1; }
+
+    payload=$(failure_payload "$failure")
+    run_hook "$payload"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ] || { echo "fired (failure, absent): $f" >&2; return 1; }
+
+    payload=$(failure_payload "$failure" true)
+    run_hook "$payload"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ] || { echo "fired (failure, true): $f" >&2; return 1; }
+  done
+  [ "$count" -gt 0 ]
+}
+
+@test "the command is not read" {
+  # Paired positive first, per shape: the same firing text in the response
+  # field must still fire, so neither negative can pass on a hook that has
+  # stopped firing on that event.
+  local fire quiet payload
+
+  fire=$(cat "$FIXTURES/fire-masks-porcelain.txt")
+  quiet=$(cat "$FIXTURES/quiet-clean-status.txt")
+
+  payload=$(post_payload "$fire")
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  [ -n "$output" ] \
+    || { echo "positive control did not fire (post)" >&2; return 1; }
+
+  payload=$(failure_payload "Exit code 1"$'\n'"$fire")
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  [ -n "$output" ] \
+    || { echo "positive control did not fire (failure)" >&2; return 1; }
+
+  payload=$(post_payload "$quiet" \
+    | jq --arg c "$fire" '.tool_input.command = $c')
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ] \
+    || { echo "fired via tool_input.command (post)" >&2; return 1; }
+
+  payload=$(failure_payload "Exit code 1"$'\n'"$quiet" \
+    | jq --arg c "$fire" '.tool_input.command = $c')
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ] \
+    || { echo "fired via tool_input.command (failure)" >&2; return 1; }
 }
