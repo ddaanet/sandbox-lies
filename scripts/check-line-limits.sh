@@ -7,10 +7,10 @@
 # scripts/check_line_limits.sh (Item 2.1), without its allowlist, walking
 # `git ls-files -z` instead of `find` so `.venv/` and gitlinks stay out.
 #
-# Scope (grows across later slices of this item): markdown under docs/, cap
-# 400; a SKILL.md at any depth under root-level skills/, cap 200; other
-# markdown under root-level skills/, cap 400; root-level markdown (no `/` in
-# the path), cap 400 (a `case` `*` crosses `/`).
+# Scope (grows across later slices of this item), in root-relative paths,
+# where a `case` `*` crosses `/`: markdown at any depth under docs/, cap
+# 400; under skills/, cap 200 for a `skills/*/SKILL.md` and 400 for any
+# other; at the root itself (no `/` in the path), cap 400.
 #
 # Exit codes: 0 clean, 1 on any overage, 2 on a failure to run.
 
@@ -76,11 +76,11 @@ while IFS= read -r -d '' file; do
     # match, and a SKILL.md is also `skills/*.md`.
     skills/*/SKILL.md) check_cap "$file" 200 ;;
     skills/*.md) check_cap "$file" 400 ;;
-    # Anything else carrying a `/` (docs/skills/ already matched above, so
-    # this is markdown under any other directory, tracked or not — e.g.
-    # `.claude/skills/`, `lib/`) is out of scope: fall through without
-    # matching the root-only arm below.
-    */*) ;;
+    # Markdown under any other directory (`lib/`, `.claude/skills/`) is out
+    # of scope. This arm only exists to keep it from the root arm below,
+    # which a `case` `*` would otherwise let cross `/`; it names `.md` so an
+    # arm for another file type works in any position.
+    */*.md) ;;
     *.md) check_cap "$file" 400 ;;
     esac
 done <"$WALK_LIST"
