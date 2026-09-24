@@ -407,11 +407,15 @@ Cross-cutting, bounded:
      fixture with `dangerouslyDisableSandbox` absent, `false` and `true`
      yields non-empty, byte-identical stdout.
   5. Quiet set: `every quiet fixture is silent` — each `quiet-*` fixture in
-     both payload shapes, flag absent and `true`, yields empty stdout.
+     both payload shapes, flag absent and `true`, yields empty stdout;
+     `the command is not read` (slice 2's code review) — firing text
+     (`fire-masks-porcelain`) as `tool_input.command`, with quiet
+     `tool_response` or `error`, yields empty stdout in both payload shapes.
   6. Malformed payload: `non-json, scalar, array and textless object` —
      inputs `not json`, `42`, `[1]`, `{}` and an object whose
      `tool_response` is a string each yield status 0, empty stdout, empty
-     stderr.
+     stderr; so do a `tool_response` whose `stdout` is a number or an
+     object, and an `error` that is not a string (slice 2's code review).
   7. Context cap: `paragraph past 2 KB is dropped, human line kept` — with
      a stub `verdict_phantom_gitadd` appended to the copied `verdicts.sh`
      printing a 1900-character paragraph, a failure payload whose text
