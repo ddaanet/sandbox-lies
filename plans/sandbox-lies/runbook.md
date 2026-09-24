@@ -492,7 +492,12 @@ Cross-cutting, bounded:
      directory whose name holds byte `\351`, flag `false`, run under
      `LC_ALL=C.UTF-8`: `path=` byte-exact.
   3. `present unheld lock is orphan` — the lock written with 7 bytes, flag
-     `false`: `orphan`, `bytes=7`, an `age=` integer ≥ 0. `quote and space
+     `false` and `true` (slice 2's reviews: without the `true` run a probe
+     answering `gone` to every unsandboxed call passes the list): `orphan`,
+     `bytes=7`, an `age=` integer ≥ 0. `unexpected flag reads as sandboxed`
+     (slice 2's code review; proven by mutation) — slice 1's absent lock
+     with the flag `""` and then `TRUE`: `mask` and its `path=` line both
+     times. `quote and space
      in the lock path` (slice 1's code review) — the same under
      `$BATS_TEST_TMPDIR/it's here/r`: `orphan`, `path=` the full path.
      Not pinned (slice 1's code review): text with no lock line — the
@@ -510,7 +515,9 @@ Cross-cutting, bounded:
      the tools the probe needs, without `lsof` and `fuser`: `unknown`,
      `bytes=7`.
   7. `relative path resolves against cwd` — text naming `.git/index.lock`,
-     `$2` the repo dir holding a present lock: `orphan`, `path=` absolute.
+     `$2` the repo dir holding a present lock: `orphan`, `path=` absolute;
+     the probe runs from an unrelated working directory, so only `$2` can
+     supply the lock (slice 2's code review).
   8. `config-lock reads its own error` — config-lock error text (shaped as
      `fire-configlock-remote-add`) with an absent lock, flag `false`:
      `mask`; with a present lock: `orphan`.
