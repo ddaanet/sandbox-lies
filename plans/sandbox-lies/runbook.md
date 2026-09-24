@@ -487,8 +487,18 @@ Cross-cutting, bounded:
      naming `$BATS_TEST_TMPDIR/r/.git/index.lock` (absent), flag `false`:
      line 1 `mask`, a `path=` line naming that path.
   2. `absent lock, unsandboxed, is gone` — same text, flag `true`: `gone`.
+     `non-UTF-8 byte in the path` (slice 1's code review; proven by
+     mutation of the extractor's `LC_ALL=C`) — an absent lock under a
+     directory whose name holds byte `\351`, flag `false`, run under
+     `LC_ALL=C.UTF-8`: `path=` byte-exact.
   3. `present unheld lock is orphan` — the lock written with 7 bytes, flag
-     `false`: `orphan`, `bytes=7`, an `age=` integer ≥ 0.
+     `false`: `orphan`, `bytes=7`, an `age=` integer ≥ 0. `quote and space
+     in the lock path` (slice 1's code review) — the same under
+     `$BATS_TEST_TMPDIR/it's here/r`: `orphan`, `path=` the full path.
+     Not pinned (slice 1's code review): text with no lock line — the
+     matchers' gates guarantee a path whenever the hook calls a probe, and
+     the outcome for a pathless text is left open until something calls a
+     probe ungated.
   4. `held lock names the holder` — a background `sleep 30` holding the
      lock open on an fd other than 3, with bats' fd 3 closed (`3>&-`) so
      the run does not wait on it: `held`, `pid=` equal to that job's pid;
