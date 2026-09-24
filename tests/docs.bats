@@ -48,8 +48,8 @@ is_exempt() {
     checked=$((checked + 1))
     [ -z "$verdicts" ] ||
       firing="$firing"$'\n'"  $path: ${verdicts//$'\n'/, }"
-    # `detect` exits 1 when quiet; above that the matchers failed on this
-    # file (a full $TMPDIR mid-sweep), which must not read as quiet.
+    # `detect` exits 1 when quiet; above that bash itself failed on this
+    # file (126, 127), which must not read as quiet.
     [ "$status" -le 1 ] ||
       firing="$firing"$'\n'"  $path: matchers exited $status"
   done <"$index"

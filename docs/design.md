@@ -51,7 +51,7 @@ result stays in context beside the verdict. Where · pinned by:
 **FR-2 — Matcher contract.** A matcher is a shell function that reads one Bash
 tool result on stdin and exits 0 when its symptom is present, 1 when it is not.
 It reads output text only — never the command, never the exit status. `detect`
-runs the set over one buffered copy and prints one verdict name per firing
+runs the set over one in-memory copy and prints one verdict name per firing
 matcher. Where · pinned by: `lib/matchers.sh` · `tests/matchers.bats`, which
 asserts the full verdict set per fixture so a matcher that starts firing on a
 neighbour's symptom fails rather than double-reporting. Done.

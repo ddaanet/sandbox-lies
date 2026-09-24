@@ -14,18 +14,28 @@
 set -u
 
 detect() {
-    # Hold the text once; every matcher needs its own read of the same text.
-    # `read -r -d ''` reads to EOF (its own exit status is EOF, not error,
-    # and is not checked) without writing a file (NFR-4) and without the
-    # NUL-byte warning `$(cat)` prints on stderr in bash >= 4.4.
-    local text status
-    IFS= read -r -d '' text
+    # Hold the text once in memory, never in a file (NFR-4); every matcher
+    # needs its own read of the same text. A bash string cannot hold a NUL, so
+    # `tr` drops them first: `$(cat)` would warn on stderr in bash >= 4.4, and
+    # `read -d ''` would stop at the first one and miss a firing line after it.
+    # `read -d ''` also reads a pipe one byte per syscall, which costs more on
+    # a 30 KB result than this fork does (measured). LC_ALL=C: BSD tr can
+    # refuse invalid UTF-8 under a UTF-8 locale.
+    #
+    # stdin reaches tr through fd 3. With fd 0 closed, the substitution's own
+    # pipe takes fd 0 and a bare `tr` reads it and hangs; the group's `3<&0`
+    # fails first instead. That failure, or tr's read error, leaves the text
+    # empty, so nothing fires and the error reaches stderr.
+    local text='' status
+    { text=$(LC_ALL=C tr -d '\000' <&3); } 3<&0
     status=1
-    printf '%s\n' "$text" | match_git_lock && { printf 'git-lock\n'; status=0; }
-    printf '%s\n' "$text" | match_config_lock && { printf 'config-lock\n'; status=0; }
-    printf '%s\n' "$text" | match_phantom_chardev && { printf 'phantom-chardev\n'; status=0; }
-    printf '%s\n' "$text" | match_phantom_untracked && { printf 'phantom-untracked\n'; status=0; }
-    printf '%s\n' "$text" | match_phantom_gitadd && { printf 'phantom-gitadd\n'; status=0; }
+    # Process substitution, not a pipeline: the matcher runs in this shell,
+    # which saves one fork per matcher.
+    match_git_lock < <(printf '%s\n' "$text") && { printf 'git-lock\n'; status=0; }
+    match_config_lock < <(printf '%s\n' "$text") && { printf 'config-lock\n'; status=0; }
+    match_phantom_chardev < <(printf '%s\n' "$text") && { printf 'phantom-chardev\n'; status=0; }
+    match_phantom_untracked < <(printf '%s\n' "$text") && { printf 'phantom-untracked\n'; status=0; }
+    match_phantom_gitadd < <(printf '%s\n' "$text") && { printf 'phantom-gitadd\n'; status=0; }
     return "$status"
 }
 
