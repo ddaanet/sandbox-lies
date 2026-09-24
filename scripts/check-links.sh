@@ -30,7 +30,7 @@ EXIT_CODE=0
 # shellcheck disable=SC2317 # reached only through handle_file, itself
 # invoked indirectly by name via walk_tracked_files's $handler
 check_links_in() {
-    local file="$1" dir links link target check_target status=0
+    local file="$1" dir links link target scheme check_target status=0
     # Parameter expansion, not `$(dirname …)`: a command substitution strips
     # a trailing newline from a directory name.
     case "$file" in
@@ -58,21 +58,26 @@ check_links_in() {
         [ -n "$link" ] || continue
         target="${link#](}"
         target="${target%)}"
-        # An explicit scheme list, not an RFC 3986 scheme match: a `case`
-        # glob can't express "letter, then alnum+-.+, then a colon before
-        # any slash" without `[[ =~ ]]`, whose quoting differs across bash
-        # versions (shell-gotchas). Residual: a target using a scheme
-        # outside this list (`ftp:`, `tel:`, `data:`, …) is checked as a
-        # literal path and reported broken — loud, not silent. A pure
-        # `#section` target is its own arm, distinct from `dir/target`
-        # decisions below.
+        # Not a file link: an anchor into this file, or a URI with a scheme.
+        # A scheme is RFC 3986's: a letter, then letters, digits, `+`, `-`
+        # or `.` up to the first `:`. A relative path whose first segment
+        # holds a colon must be written `./a:b.md` (RFC 3986 4.2), so
+        # `sub/a:b.md` fails the character test and is still checked.
+        # Residual: under bash 3.2 the glob ranges follow the locale's
+        # collation, so a non-ASCII letter before the colon may pass as a
+        # scheme and skip the link.
         case "$target" in
-        http://* | https://* | mailto:*) continue ;;
         '#'*) continue ;;
+        [A-Za-z]*:*)
+            scheme="${target%%:*}"
+            case "$scheme" in
+            *[!A-Za-z0-9+.-]*) ;;
+            *) continue ;;
+            esac
+            ;;
         esac
-        # Checked target drops a trailing anchor; the printed target below
-        # keeps it, matching the existing lines' use of the target as
-        # written in the link.
+        # Only the part before `#` must exist; the report prints the target
+        # as written, the string a reader finds in the linking file.
         check_target="${target%%#*}"
         if [ ! -e "$ROOT/$dir/$check_target" ]; then
             printf 'broken-link: %s -> %s\n' "$file" "$target"
