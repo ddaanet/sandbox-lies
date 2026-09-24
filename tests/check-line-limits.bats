@@ -1,28 +1,10 @@
 #!/usr/bin/env bats
 # Item 2.1 slice 1: scripts/check-line-limits.sh's external contract.
-#
-# Each fixture root is a `git init` temp repo under $BATS_TEST_TMPDIR with its
-# files `git add`ed — the script walks `git ls-files`, so a root with nothing
-# staged would test an empty tree, not the fixture.
 
-ROOT="${BATS_TEST_DIRNAME}/.."
-SCRIPT="$ROOT/scripts/check-line-limits.sh"
-
-# `run --separate-stderr` needs 1.5.0: the contract puts overage lines on
-# stdout, and a plain `run` merges stderr into $output, so a report written to
-# the wrong stream would still match.
-bats_require_minimum_version 1.5.0
-
+load helpers/fixture-root
 load helpers/bsd-stubs
 
-# Build a `git init` repo under $BATS_TEST_TMPDIR/<name> and print its path.
-make_fixture_root() {
-  local dir
-  dir="$BATS_TEST_TMPDIR/$1"
-  mkdir -p "$dir"
-  git -C "$dir" init -q
-  printf '%s\n' "$dir"
-}
+SCRIPT="$ROOT/scripts/check-line-limits.sh"
 
 @test "clean tree exits 0 silently" {
   local dir

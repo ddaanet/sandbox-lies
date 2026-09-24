@@ -1,36 +1,11 @@
 #!/usr/bin/env bats
-# Item 2.2 slice 1: scripts/check-links.sh's external contract.
-#
-# Each fixture root is a `git init` temp repo under $BATS_TEST_TMPDIR with its
-# files `git add`ed — the script walks the same tracked markdown scope as
-# Item 2.1, so a root with nothing staged would test an empty tree, not the
-# fixture.
+# Item 2.2 slice 1: scripts/check-links.sh's external contract. Whitespace
+# and edge inputs are in tests/check-links-edges.bats.
 
-ROOT="${BATS_TEST_DIRNAME}/.."
-SCRIPT="$ROOT/scripts/check-links.sh"
-
-# `run --separate-stderr` needs 1.5.0: the contract puts broken-link lines on
-# stdout, and a plain `run` merges stderr into $output, so a report written to
-# the wrong stream would still match.
-bats_require_minimum_version 1.5.0
-
+load helpers/fixture-root
 load helpers/bsd-stubs
 
-# Run from a directory holding only the fixture roots: from the repo root, a
-# script resolving links against its CWD would pass or fail on whatever this
-# repo's own tree happens to hold.
-setup() {
-  cd "$BATS_TEST_TMPDIR" || return
-}
-
-# Build a `git init` repo under $BATS_TEST_TMPDIR/<name> and print its path.
-make_fixture_root() {
-  local dir
-  dir="$BATS_TEST_TMPDIR/$1"
-  mkdir -p "$dir"
-  git -C "$dir" init -q
-  printf '%s\n' "$dir"
-}
+SCRIPT="$ROOT/scripts/check-links.sh"
 
 @test "resolving link passes" {
   local dir
