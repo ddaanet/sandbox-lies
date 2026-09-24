@@ -272,7 +272,14 @@ Cross-cutting, bounded:
      `any URI scheme is skipped` (slice 3's code review replaced a
      three-scheme list with an RFC 3986 match) — `ftp://h/x`, `HTTP://X`
      and `x:y.md` (no such file) ahead of a broken sentinel yield only the
-     sentinel's line.
+     sentinel's line; `CRLF fence closes` — a CRLF `docs/c.md` with a closed
+     fence ahead of a broken sentinel yields the sentinel's line; `code
+     span at line start is not a fence` — a line opening with a code span
+     ahead of a broken sentinel yields the sentinel's line; `name=value
+     ROOT is a path` — a fixture repo under a directory named `x=y`, given
+     as a relative ROOT with stdin from `/dev/null`, yields its
+     `broken-link` line and status 1 (the last three from slice 4's code
+     review).
   6. Shared walk (`scripts/lib/tracked.sh`, pinned through this suite;
      slice 2's code review added each; proven by mutation): `tracked
      symlink is skipped` — a tracked `docs/l.md` symlink to an untracked
@@ -280,12 +287,15 @@ Cross-cutting, bounded:
      `cd` into `scripts/` and `bash check-links.sh <root>` yields the same
      stdout and status as slice 1's broken case; `missing helper exits 2` —
      a copy of the script with no `lib/` beside it yields status 2 and
-     empty stdout; `unmerged path walked once` — a real content conflict in
+     empty stdout, and so does a copy whose `lib/` holds `tracked.sh` but
+     not `strip-code.awk`; `unmerged path walked once` — a real content conflict in
      `docs/a.md` holding one broken link yields exactly one line.
   7. BSD tools: `broken link under BSD stubs` — slice 1's broken-link
      fixture with `make_bsd_stubs grep mktemp` on `PATH` (the stubbed tools
      the script calls; it calls no `sed`) yields the same stdout and exit
      status 1. The item's `precommit` wiring rides this slice's GREEN.
+     Open, unverifiable here: a NUL byte under BSD awk (one-true-awk) may
+     drop the rest of its line; the macOS dogfood run is where it shows.
 
 - Item 2.3: `hooks/hooks.json`, `hooks/annotate.sh`, `lib/verdicts.sh`,
   `lib/matchers.sh`, `tests/hook.bats`, `tests/helpers/hook.bash`,
