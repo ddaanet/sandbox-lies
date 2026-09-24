@@ -432,6 +432,11 @@ Cross-cutting, bounded:
      to a nonexistent directory yields the same stdout as slice 1 (an
      empty-directory check would pass against the old buffer, which
      cleaned up after itself).
+     `NUL in the text stays quiet on stderr` and `event name is one of two
+     literals` (slice 6's code review; proven by mutation) — a firing
+     `tool_response.stdout` holding `\u0000` yields the verdict with empty
+     stderr; a `hook_event_name` holding a newline followed by firing text,
+     and an object event, each yield empty stdout.
   9. Verdict-less name: `a name with no verdict contributes nothing` —
      `stub_lib matchers.sh` redefining `detect` to print `phantom-gitadd`
      then `no-such-detector`: `additionalContext` equals the gitadd
