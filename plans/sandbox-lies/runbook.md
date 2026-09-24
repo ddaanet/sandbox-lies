@@ -403,10 +403,13 @@ Cross-cutting, bounded:
      detectors.md` (`verdicts.bats`; slice 1's code review found the text
      unpinned) — each phantom row's line 1 and line 2 equal expected strings
      held in the test, transcribed from `detectors.md`.
-  4. Flag policy: `phantom verdicts ignore the flag` — each phantom fire
+  4. Flag policy (slices 4–5 run as one cycle after slice 3: neither adds
+     behaviour, so each case is proven by mutation): `phantom verdicts
+     ignore the flag` — each phantom fire
      fixture with `dangerouslyDisableSandbox` absent, `false` and `true`
      yields non-empty, byte-identical stdout.
-  5. Quiet set: `every quiet fixture is silent` — each `quiet-*` fixture in
+  5. Quiet set (with slice 4): `every quiet fixture is silent` — each
+     `quiet-*` fixture in
      both payload shapes, flag absent and `true`, yields empty stdout;
      `the command is not read` (slice 2's code review) — firing text
      (`fire-masks-porcelain`) as `tool_input.command`, with quiet
