@@ -445,6 +445,11 @@ Cross-cutting, bounded:
      `stub_lib matchers.sh` redefining `detect` to print `phantom-gitadd`
      then `no-such-detector`: `additionalContext` equals the gitadd
      paragraph alone; with `no-such-detector` alone: empty stdout.
+     `detect sees past a NUL` and `detect on closed stdin` (`matchers.bats`;
+     slice 8's code review; proven by mutation) — quiet text, a NUL, then a
+     firing line built from fragments yields that verdict, exit 0, empty
+     stderr; `bash lib/matchers.sh <&-` exits 1 with empty stdout and does
+     not hang (guarded by a timeout where one is available).
   10. BSD tools: `hook under BSD stubs` — slice 1's gitadd payload with
       `make_bsd_stubs grep` on `PATH` yields the same stdout (the hook
       calls no `sed` since slice 1's code review; `grep` runs inside
