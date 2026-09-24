@@ -15,18 +15,17 @@
 
 set -euo pipefail
 
-# One optional ROOT: a second argument would otherwise be ignored and the run
-# exit 0 over a tree the caller did not ask for.
-if [ "$#" -gt 1 ]; then
-    printf 'check-links: unexpected extra argument: %s\n' "$2" >&2
-    exit 2
-fi
-ROOT="${1:-.}"
+# shellcheck source=scripts/lib/tracked.sh
+source "${BASH_SOURCE[0]%/*}/lib/tracked.sh"
+
+parse_root check-links "$@"
 
 EXIT_CODE=0
 
 # Report one line and set the exit code for each link in $1 (root-relative)
 # whose target does not resolve, relative to $1's own directory.
+# shellcheck disable=SC2317 # reached only through handle_file, itself
+# invoked indirectly by name via walk_tracked_files's $handler
 check_links_in() {
     local file="$1" dir links link target status=0
     # Parameter expansion, not `$(dirname …)`: a command substitution strips
@@ -63,38 +62,16 @@ check_links_in() {
     done <<<"$links"
 }
 
-# `git ls-files -z` spooled to a temp file, read back by the loop below: a
-# `while … done < <(git ls-files -z)` process substitution discards git's exit
-# status, so a ROOT that is not a git work tree would read as an empty, clean
-# tree instead of failing the run. Explicit mktemp template: BSD mktemp has no
-# default one, so a bare `mktemp` is a usage error on macOS. A failed `mktemp`
-# leaves the tree unchecked: exit 2, since a bare `set -e` abort on the
-# assignment would surface as 1 and read as a broken link.
-if ! WALK_LIST="$(mktemp "${TMPDIR:-/tmp}/check-links.XXXXXX")"; then
-    echo "check-links: cannot create the walk list temp file" >&2
-    exit 2
-fi
-trap 'rm -f "$WALK_LIST"' EXIT
-
-if ! git -C "$ROOT" ls-files -z >"$WALK_LIST"; then
-    printf 'check-links: git ls-files failed under %s\n' "$ROOT" >&2
-    exit 2
-fi
-
-while IFS= read -r -d '' file; do
-    case "$file" in
-    docs/*.md)
-        # A symlink, a gitlink's directory, and a path still in the index
-        # but deleted from the work tree are not files to scan; grep would
-        # fail on the last two and exit the run 2. Residual: a file under an
-        # unsearchable directory tests absent too, and is skipped rather
-        # than failing the run.
-        if [ -L "$ROOT/$file" ] || [ ! -f "$ROOT/$file" ]; then
-            continue
-        fi
-        check_links_in "$file"
-        ;;
+# Slice 1 scope: docs/*.md only. A later slice widens this to
+# `markdown_in_scope`'s full table (Item 2.2's scope slice).
+# shellcheck disable=SC2317 # invoked indirectly by name via
+# walk_tracked_files's $handler
+handle_file() {
+    case "$1" in
+    docs/*.md) check_links_in "$1" ;;
     esac
-done <"$WALK_LIST"
+}
+
+walk_tracked_files check-links "$ROOT" handle_file
 
 exit "$EXIT_CODE"
