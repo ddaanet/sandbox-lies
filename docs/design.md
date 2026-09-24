@@ -305,12 +305,14 @@ where hooks go wrong; the release toolkit's version guard already requires it.
 **D-13 — Failures arrive on `PostToolUseFailure`.** In the CC 2.1.280 bundle the
 Bash tool raises on a non-zero exit, and the tool-failure path dispatches
 `PostToolUseFailure` with the result text in an `error` string — the exit code
-line, then stderr, then stdout. `PostToolUse` carries `tool_response` with
-separate stdout and stderr and fires only on success. Nearly every symptom here
-is a failing command, so a `PostToolUse`-only hook would see just the piped
-cases. Both events accept `additionalContext`. Reopen-if: a recorded live
-payload of either event does not reproduce the text shape the fixtures were cut
-from; the first Phase 2 step records both.
+line, then the command's output. `PostToolUse` carries `tool_response` and fires
+only on success. The Bash tool merges stderr into stdout in emission order, so
+`tool_response.stderr` arrives empty; recorded live 2026-09-23, sandboxed and
+unsandboxed, both payloads byte-identical to the tool result the model sees.
+Nearly every symptom here is a failing command, so a `PostToolUse`-only hook
+would see just the piped cases. Both events accept `additionalContext`.
+Reopen-if: a recorded live payload of either event does not reproduce the text
+shape the fixtures were cut from.
 
 **D-14 — A lock with no holder check is `unknown`, not `orphan`.** The holder
 check is `lsof -t`, then `fuser`; the Linux dev box has only the latter. With

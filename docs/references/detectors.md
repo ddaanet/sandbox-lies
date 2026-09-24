@@ -7,17 +7,24 @@ figure is a candidate and does not ship.
 
 Conventions. A **matcher** reads the tool-result text on stdin and exits 0/1; it
 never reads the command or the exit status. The text is the `error` string of a
-`PostToolUseFailure` payload (exit-code line, stderr, stdout) or stdout then
-stderr from a `PostToolUse` payload (CC 2.1.280 bundle; D-13). A **probe** runs
-in the hook process, outside the sandbox, reads the same text on stdin with the
-flag as its first argument, and prints an outcome token on its first line
-followed by `key=value` lines. The **flag** is
-`tool_input.dangerouslyDisableSandbox` from the payload, absent meaning false;
-every detector states its **flag policy** — what happens when the call ran
-unsandboxed. Verdict text is given as the agent paragraph, then the human line.
-No entry here quotes a diagnostic together with its follow-on sentence, and
-candidate strings are described rather than quoted, so that this file stays
-quiet under the detectors it specifies.
+`PostToolUseFailure` payload, or `tool_response.stdout`, a newline and
+`tool_response.stderr` of a `PostToolUse` payload. Recorded live on CC 2.1.280
+on 2026-09-23 (`tests/fixtures/payload-*.json`), sandboxed and unsandboxed
+alike: the Bash tool merges stderr into stdout in emission order, so
+`tool_response.stderr` arrives empty and `error` is the exit-code line followed
+by that merged output — byte-identical to the tool result the model sees. Both
+events carry `hook_event_name` and the call's `cwd`. A sandboxed write refused
+by the allowlist carried no harness sandbox-violation annotation in the payload
+or in the model's tool result (L-5). A **probe** runs in the hook process,
+outside the sandbox, reads the same text on stdin with the flag as its first
+argument, and prints an outcome token on its first line followed by `key=value`
+lines. The **flag** is `tool_input.dangerouslyDisableSandbox` from the payload,
+absent from `tool_input` when unset (read as false) and `true` when set
+(recorded 2026-09-23); every detector states its **flag policy** — what happens
+when the call ran unsandboxed. Verdict text is given as the agent paragraph,
+then the human line. No entry here quotes a diagnostic together with its
+follow-on sentence, and candidate strings are described rather than quoted, so
+that this file stays quiet under the detectors it specifies.
 
 Corpus: 21,453 Bash tool-use/result pairs, 1,682 JSONL files, 35 projects,
 measured 2026-09-03 with the shell matchers as arbiter

@@ -32,3 +32,15 @@ Retirement per section, immediate, in the commit that lands each translation
 classification, not a precision floor (D-15). `tmp-full` dropped as not a
 sandbox effect. Dogfood through a `.bin/claude` shim (D-16). Line cap and link
 check added as NFR-5.
+
+## 2026-09-23 — live payloads: one merged stream
+
+Recording both events from a nested `claude -p` on CC 2.1.280 showed the Bash
+tool merging stderr into stdout in emission order, sandboxed and unsandboxed:
+`tool_response.stderr` arrives empty, and `error` is the exit-code line followed
+by that merged output. The bundle reading behind D-13 had described separate
+streams and an exit-line, stderr, stdout order; D-13 now states the recorded
+shape. Its reopen-if did not fire — both payloads are byte-identical to the tool
+result the model sees, which is the text the fixtures were cut from. The flag is
+absent from `tool_input` when unset, and a sandboxed write refused by the
+allowlist carried no sandbox-violation annotation (L-5).
