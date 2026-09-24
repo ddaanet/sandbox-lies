@@ -28,8 +28,12 @@ probe_git_lock() {
     text=$(cat)
     path=$(printf '%s\n' "$text" | _probe_lock_path)
 
-    if [ ! -e "$path" ] && [ ! -L "$path" ] && [ "$flag" = false ]; then
-        printf 'mask\n'
+    if [ ! -e "$path" ] && [ ! -L "$path" ]; then
+        if [ "$flag" = false ]; then
+            printf 'mask\n'
+        else
+            printf 'gone\n'
+        fi
         printf 'path=%s\n' "$path"
     fi
 }
