@@ -451,9 +451,13 @@ Cross-cutting, bounded:
      stderr; `bash lib/matchers.sh <&-` exits 1 with empty stdout and does
      not hang (guarded by a timeout where one is available).
   10. BSD tools: `hook under BSD stubs` — slice 1's gitadd payload with
-      `make_bsd_stubs grep` on `PATH` yields the same stdout (the hook
-      calls no `sed` since slice 1's code review; `grep` runs inside
-      `detect`; `mktemp` leaves with slice 8).
+      `make_bsd_stubs grep sed` on `PATH` yields the same stdout as the
+      unstubbed run, which is pinned to the gitadd verdict as one JSON
+      document (`jq -e` on its `systemMessage`). `annotate.sh` itself calls
+      no `sed` since slice 1's code review, but `detect` does: its
+      `match_phantom_untracked` pipes `grep | sed | sort | grep`, so both
+      tools are stubbed; `mktemp` leaves with slice 8. Residual: a tool
+      called by absolute path bypasses the stubs.
 
 - Item 2.4: `lib/probes.sh`, `tests/probes.bats`,
   `tests/helpers/bsd-stubs.bash` — `probe_git_lock` and `probe_config_lock`

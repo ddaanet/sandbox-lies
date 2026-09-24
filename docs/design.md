@@ -46,7 +46,8 @@ can stat the lock the tool could not see.
 `permissionDecision`, no `updatedInput`, no `updatedToolOutput`. The original
 result stays in context beside the verdict. Where · pinned by:
 `hooks/hooks.json` · `tests/hook.bats` asserts the emitted JSON carries only
-`hookSpecificOutput.additionalContext` and `systemMessage`. Planned.
+`hookSpecificOutput.additionalContext` and `systemMessage`. Partial (dogfood:
+Item 8.1).
 
 **FR-2 — Matcher contract.** A matcher is a shell function that reads one Bash
 tool result on stdin and exits 0 when its symptom is present, 1 when it is not.
@@ -62,7 +63,7 @@ then stderr from `tool_response` on a success payload — holds it in memory, ru
 `detect`, runs the probe for each verdict that has one, and emits a single JSON
 document. Any parse or runtime failure exits 0 with no output. Where · pinned
 by: `hooks/annotate.sh` · `tests/hook.bats` over recorded payloads of both
-events, plus a malformed-payload case. Planned.
+events, plus a malformed-payload case. Partial (probe call: Item 4.1).
 
 **FR-4 — Probes.** For each verdict whose correct action depends on state the
 tool could not see, the hook runs a discriminator outside the sandbox and the
@@ -82,7 +83,8 @@ symptom on a call that ran unsandboxed has a different cause, and the verdict
 says so or the detector stays silent. Every detector states its flag policy in
 `references/detectors.md`; the gating lives in the hook or the verdict, never in
 a matcher. Where · pinned by: `hooks/annotate.sh` · `tests/hook.bats` pairs each
-fixture with both flag values against that policy. Planned.
+fixture with both flag values against that policy. Partial (lock, candidate,
+`readonly-path` policies: Items 4.1, 4.2, 6.1).
 
 **FR-6 — Verdict text.** Each verdict is a short paragraph of acts the agent
 performs, under 400 characters, and no verdict instructs removing anything
@@ -93,7 +95,8 @@ line on `systemMessage` is one lowercase clause. No verdict quotes a diagnostic
 together with its follow-on sentence. Where · pinned by: `lib/verdicts.sh` ·
 `tests/verdicts.bats` asserts length and runs `detect` over every verdict text
 expecting silence; `tests/hook.bats` asserts the 2 KB cap on an all-verdicts
-fixture. Planned.
+fixture. Partial (lock, candidate, `readonly-path` verdicts: Items 4.1, 4.2,
+6.1).
 
 **FR-7 — Detector catalogue.** Ten detectors, in
 [references/detectors.md](references/detectors.md): five measured and shipped
@@ -127,7 +130,7 @@ phantom-listing rule, folded into the existing phantom-dotfile bullet of
 `memory/ddaanet/shared-claude.md`. Where · pinned by: the tier's index ·
 `tests/docs.bats` fails if a live pointer (`hooks/`, `lib/`, `skills/`, `tests/`
 outside fixtures, `CLAUDE.md`, `README.md`) still names the retired path.
-Planned.
+Partial (phantom sections retired; the rest: Items 4.1, 4.2, 6.1, 7.1, 8.2).
 
 **FR-11 — Self-quiet.** No live file in this repository fires a detector when
 read back. Source files build each diagnostic literal from fragments so the
@@ -155,7 +158,7 @@ path runs after every Bash call, so its wall time on a quiet result is recorded
 in the changelog at each release. With a verdict and no probe, under 100 ms.
 Probes are bounded: no recursive `du`, no network, hook timeout 10 s. Where ·
 pinned by: `hooks/hooks.json` timeout · `tests/hook.bats` asserts empty stdout
-on quiet fixtures. Planned.
+on quiet fixtures. Done (100 ms bound measured, not gated).
 
 **NFR-5 — Size and links.** Every document and script is at most 400 lines (a
 `SKILL.md` at most 200), and every relative markdown link resolves. Where ·
@@ -164,7 +167,8 @@ in `just precommit`. Done.
 
 **NFR-4 — Hermetic.** The hook writes nothing (it runs outside the sandbox with
 `$TMPDIR` unset) and reads only the repository the call ran in. Where · pinned
-by: review; no test. Planned.
+by: `tests/hook.bats` and `tests/matchers.bats` run the hook and `detect` with
+`TMPDIR` naming a missing directory. Done.
 
 ## Architecture
 

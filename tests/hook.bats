@@ -312,6 +312,35 @@ run_hook() {
   [ ! -e "$calls" ] || { cat "$calls" >&2; return 1; }
 }
 
+@test "hook under BSD stubs" {
+  # Slice 1's gitadd failure payload, unaltered. annotate.sh calls neither
+  # grep nor sed itself, but detect runs both on every call (sed in
+  # match_phantom_untracked); mktemp left with slice 8. expected comes from
+  # this same run and is pinned to the gitadd verdict as one JSON document:
+  # nonempty alone passes a hook that dies the same way in both runs. Both
+  # runs merge stderr into $output, so a stub's refusal also reds the
+  # equality where the verdict survives it. Proven by mutation, each red
+  # here on the equality while the unstubbed cases stay green: `grep -qE`
+  # to `-qP` in match_phantom_gitadd; `sed -E` to `--regexp-extended` in
+  # match_phantom_untracked. Residual: a tool called by absolute path
+  # bypasses the stubs.
+  local text payload expected
+  text=$(cat "$FIXTURES/fire-masks-gitadd-refused.txt")
+  payload=$(failure_payload "$text")
+
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  expected="$output"
+  printf '%s' "$expected" \
+    | jq -e '.systemMessage == "git add — refused a sandbox mask"' >/dev/null
+
+  local bsd="$BATS_TEST_TMPDIR/bsdtools"
+  make_bsd_stubs "$bsd" grep sed
+  PATH="$bsd:$PATH" run_hook "$payload"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$expected" ]
+}
+
 @test "the command is not read" {
   # Paired positive first, per shape: the same firing text in the response
   # field must still fire, so neither negative can pass on a hook that has

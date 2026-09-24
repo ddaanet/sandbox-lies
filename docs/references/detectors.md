@@ -286,7 +286,7 @@ Phase 6 step.
 | baseline exclusions and their reach | skill |
 | `.git/index.lock`: three causes | `git-lock`; "do not fix the hook" → the `mask`/`gone` leak clause |
 | `.git/config.lock` paragraph | `config-lock` |
-| phantom dotfiles: masks, who sees them | `phantom-chardev`, `phantom-untracked` |
+| phantom dotfiles: masks, who sees them | `phantom-chardev`, `phantom-untracked`; zero-byte shape → skill |
 | phantom dotfiles: `git add -A` | `phantom-gitadd` |
 | phantom dotfiles: porcelain gate | skill |
 | phantom dotfiles: visible unsandboxed | flag policy of the `phantom-*` detectors |

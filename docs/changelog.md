@@ -44,3 +44,18 @@ shape. Its reopen-if did not fire — both payloads are byte-identical to the to
 result the model sees, which is the text the fixtures were cut from. The flag is
 absent from `tool_input` when unset, and a sandboxed write refused by the
 allowlist carried no sandbox-violation annotation (L-5).
+
+## 2026-09-24 — the hook ships with the phantom verdicts
+
+Item 2.3 landed `hooks/annotate.sh` on both events with the three `phantom-*`
+verdicts, and retired the memory file's phantom-dotfile masks, who-sees-them,
+`git add -A` and visible-unsandboxed paragraphs and its `/tmp reads full`
+section; the zero-byte mask shape has no verdict and goes to the skill. Wall
+time of `bash hooks/annotate.sh`, mean of 30 runs, `PostToolUse` payloads built
+as `tests/helpers/hook.bash` builds them, on a 2-core Debian 13 box (Linux 6.12,
+GNU bash 5.2.37, load average ~2.1) inside the command sandbox: 52 ms on
+`quiet-clean-status`, 64 ms on `fire-masks-porcelain` (a verdict without a
+probe, against NFR-3's 100 ms bound), 54 ms on a quiet 25,000-character
+`tool_response.stdout`. A first pass gave 61, 61 and 52 ms, with one
+`fire-masks-porcelain` run at 169 ms: the bound holds for the mean, not for
+every run on a loaded box. Nothing gates these figures.
