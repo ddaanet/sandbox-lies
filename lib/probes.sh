@@ -28,11 +28,15 @@ probe_git_lock() {
     text=$(cat)
     path=$(printf '%s\n' "$text" | _probe_lock_path)
 
+    # Only the literal `true` reads as unsandboxed, as FR-5 reads an absent
+    # flag as false. A wrong mask still ends in the right diagnosis (its
+    # verdict carries the repeat-failure clause); a wrong gone sends a
+    # sandboxed call to retry unchanged.
     if [ ! -e "$path" ] && [ ! -L "$path" ]; then
-        if [ "$flag" = false ]; then
-            printf 'mask\n'
-        else
+        if [ "$flag" = true ]; then
             printf 'gone\n'
+        else
+            printf 'mask\n'
         fi
         printf 'path=%s\n' "$path"
     fi
