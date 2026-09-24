@@ -523,7 +523,10 @@ Cross-cutting, bounded:
      lock has no size` — a FIFO (and a directory) at the lock path: `orphan`,
      no `bytes=` line, empty stderr, returning promptly (background job and
      `kill`, not GNU `timeout`); `future mtime is age 0` — `touch -t
-     209901010000`: `age=0`.
+     209901010000`: `age=0`. `tests/probes.bats` stands at 256 lines: these
+     three cases open `tests/probes-edges.bats`, with the shared error
+     builder and `run_probe` moved to `tests/helpers/probes.bash`, loaded by
+     both.
   6. `no holder tool is unknown` — `PATH` set to a directory holding only
      the tools the probe needs, without `lsof` and `fuser`: `unknown`,
      `bytes=7`. Holder-tool stubs on that `PATH` (slice 4's code review;
@@ -537,10 +540,8 @@ Cross-cutting, bounded:
      stderr; `lsof decides when present` — an `lsof` stub printing two pids
      one per line beside a `fuser` stub answering differently: `pid=` the
      first, exactly one `pid=` line, the stub called with `-w -t <path>`
-     (settles several holders as first pid, one line). `tests/probes.bats`
-     stands at 256 lines: these cases open `tests/probes-holder.bats`, with
-     the shared error builder and `run_probe` moved to
-     `tests/helpers/probes.bash`, loaded by both.
+     (settles several holders as first pid, one line). These cases go
+     in `tests/probes-edges.bats` (opened by slice 5).
   7. `relative path resolves against cwd` — text naming `.git/index.lock`,
      `$2` the repo dir holding a present lock: `orphan`, `path=` absolute;
      the probe runs from an unrelated working directory, so only `$2` can
