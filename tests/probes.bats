@@ -10,6 +10,7 @@ ROOT="${BATS_TEST_DIRNAME}/.."
 bats_require_minimum_version 1.5.0
 
 load helpers/bsd-stubs
+load helpers/probes
 
 setup() {
   source "$ROOT/lib/probes.sh"
@@ -26,26 +27,6 @@ teardown() {
     kill "$_probe_holder_pid" 2>/dev/null || :
     wait "$_probe_holder_pid" 2>/dev/null || :
   fi
-}
-
-# Self-quiet (FR-11): git's lock error is built from two fragments at run
-# time, as lib/matchers.sh match_git_lock builds its follow-on, so this file
-# never holds the diagnostic whole. The follow-on sentence is left out
-# entirely — the probe does not read it.
-git_lock_error() {
-  local path="$1" text
-  text="fatal: Unable to create '"
-  text="${text}${path}': File exists."
-  printf '%s\n' "$text"
-}
-
-# run_probe <probe> <flag> <cwd> <text> — the probe under bats' run with
-# <text> on stdin: stdout in $output, stderr in $stderr, exit in $status.
-# stderr is kept apart so it cannot shift the outcome off line 1. Line 1 is
-# read as ${output%%$'\n'*}, never ${lines[0]}: bats drops empty lines from
-# lines, so a stray blank first line would pass for the token.
-run_probe() {
-  run --separate-stderr "$1" "$2" "$3" <<<"$4"
 }
 
 # $2 names an unrelated directory, so the path= line can only come from the
@@ -253,4 +234,43 @@ hold_lock() {
   [ "${output%%$'\n'*}" = held ]
   printf '%s\n' "$output" | grep -qxF "pid=$_probe_holder_pid"
   [ "$(printf '%s\n' "$output" | grep -c '^pid=')" -eq 1 ]
+}
+
+# A symlink to /dev/null keeps the ordinary lock shape under extraction (the
+# path still ends in index.lock), so this pins the character-device rule
+# rather than the path parse. /dev/null typically has many open holders
+# (every redirected stdio on the box), so a probe with no character-device
+# rule reads this as held, not mask. The control first: a symlink to a 7-byte
+# regular file stats as a regular file and reads orphan, so a rule keyed on
+# the symlink itself rather than on what it resolves to fails there.
+@test "character device is mask" {
+  local repo="$BATS_TEST_TMPDIR/r" cwd="$BATS_TEST_TMPDIR/elsewhere" lock
+  mkdir -p "$repo/.git" "$cwd"
+  lock="$repo/.git/index.lock"
+  printf '1234567' >"$repo/.git/target"
+  ln -s "$repo/.git/target" "$lock"
+
+  run_probe probe_git_lock false "$cwd" "$(git_lock_error "$lock")"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = orphan ]
+  printf '%s\n' "$output" | grep -qxF "bytes=7"
+
+  rm "$lock"
+  ln -s /dev/null "$lock"
+
+  run_probe probe_git_lock false "$cwd" "$(git_lock_error "$lock")"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = mask ]
+  printf '%s\n' "$output" | grep -qxF "path=$lock"
+
+  run_probe probe_git_lock true "$cwd" "$(git_lock_error "$lock")"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = mask ]
+  printf '%s\n' "$output" | grep -qxF "path=$lock"
 }

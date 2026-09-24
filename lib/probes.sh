@@ -79,6 +79,17 @@ probe_git_lock() {
         fi
         printf 'path=%s\n' "$path"
     else
+        # A character device masks regardless of flag (docs/references/
+        # detectors.md git-lock table). `[ -c ]` follows a symlink, so a
+        # symlink to /dev/null lands here before the holder tool or stat/wc
+        # ever runs on it — /dev/null typically has many open holders, which
+        # would otherwise read held rather than mask.
+        if [ -c "$path" ]; then
+            printf 'mask\n'
+            printf 'path=%s\n' "$path"
+            return 0
+        fi
+
         local pids holder_pid
         # Runs before the size and age reads, so a lock removed while this
         # check runs is absent at the stat below and reads gone, not orphan.
