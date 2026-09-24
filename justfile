@@ -32,6 +32,7 @@ precommit:
     tracked '*.sh'
     report 'bash -n' each_bash_n "${files[@]}"
     report rumdl rumdl fmt --check -q --no-cache
+    report 'line limits' scripts/check-line-limits.sh
     report tests just test
     printf 'precommit passed: %s\n' "$passed"
 

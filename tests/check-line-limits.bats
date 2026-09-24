@@ -245,3 +245,75 @@ oversized-file: x.sh: 401 lines > 400" ]
   [ -z "$output" ]
   [ -z "$stderr" ]
 }
+
+@test "path with whitespace" {
+  local dir tab=$'\t'
+  dir=$(make_fixture_root spaced)
+  mkdir -p "$dir/docs"
+  # Each path fails a different walk. The space: one that word-splits
+  # (`for file in $(git ls-files)`). The tab: one delimited by newlines,
+  # since `git ls-files` without `-z` C-quotes it as `"docs/a\tb.md"`,
+  # which matches no arm. The leading space: a `read` without `IFS=`,
+  # which strips it and leaves a path that does not exist.
+  seq 401 >"$dir/docs/a b.md"
+  seq 401 >"$dir/docs/a${tab}b.md"
+  seq 401 >"$dir/ lead.md"
+  git -C "$dir" add "docs/a b.md" "docs/a${tab}b.md" " lead.md"
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 1 ]
+  [ "$output" = "oversized-file:  lead.md: 401 lines > 400
+oversized-file: docs/a${tab}b.md: 401 lines > 400
+oversized-file: docs/a b.md: 401 lines > 400" ]
+}
+
+@test "unterminated last line counts" {
+  local dir
+  dir=$(make_fixture_root unterminated)
+  mkdir -p "$dir/docs"
+  # Command substitution strips the trailing newline `seq`'s output ends
+  # with, leaving 401 lines with no terminating newline on the last one.
+  printf '%s' "$(seq 401)" >"$dir/docs/a.md"
+  git -C "$dir" add docs/a.md
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 1 ]
+  [ "$output" = "oversized-file: docs/a.md: 401 lines > 400" ]
+}
+
+@test "extra argument exits 2" {
+  local dir
+  dir=$(make_fixture_root extra-arg)
+  mkdir -p "$dir/docs"
+  # Oversized, so a script that ignored the extra argument, or checked it
+  # only after the walk, would print an overage line: the empty stdout
+  # below then pins the refusal to before the walk.
+  seq 401 >"$dir/docs/a.md"
+  git -C "$dir" add docs/a.md
+
+  # The extra argument is itself a valid root, so no failure but the
+  # argument check can exit 2 — `extra` would also exit 2 from a script
+  # that took the last argument as ROOT and failed `git ls-files` on it.
+  run --separate-stderr "$SCRIPT" "$dir" "$dir"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+}
+
+@test "oversized markdown survives BSD mktemp" {
+  local dir bsd
+  dir=$(make_fixture_root bsd-mktemp)
+  mkdir -p "$dir/docs"
+  seq 401 >"$dir/docs/a.md"
+  git -C "$dir" add docs/a.md
+
+  # A portability smoke run, not a mutation-proven case: the script's one
+  # `mktemp` template ends in X, which the stub hands to the real tool, and
+  # it only refuses a literal template whose file already exists — which a
+  # single run with the trap's cleanup never leaves behind.
+  bsd="$BATS_TEST_TMPDIR/bsdtools"
+  make_bsd_stubs "$bsd" mktemp
+
+  PATH="$bsd:$PATH" run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 1 ]
+  [ "$output" = "oversized-file: docs/a.md: 401 lines > 400" ]
+}

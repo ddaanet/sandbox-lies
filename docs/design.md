@@ -160,7 +160,8 @@ on quiet fixtures. Planned.
 **NFR-5 — Size and links.** Every document and script is under 400 lines (a
 `SKILL.md` under 200), and every relative markdown link resolves. Where · pinned
 by: `scripts/check-line-limits.sh`, `scripts/check-links.sh` · both run in
-`just precommit`. Partial (80-column reflow gated; the two scripts pending).
+`just precommit`. Partial (80-column reflow and line caps gated; the link check
+pending).
 
 **NFR-4 — Hermetic.** The hook writes nothing (it runs outside the sandbox with
 `$TMPDIR` unset) and reads only the repository the call ran in. Where · pinned
