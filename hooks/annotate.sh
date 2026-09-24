@@ -70,17 +70,11 @@ while IFS= read -r name; do
   line=${line%%"$nl"*}
   human="${human:+$human }$line"
 
-  # FR-6's 2 KB cap: a paragraph that would push additionalContext past
-  # 2048 BYTES is dropped; its human line is kept regardless (already
-  # appended above). Verdict text carries multibyte characters (em dashes),
-  # so ${#candidate} under the ambient locale would count characters, not
-  # bytes -- LC_ALL=C makes bash treat the string as single-byte, so the
-  # count is bytes. LC_ALL is one of bash's locale special variables:
-  # assigning it re-runs setlocale() for the shell, but under bash 3.2 that
-  # takes effect from the *next* simple command on, not within the one
-  # doing the assignment -- so the assignment, the length read and the
-  # restore are each their own statement, never combined on one line. This
-  # counts bytes with no fork, unlike `wc -c`.
+  # FR-6: a paragraph that would take additionalContext past 2048 bytes,
+  # joining newline included, is dropped; its human line is already kept.
+  # ${#var} counts characters under a UTF-8 locale and verdicts carry em
+  # dashes, so the length is read under LC_ALL=C: bytes, with no fork. An
+  # LC_ALL unset on entry is restored empty, which bash treats as unset.
   candidate="${context:+$context$nl}$para"
   lc_all_save=${LC_ALL-}
   LC_ALL=C
@@ -90,7 +84,8 @@ while IFS= read -r name; do
   context="$candidate"
 done < <(printf '%s\n' "$names")
 
-[ -n "$context" ] || exit 0
+# A context the cap emptied still carries its human lines (FR-6).
+[ -n "$context$human" ] || exit 0
 
 json=$(jq -n --arg event "$event" --arg ctx "$context" --arg sys "$human" \
   '{hookSpecificOutput: {hookEventName: $event, additionalContext: $ctx}, systemMessage: $sys}') \
