@@ -161,3 +161,141 @@ broken-link: docs/s p/a b.md -> missing.md" ]
   [ "$status" -eq 1 ]
   [ "$output" = "broken-link: docs/a.md -> missing.md" ]
 }
+
+# Item 2.2 slice 6: the shared walk (scripts/lib/tracked.sh), bare-name
+# invocation, a missing helper, and BSD tools — slices 6-7 merged, since
+# neither adds behaviour of its own.
+
+@test "tracked symlink is skipped" {
+  local dir
+  dir=$(make_fixture_root symlink-skip)
+  mkdir -p "$dir/docs"
+  # The target is untracked, so nothing but the symlink itself walks it. A
+  # walk that does not skip a tracked symlink follows it and reports the
+  # target's broken link under the symlink's own path.
+  printf '[t](target-missing.md)\n' >"$dir/docs/untracked-target.md"
+  ln -s untracked-target.md "$dir/docs/l.md"
+  printf '[m](missing.md)\n' >"$dir/docs/sentinel.md"
+  git -C "$dir" add docs/l.md docs/sentinel.md
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 1 ]
+  [ "$output" = "broken-link: docs/sentinel.md -> missing.md" ]
+}
+
+@test "bare-name invocation" {
+  local dir
+  dir=$(make_fixture_root bare-name)
+  mkdir -p "$dir/docs"
+  printf '[m](missing.md)\n' >"$dir/docs/a.md"
+  git -C "$dir" add docs/a.md
+
+  # `cd` into scripts/ so `${BASH_SOURCE[0]}` is the slash-less
+  # "check-links.sh", the shape that once sourced "check-links.sh/lib/…".
+  cd "$ROOT/scripts" || return
+  run --separate-stderr bash check-links.sh "$dir"
+  [ "$status" -eq 1 ]
+  [ "$output" = "broken-link: docs/a.md -> missing.md" ]
+}
+
+@test "missing helper exits 2" {
+  local dir copy
+  dir=$(make_fixture_root missing-helper)
+  mkdir -p "$dir/docs"
+  printf '[m](missing.md)\n' >"$dir/docs/a.md"
+  git -C "$dir" add docs/a.md
+
+  # No lib/ at all beside the copy: the `source` fails. The awk guard after
+  # it would exit 2 as well, so only stderr shows which of the two fired:
+  # bash's own diagnostic alone, after its `<script>: line <n>: ` prefix.
+  copy="$BATS_TEST_TMPDIR/copy-no-lib"
+  mkdir -p "$copy"
+  cp "$ROOT/scripts/check-links.sh" "$copy/check-links.sh"
+
+  run --separate-stderr bash "$copy/check-links.sh" "$dir"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [ "${stderr#*: line *: }" = \
+    "$copy/lib/tracked.sh: No such file or directory" ]
+
+  # lib/ holds tracked.sh but not strip-code.awk: the `source` succeeds and
+  # the readability guard must catch the awk lib on its own.
+  copy="$BATS_TEST_TMPDIR/copy-no-awk"
+  mkdir -p "$copy/lib"
+  cp "$ROOT/scripts/check-links.sh" "$copy/check-links.sh"
+  cp "$ROOT/scripts/lib/tracked.sh" "$copy/lib/tracked.sh"
+
+  run --separate-stderr bash "$copy/check-links.sh" "$dir"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [ "$stderr" = "check-links: cannot read $copy/lib/strip-code.awk" ]
+
+  # Paired: the same copy with its lib/ complete reports the broken link, so
+  # the exits above come from the missing files and not from the copying.
+  cp "$ROOT/scripts/lib/strip-code.awk" "$copy/lib/strip-code.awk"
+
+  run --separate-stderr bash "$copy/check-links.sh" "$dir"
+  [ "$status" -eq 1 ]
+  [ "$output" = "broken-link: docs/a.md -> missing.md" ]
+}
+
+@test "unmerged path walked once" {
+  local dir base_branch
+  dir=$(make_fixture_root unmerged)
+  mkdir -p "$dir/docs"
+  # The link sits on a line neither branch's conflicting edit touches, so
+  # it survives the merge unchanged and appears in the working tree exactly
+  # once — the conflict itself is forced on the line above it.
+  printf '%s\n' common '[m](missing.md)' >"$dir/docs/a.md"
+  git -C "$dir" add docs/a.md
+  git -C "$dir" -c user.name=t -c user.email=t@example.com \
+    commit -q -m base
+  base_branch=$(git -C "$dir" symbolic-ref --short HEAD)
+
+  git -C "$dir" checkout -q -b feature
+  printf '%s\n' common-feature '[m](missing.md)' >"$dir/docs/a.md"
+  git -C "$dir" add docs/a.md
+  git -C "$dir" -c user.name=t -c user.email=t@example.com \
+    commit -q -m feature
+
+  git -C "$dir" checkout -q "$base_branch"
+  printf '%s\n' common-main '[m](missing.md)' >"$dir/docs/a.md"
+  git -C "$dir" add docs/a.md
+  git -C "$dir" -c user.name=t -c user.email=t@example.com \
+    commit -q -m main
+
+  # The merge is expected to fail on the real conflict; guard its non-zero
+  # status so the fixture setup does not abort, then prove the conflict:
+  # a merge that went through cleanly leaves one stage, nothing to walk
+  # twice, and the test green with the deduplication deleted.
+  git -C "$dir" -c user.name=t -c user.email=t@example.com \
+    merge --no-edit feature || true
+  run git -C "$dir" ls-files -u -- docs/a.md
+  [ "$status" -eq 0 ]
+  [ "${#lines[@]}" -eq 3 ]
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 1 ]
+  [ "$output" = "broken-link: docs/a.md -> missing.md" ]
+}
+
+@test "broken link survives BSD grep and mktemp" {
+  local dir bsd
+  dir=$(make_fixture_root bsd-tools)
+  mkdir -p "$dir/docs"
+  printf '[m](missing.md)\n' >"$dir/docs/a.md"
+  git -C "$dir" add docs/a.md
+
+  # The grep half is proven by mutation: `-aoE` -> `-aoP` on the extraction
+  # grep, or a `\b` in its pattern, is silent under GNU grep (the rest of the
+  # suite stays green) but the BSD stub refuses it, so the capture fails and
+  # the script exits 2 instead of 1. The mktemp half is a smoke run: the
+  # stub refuses a template without trailing Xs only when its literal path
+  # already exists, and one run's EXIT trap removes the path it created.
+  bsd="$BATS_TEST_TMPDIR/bsdtools"
+  make_bsd_stubs "$bsd" grep mktemp
+
+  PATH="$bsd:$PATH" run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 1 ]
+  [ "$output" = "broken-link: docs/a.md -> missing.md" ]
+}
