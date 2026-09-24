@@ -1,8 +1,8 @@
 # sandbox-lies — design
 
-**Status:** Planned. Nothing in this document is live; the five measured
-matchers exist as pilot code in `lib/matchers.sh`. **Verified against:**
-`52e6dd82b831a1cc2b7b516d4c248df6fb1ebc8c` (2026-09-22).
+**Status:** Partial. The hook and the three `phantom-*` verdicts are built and
+tested, not yet dogfooded; probes and candidates are not built.
+**Verified against:** `52e6dd82b831a1cc2b7b516d4c248df6fb1ebc8c` (2026-09-22).
 
 Changelog: [changelog.md](changelog.md). Per-detector mechanism:
 [references/detectors.md](references/detectors.md). Never make a behavioural
@@ -62,8 +62,8 @@ rebuilds the tool-result text — the `error` string on a failure payload, stdou
 then stderr from `tool_response` on a success payload — holds it in memory, runs
 `detect`, runs the probe for each verdict that has one, and emits a single JSON
 document. Any parse or runtime failure exits 0 with no output. Where · pinned
-by: `hooks/annotate.sh` · `tests/hook.bats` over recorded payloads of both
-events, plus a malformed-payload case. Partial (probe call: Item 4.1).
+by: `hooks/annotate.sh` · `tests/hook.bats` over both events' recorded payloads,
+`tests/hook-malformed.bats` over malformed ones. Partial (probe call: Item 4.1).
 
 **FR-4 — Probes.** For each verdict whose correct action depends on state the
 tool could not see, the hook runs a discriminator outside the sandbox and the
@@ -94,8 +94,8 @@ share one paragraph when both fire, and a paragraph that would push
 line on `systemMessage` is one lowercase clause. No verdict quotes a diagnostic
 together with its follow-on sentence. Where · pinned by: `lib/verdicts.sh` ·
 `tests/verdicts.bats` asserts length and runs `detect` over every verdict text
-expecting silence; `tests/hook.bats` asserts the 2 KB cap on an all-verdicts
-fixture. Partial (lock, candidate, `readonly-path` verdicts: Items 4.1, 4.2,
+expecting silence; `tests/hook-cap.bats` asserts the 2 KB cap with stub
+paragraphs. Partial (lock, candidate, `readonly-path` verdicts: Items 4.1, 4.2,
 6.1).
 
 **FR-7 — Detector catalogue.** Ten detectors, in
@@ -130,7 +130,7 @@ phantom-listing rule, folded into the existing phantom-dotfile bullet of
 `memory/ddaanet/shared-claude.md`. Where · pinned by: the tier's index ·
 `tests/docs.bats` fails if a live pointer (`hooks/`, `lib/`, `skills/`, `tests/`
 outside fixtures, `CLAUDE.md`, `README.md`) still names the retired path.
-Partial (phantom sections retired; the rest: Items 4.1, 4.2, 6.1, 7.1, 8.2).
+Partial (phantom and `/tmp` retired; rest: Items 4.1, 4.2, 6.1, 7.1, 8.2).
 
 **FR-11 — Self-quiet.** No live file in this repository fires a detector when
 read back. Source files build each diagnostic literal from fragments so the
@@ -168,7 +168,7 @@ in `just precommit`. Done.
 **NFR-4 — Hermetic.** The hook writes nothing (it runs outside the sandbox with
 `$TMPDIR` unset) and reads only the repository the call ran in. Where · pinned
 by: `tests/hook.bats` and `tests/matchers.bats` run the hook and `detect` with
-`TMPDIR` naming a missing directory. Done.
+`TMPDIR` naming a missing directory. Done (read scope: review, not gated).
 
 ## Architecture
 

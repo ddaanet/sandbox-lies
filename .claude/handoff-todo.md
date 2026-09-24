@@ -1,5 +1,9 @@
 ## Remaining
 
-- Phase 2: Items 2.1 (line-limit check; escalate if docs/design.md is over its cap — it stands at 395), 2.2 (link check), 2.3 (hook, verdicts, phantom memory retirement), 2.4 (lock probes), then the phase-boundary corrector.
-- Phases 3–8 per the runbook, honouring the escalation points at Items 3.1, 3.2 and 5.1.
-- Get my human partner's confirmation before the Item 8.2 `/gitlore:push`.
+- Item 2.3 slice 10 code review (d): dispatch edify:corrector on the `Item 2.3/10` commit's docs and memory edits; commit its report.
+- Item 2.4: probe_git_lock / probe_config_lock per its Slices (tdd), including the `stat` stub in tests/helpers/bsd-stubs.bash.
+- Phase 2 boundary corrector, carrying: qualify the chardev verdict sentence "`ls -a` and `git status` run unsandboxed show the real tree" with the condition that no sandboxed command is still running in the background (my human partner: sandbox artifacts are visible from any process while a sandboxed command runs; with none running, unsandboxed ls and git status show the real filesystem) — edit docs/references/detectors.md, lib/verdicts.sh and the transcribed strings in tests/verdicts.bats together (the untracked paragraph restates the chardev one); narrow NFR-5 and Item 2.2's wording to "inline" links (reference-style `[x][r]` definitions are unchecked, none in scope today).
+- Item 4.1: switch the systemMessage joiner between human lines from a space to `; ` (code-review recommendation; default absent other instruction); its slice 9 `cap skips and continues` is already listed.
+- Item 7.1: revisit the untracked verdict's opening "character-device entries" wording (a `git status` listing shows only `??` lines).
+- Finish: tdd-audit and review gate per references/finishing.md; the run summary records the in-session GREENs (Items 2.2/5, 2.2/6, 2.3/4–5), the opus artisan for 2.3/10, the verify-step mask substitution, GREEN 2.2/1 written in one pass, and 2.3/6's timing measured via git stash.
+- Phases 3–8 per the runbook, honouring the escalation points at Items 3.1, 3.2 and 5.1; get my human partner's confirmation before the Item 8.2 `/gitlore:push`.
