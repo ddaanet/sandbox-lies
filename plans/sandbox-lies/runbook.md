@@ -217,9 +217,11 @@ Cross-cutting, bounded:
      review added the skip; proven by mutation).
   5. Remaining contract and wiring (slices 5–7 merged after slice 4: none
      adds behaviour, so each case is proven by mutation, and the item's
-     `precommit` wiring rides this slice's GREEN). Whitespace: `path with a
-     space` — a 401-line `docs/a b.md` is reported with its full path. Edge
-     inputs (slice 1's code review): `unterminated last line counts` — 401
+     `precommit` wiring rides this slice's GREEN). Whitespace: `path with
+     whitespace` — a 401-line `docs/a b.md`, `docs/a<TAB>b.md` and root
+     ` lead.md` are each reported with their full path (renamed and widened
+     by the slice's test review: a newline-delimited or `IFS=`-less walk
+     passed the space-only fixture). Edge inputs (slice 1's code review): `unterminated last line counts` — 401
      lines with no final newline yields `oversized-file: docs/a.md: 401
      lines > 400` and status 1; `extra argument exits 2` — ROOT then a
      second argument yields status 2 and empty stdout. BSD tools: slice 1's
