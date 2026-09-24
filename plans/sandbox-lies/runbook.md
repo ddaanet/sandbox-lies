@@ -204,8 +204,13 @@ Cross-cutting, bounded:
      401-line `lib/x.md` and a 201-line `.claude/skills/y/SKILL.md` yield
      status 0 (the latter pins the SKILL.md cap's `skills/` anchor).
   4. Scripts in scope: `oversized script is reported` — a 401-line
-     `lib/x.sh` yields the `> 400` line; `plans/ is out of scope` — a
-     401-line `plans/x.md` yields status 0; `untracked file is out of
+     `lib/x.sh`, `lib/x.bash`, `lib/x.bats` and `lib/x.py` each yield a
+     `> 400` line (every type, so no arm layout leaves one uncounted);
+     `plans/ is out of scope` — a 401-line `plans/x.md` and `plans/x.sh`
+     yield status 0; `plugin-dev/ is out of scope` — a 401-line
+     `plugin-dev/x.sh` yields status 0; `markdown directly under skills/`
+     — a 401-line `skills/top.md` yields the `> 400` line (slice 3's code
+     review; proven by mutation); `untracked file is out of
      scope` — an untracked 401-line `docs/u.md` yields status 0;
      `deleted tracked file is skipped` — a 401-line `docs/gone.md` added,
      then removed from the work tree only, yields status 0 (slice 1's code
