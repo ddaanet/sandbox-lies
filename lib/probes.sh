@@ -5,21 +5,22 @@
 # prints an outcome token on its first line followed by key=value lines
 # (pid=, bytes=, age=, path=); exit 0.
 #
-# Item 2.4 slice 1: the absent-lock case only, flag false -> mask. Path
-# extraction is case-insensitive on the leading U, as lib/matchers.sh
-# match_git_lock is. Later slices add gone/orphan/held/unknown, the holder
-# check, size/age, the character-device rule and relative-path resolution
-# against $2; probe_config_lock stays an inert stub until slice 8.
-#
-# Consistent with lib/matchers.sh and lib/verdicts.sh: sourced by
-# hooks/annotate.sh, which already sets -u, and directly by bats tests, which
-# do not; keeping -u here means an unset variable errors in both contexts.
+# set -u as in lib/matchers.sh and lib/verdicts.sh. hooks/annotate.sh sets it
+# before sourcing those; bats does not, so setting it here keeps an unset
+# variable an error when a test sources this file directly.
 set -u
 
-# Extracts the single-quoted path from git's "Unable to create '<path>':
-# File exists" line on stdin.
+# Prints the lock path from git's "Unable to create '<path>.lock': <reason>"
+# line on stdin, first such line only; empty when there is none. Git quotes
+# the path without escaping, so the capture runs to the last `.lock': ` on
+# the line rather than stopping at the first single quote: a path holding a
+# quote survives, one holding `.lock': ` itself would not. The leading U is
+# case-insensitive, as in lib/matchers.sh match_git_lock. LC_ALL=C: under a
+# UTF-8 locale GNU sed's `.` does not match an invalid byte and BSD sed exits
+# with "illegal byte sequence", so either loses a path a byte-wise match keeps.
 _probe_lock_path() {
-    sed -n "s/.*[Uu]nable to create '\([^']*\)'.*/\1/p" | head -n 1
+    LC_ALL=C sed -n "s/.*[Uu]nable to create '\(.*\.lock\)': .*/\1/p" \
+        | head -n 1
 }
 
 probe_git_lock() {
