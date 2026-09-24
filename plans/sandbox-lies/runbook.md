@@ -215,16 +215,20 @@ Cross-cutting, bounded:
      `deleted tracked file is skipped` — a 401-line `docs/gone.md` added,
      then removed from the work tree only, yields status 0 (slice 1's code
      review added the skip; proven by mutation).
-  5. Whitespace: `path with a space` — a 401-line `docs/a b.md` is reported
-     with its full path.
-  6. Edge inputs (slice 1's code review added both; proven by mutation):
-     `unterminated last line counts` — 401 lines with no final newline
-     yields `oversized-file: docs/a.md: 401 lines > 400` and status 1;
-     `extra argument exits 2` — ROOT then a second argument yields status 2
-     and empty stdout.
-  7. BSD tools: `oversized markdown under BSD stubs` — slice 1's 401-line
-     fixture with `make_bsd_stubs grep sed` on `PATH` yields the same stdout
-     and status 1.
+  5. Remaining contract and wiring (slices 5–7 merged after slice 4: none
+     adds behaviour, so each case is proven by mutation, and the item's
+     `precommit` wiring rides this slice's GREEN). Whitespace: `path with a
+     space` — a 401-line `docs/a b.md` is reported with its full path. Edge
+     inputs (slice 1's code review): `unterminated last line counts` — 401
+     lines with no final newline yields `oversized-file: docs/a.md: 401
+     lines > 400` and status 1; `extra argument exits 2` — ROOT then a
+     second argument yields status 2 and empty stdout. BSD tools: slice 1's
+     401-line fixture with `make_bsd_stubs mktemp` on `PATH` (the one
+     stubbed tool the script calls; `grep` and `sed` are not called, so
+     stubbing them proves nothing) yields the same stdout and status 1; if
+     no mutation the stub refuses can red it, the test is named as the
+     portability smoke run it is (cross-cutting Portability rule) and the
+     RED report says so.
 
 - Item 2.2: `scripts/check-links.sh`, `tests/check-links.bats` — every
   relative markdown link in the same tracked markdown scope as Item 2.1
