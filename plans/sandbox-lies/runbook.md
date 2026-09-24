@@ -507,10 +507,23 @@ Cross-cutting, bounded:
   4. `held lock names the holder` — a background `sleep 30` holding the
      lock open on an fd other than 3, with bats' fd 3 closed (`3>&-`) so
      the run does not wait on it: `held`, `pid=` equal to that job's pid;
-     the job is killed in teardown.
+     the job is killed in teardown. `held lock under a quoted, spaced path`
+     (slices 3's reviews: the only case pinning the holder tools' quoting)
+     — the same under `$BATS_TEST_TMPDIR/it's here/r`: `held`, `pid=`. The
+     holder check runs before the size and age reads, or presence is
+     re-checked after it, so a holder exiting mid-check reads `gone`, not
+     `orphan` (slice 3's code review).
   5. `character device is mask` — the lock path a symlink to `/dev/null`
      (so extraction stays the ordinary lock shape), flag `false` and
-     `true`: `mask` both times.
+     `true`: `mask` both times. Added by slice 3's code review, each proven
+     by mutation (the behaviour landed in that review): `vanished lock is
+     gone` — a present 7-byte lock with a `stat` stub on `PATH` that
+     removes its operand then runs the real `stat`, flag `false` and `true`:
+     `gone`, `path=`, no `bytes=`/`age=` line, empty stderr; `non-regular
+     lock has no size` — a FIFO (and a directory) at the lock path: `orphan`,
+     no `bytes=` line, empty stderr, returning promptly (background job and
+     `kill`, not GNU `timeout`); `future mtime is age 0` — `touch -t
+     209901010000`: `age=0`.
   6. `no holder tool is unknown` — `PATH` set to a directory holding only
      the tools the probe needs, without `lsof` and `fuser`: `unknown`,
      `bytes=7`.
@@ -522,7 +535,10 @@ Cross-cutting, bounded:
      `fire-configlock-remote-add`) with an absent lock, flag `false`:
      `mask`; with a present lock: `orphan`.
   9. `BSD stat` — slice 3 with `make_bsd_stubs stat` on `PATH`: `orphan`,
-     `bytes=7`, an `age=` integer ≥ 0.
+     `bytes=7`, an `age=` integer ≥ 0, within a minute of now minus the
+     backdated mtime (slice 3's code review). `bsd-stubs.bash` also gains a
+     `wc` stub left-padding its count as BSD does, and the case runs with
+     `make_bsd_stubs stat wc`, pinning the padding strip.
 
 ## Phase 3: Evidence (type: general)
 
@@ -641,7 +657,10 @@ fire case under `make_bsd_stubs grep sed` (Portability).
   3. `orphan and unknown interpolate size and age` — stub prints `orphan`
      then `bytes=7`, `age=12`: context contains `7 bytes` and `age 12s`;
      the same with `unknown` as line 1: context contains `7 bytes`, `age
-     12s` and `no holder check is available`.
+     12s` and `no holder check is available`. Since Item 2.4 slice 3's code
+     review a probe may omit `bytes=` (non-regular or unreadable lock) or
+     `age=` (`stat` failed): the stub printing `orphan` with neither yields a
+     paragraph interpolating no empty value.
   4. `probe receives flag and cwd` — a stub recording its arguments to a
      file under `$BATS_TEST_TMPDIR`: payload with the flag `true` and `cwd`
      `/x` records `true /x`; flag absent records `false /x`.
