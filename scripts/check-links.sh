@@ -30,13 +30,32 @@ EXIT_CODE=0
 # shellcheck disable=SC2317 # reached only through handle_file, itself
 # invoked indirectly by name via walk_tracked_files's $handler
 check_links_in() {
-    local file="$1" dir links link target scheme check_target status=0
+    local file="$1" dir links link target scheme check_target status=0 mask
     # Parameter expansion, not `$(dirname …)`: a command substitution strips
     # a trailing newline from a directory name.
     case "$file" in
     */*) dir="${file%/*}" ;;
     *) dir=. ;;
     esac
+    # A code span or a fenced block is not a link, even when its content
+    # would otherwise parse as one (scripts/lib/strip-code.awk). Its output
+    # goes to a temp file, not a shell variable: `mask=$(awk …)` would run
+    # the whole file's content — not just the small `](target)` matches
+    # below — through bash command substitution, which truncates at the
+    # first NUL byte the same way `walk_tracked_files` warns a process
+    # substitution loses `git ls-files`' exit status. Explicit mktemp
+    # template: BSD mktemp has no default one. A failed mktemp, or an
+    # unreadable file (awk exits non-zero the same way grep did before it),
+    # leaves the file unchecked: exit 2, not a silently empty mask.
+    if ! mask="$(mktemp "${TMPDIR:-/tmp}/check-links-mask.XXXXXX")"; then
+        printf 'check-links: cannot create a temp file\n' >&2
+        exit 2
+    fi
+    if ! LC_ALL=C awk -f "$LIB_DIR/strip-code.awk" -- "$ROOT/$file" >"$mask" 2>/dev/null; then
+        rm -f "$mask"
+        printf 'check-links: cannot read %s\n' "$file" >&2
+        exit 2
+    fi
     # Only the `](target)` half of an inline link: the link text may hold
     # parentheses or nested brackets, and matching it too would cut the
     # target at the wrong `(` or miss the link outright. Residual: a target
@@ -49,7 +68,8 @@ check_links_in() {
     # discards grep's status. 1 is no match; 2 is an unreadable file, and
     # leaves it unchecked: exit 2, since a bare `set -e` abort would surface
     # as 1 and read as a broken link.
-    links=$(LC_ALL=C grep -aoE -e '\]\([^)]*\)' -- "$ROOT/$file") || status=$?
+    links=$(LC_ALL=C grep -aoE -e '\]\([^)]*\)' -- "$mask") || status=$?
+    rm -f "$mask"
     if [ "$status" -gt 1 ]; then
         printf 'check-links: cannot read %s\n' "$file" >&2
         exit 2

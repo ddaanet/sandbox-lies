@@ -218,3 +218,57 @@ broken-link: docs/a.md -> sub//missing.md" ]
   [ "$status" -eq 1 ]
   [ "$output" = "broken-link: docs/a.md -> missing.md" ]
 }
+
+# Item 2.2 slice 4: code spans and fenced blocks are not links.
+
+@test "link inside a code span or fence ignored" {
+  local dir
+  dir=$(make_fixture_root code-fence)
+  mkdir -p "$dir/docs"
+  # Broken targets inside an inline code span and inside fenced blocks must
+  # not be checked — they are code, not markdown links. Each ignored line
+  # rules out a narrower reading of "code":
+  # - span: text around the link inside the backticks, so skipping only a
+  #   link the backticks wrap exactly still reports it;
+  # - fence: opened with an info string, as most of this repo's fences
+  #   are, so recognising only a bare ``` opener reports it;
+  # - fence-tilde: a ~~~ line inside a ``` fence is content, not a close
+  #   (CommonMark closes on the opener's own character), so toggling on
+  #   any fence marker reports it;
+  # - tilde: a ~~~ fence, so recognising ``` alone reports it;
+  # - indented: a fence indented under a list item, as this repo's are, so
+  #   matching markers only at column 0 reports it.
+  # Decoys pin the edges: after-span sits on the SAME line as a span but
+  # outside its backticks, so dropping every line holding a backtick, or
+  # everything from the first backtick on, drops it too; after-fence is the
+  # first line past a closing ```, so never leaving "fence mode" skips it.
+  # The sentinel is last: an early return/break in place of continue would
+  # drop it along with the fenced lines before it.
+  # shellcheck disable=SC2016 # literal backticks in fixture data, not command substitution
+  printf '%s\n' \
+    '`see [a](span-missing.md) here`' \
+    '`code` [b](after-span-missing.md)' \
+    '```bash' \
+    '[c](fence-missing.md)' \
+    '~~~' \
+    '[d](fence-tilde-missing.md)' \
+    '```' \
+    '[e](after-fence-missing.md)' \
+    '~~~' \
+    '[f](tilde-missing.md)' \
+    '~~~' \
+    '- item' \
+    '  ```' \
+    '  [g](indented-missing.md)' \
+    '  ```' \
+    '[z](sentinel-missing.md)' \
+    >"$dir/docs/a.md"
+  git -C "$dir" add docs/a.md
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 1 ]
+  [ "$output" = "broken-link: docs/a.md -> after-span-missing.md
+broken-link: docs/a.md -> after-fence-missing.md
+broken-link: docs/a.md -> sentinel-missing.md" ]
+  [ -z "$stderr" ]
+}
