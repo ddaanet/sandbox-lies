@@ -59,6 +59,59 @@ setup() {
   [ -z "$output" ]
 }
 
+@test "porcelain on stdout fires untracked" {
+  # Pairs "listing on stderr fires" below: same text, only the
+  # tool_response field differs, so a hook that never reads
+  # tool_response.stdout on success fails here.
+  local text payload
+  text=$(cat "$FIXTURES/fire-masks-porcelain.txt")
+  payload=$(post_payload "$text")
+  run bash -c 'printf "%s" "$1" | bash "$2"' \
+    _ "$payload" "$HOOK_COPY/hooks/annotate.sh"
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -r '.hookSpecificOutput.hookEventName')" \
+    = "PostToolUse" ]
+  printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext' \
+    | grep -qF 'reading the sandbox, not the tree'
+}
+
+@test "listing on stderr fires" {
+  # Paired with the stdout case above: the porcelain text moves to
+  # tool_response.stderr and stdout is empty, so a hook that reads only
+  # tool_response.stdout on success fails here.
+  local text payload
+  text=$(cat "$FIXTURES/fire-masks-porcelain.txt")
+  payload=$(post_payload "" "$text")
+  run bash -c 'printf "%s" "$1" | bash "$2"' \
+    _ "$payload" "$HOOK_COPY/hooks/annotate.sh"
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -r '.hookSpecificOutput.hookEventName')" \
+    = "PostToolUse" ]
+  printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext' \
+    | grep -qF 'reading the sandbox, not the tree'
+}
+
+@test "rebuild inserts a newline between stdout and stderr" {
+  # A rebuild that concatenates stdout and stderr with no separator merges
+  # the last stdout line with the first stderr line. Here each field holds
+  # one masked name with no trailing newline, as recorded payloads carry
+  # them, so the two-name phantom-untracked threshold is only met when a
+  # newline is inserted between them; a concatenation with no separator
+  # merges them into one line that matches neither, and a rebuild reading
+  # one field sees one name. Either way the hook goes quiet. The names sit
+  # inside a quoted assignment, not alone on their own source line, so this
+  # file stays quiet under its own detector (FR-11).
+  local stdout stderr payload
+  stdout='?? .bashrc'
+  stderr='?? .gitconfig'
+  payload=$(post_payload "$stdout" "$stderr")
+  run bash -c 'printf "%s" "$1" | bash "$2"' \
+    _ "$payload" "$HOOK_COPY/hooks/annotate.sh"
+  [ "$status" -eq 0 ]
+  printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext' \
+    | grep -qF 'reading the sandbox, not the tree'
+}
+
 @test "hooks.json names both events" {
   # Exactly these two events (FR-1: no PreToolUse), each registered once, as
   # the command hook.bats runs: `bash` on the plugin root's script.

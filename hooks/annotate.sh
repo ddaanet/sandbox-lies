@@ -2,8 +2,9 @@
 # The hook: payload -> text -> detect -> verdicts -> one JSON object.
 # Registered on PostToolUse and PostToolUseFailure, matcher Bash
 # (hooks/hooks.json). Any parse or runtime failure exits 0 with no output
-# (FR-3). The text is the `error` string of a PostToolUseFailure payload
-# (D-13); a PostToolUse payload contributes none.
+# (FR-3). The text is the `error` string of a PostToolUseFailure payload, or
+# tool_response.stdout, a newline, and tool_response.stderr of a PostToolUse
+# payload (D-13).
 #
 # Writes nothing (NFR-4): no here-document, which bash before 5.1 spools
 # through a temp file.
@@ -25,6 +26,11 @@ text=""
 case "$event" in
   PostToolUseFailure)
     text=$(printf '%s' "$payload" | jq -r '.error // empty') || exit 0
+    ;;
+  PostToolUse)
+    text=$(printf '%s' "$payload" | jq -r \
+      '.tool_response.stdout // empty, .tool_response.stderr // empty') \
+      || exit 0
     ;;
 esac
 
