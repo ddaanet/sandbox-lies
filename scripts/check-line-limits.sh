@@ -8,7 +8,8 @@
 # `git ls-files -z` instead of `find` so `.venv/` and gitlinks stay out.
 #
 # Scope (grows across later slices of this item): markdown under docs/, cap
-# 400; each skill's SKILL.md, cap 200.
+# 400; a SKILL.md at any depth under skills/, cap 200 (a `case` `*` crosses
+# `/`).
 #
 # Exit codes: 0 clean, 1 on any overage, 2 on a failure to run.
 
