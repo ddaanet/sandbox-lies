@@ -1,0 +1,97 @@
+#!/usr/bin/env bats
+# lib/verdicts.sh: verdict_<name> [outcome] -> agent paragraph (line 1),
+# human line (line 2). A name/outcome row table, one row per verdict and
+# outcome (`-` for none), extended by Items 4.1, 4.2 and 6.1.
+
+ROOT="${BATS_TEST_DIRNAME}/.."
+VERDICTS="$ROOT/lib/verdicts.sh"
+MATCHERS="$ROOT/lib/matchers.sh"
+
+bats_require_minimum_version 1.5.0
+
+load helpers/bsd-stubs
+
+# name outcome — `-` for a phantom verdict, which takes no outcome.
+rows() {
+  cat <<'ROWS'
+phantom_chardev -
+phantom_untracked -
+phantom_gitadd -
+ROWS
+}
+
+# verdict_text <name> <outcome> — the two-line text a case checks. Stdin is
+# empty, as for a verdict with no probe; left inherited, a verdict reading its
+# probe lines would swallow the rest of the row table from the caller's loop.
+verdict_text() {
+  local name="$1" outcome="$2"
+  if [ "$outcome" = "-" ]; then
+    # shellcheck disable=SC1090 # $VERDICTS is lib/verdicts.sh, resolved above
+    ( . "$VERDICTS"; "verdict_$name" ) </dev/null
+  else
+    # shellcheck disable=SC1090
+    ( . "$VERDICTS"; "verdict_$name" "$outcome" ) </dev/null
+  fi
+}
+
+# all_verdict_text — every row's text concatenated, one call per row. A row
+# whose verdict fails fails the whole call: this runs inside a command
+# substitution, where errexit does not reach.
+all_verdict_text() {
+  local name outcome text all=""
+  while read -r name outcome; do
+    [ -n "$name" ] || continue
+    text=$(verdict_text "$name" "$outcome") || return 1
+    all="$all
+$text"
+  done < <(rows)
+  printf '%s' "$all"
+}
+
+@test "verdicts under 400 chars" {
+  local name outcome text line1 line2 defined rowed
+  # "Every row" means every verdict only if no verdict function lacks a row.
+  defined=$(bash -c '. "$1" && declare -F' _ "$VERDICTS" \
+    | awk '$3 ~ /^verdict_/ { sub(/^verdict_/, "", $3); print $3 }' | sort -u)
+  rowed=$(rows | awk 'NF { print $1 }' | sort -u)
+  [ -n "$defined" ]
+  [ "$defined" = "$rowed" ]
+  while read -r name outcome; do
+    [ -n "$name" ] || continue
+    text=$(verdict_text "$name" "$outcome")
+    # Exactly two lines, both non-empty: an empty verdict or paragraph must
+    # fail here, not slip through as vacuously short.
+    [ "$(printf '%s\n' "$text" | awk 'END { print NR }')" -eq 2 ]
+    line1=$(printf '%s\n' "$text" | sed -n '1p')
+    line2=$(printf '%s\n' "$text" | sed -n '2p')
+    [ -n "$line1" ]
+    [ "${#line1}" -lt 400 ]
+    printf '%s' "$line2" | grep -qF -- ' — '
+  done < <(rows)
+}
+
+@test "verdict text is quiet" {
+  local all
+  all=$(all_verdict_text)
+  # An empty verdict set must fail here, not read as trivially quiet.
+  [ -n "$(printf '%s' "$all" | tr -d '[:space:]')" ]
+  run bash -c 'printf "%s\n" "$1" | bash "$2"' _ "$all" "$MATCHERS"
+  [ "$status" -eq 1 ]
+  [ -z "$output" ]
+}
+
+@test "no removal instruction" {
+  local all stripped phrase
+  all=$(all_verdict_text)
+  # An empty verdict set must fail here, not read as vacuously clean.
+  [ -n "$(printf '%s' "$all" | tr -d '[:space:]')" ]
+  # D-7: the one sanctioned "delete" (detectors.md's phantom-chardev
+  # verdict, "every add, delete and report") is stripped before checking.
+  phrase="add, delete and report"
+  stripped=$(printf '%s' "$all" | sed "s/${phrase}//g")
+  # `rm ` only as a word: "confirm " and "form " are not instructions. Status
+  # 1 exactly, so a grep that errored cannot read as "no match".
+  run bash -c 'printf "%s" "$1" | grep -qiE "(^|[^[:alpha:]])rm |remove|delete"' \
+    _ "$stripped"
+  [ "$status" -eq 1 ]
+}

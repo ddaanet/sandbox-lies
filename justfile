@@ -27,6 +27,7 @@ precommit:
         for f in "$@"; do bash -n "$f"; done
     }
     report plugin.json jq empty .claude-plugin/plugin.json
+    report hooks.json jq empty hooks/hooks.json
     tracked '*.sh' '*.bash' '*.bats'
     report shellcheck shellcheck "${files[@]}"
     tracked '*.sh'
