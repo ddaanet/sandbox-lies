@@ -232,9 +232,13 @@ Cross-cutting, bounded:
      portability smoke run it is (cross-cutting Portability rule) and the
      RED report says so.
 
-- Item 2.2: `scripts/check-links.sh`, `tests/check-links.bats` — every
-  relative markdown link in the same tracked markdown scope as Item 2.1
-  resolves to an existing path, relative to the linking file. Wired into
+- Item 2.2: `scripts/check-links.sh`, `tests/check-links.bats`, and as
+  executed `scripts/lib/tracked.sh` (a refactor),
+  `scripts/lib/strip-code.awk` (the fence pass),
+  `tests/check-links-edges.bats` and `tests/helpers/fixture-root.bash` (a
+  suite split under the 400-line cap) — every relative markdown link in
+  the same tracked markdown scope as Item 2.1 resolves to an existing
+  path, relative to the linking file. Wired into
   `precommit` after the line-limit check. Requirements: NFR-2, NFR-5.
   Depends on: Item 1.2
   Interfaces:
@@ -263,10 +267,12 @@ Cross-cutting, bounded:
   4. Code is not a link: `link inside a code span or fence ignored` — a
      broken target inside backticks or a fenced block yields status 0.
   5. Whitespace and edge inputs (edge cases from slice 1's code review;
-     proven by mutation): `linking file with a space` — `docs/a b.md` with
-     a broken link yields `broken-link: docs/a b.md -> missing.md`;
+     proven by mutation; as widened by the slice's test review):
+     `linking file with whitespace` — ` lead.md`, `docs/a<TAB>b.md` and
+     `docs/s p/a b.md` each report their broken link with the full path;
      `deleted tracked file is skipped` — a `docs/gone.md` added, then
-     removed from the work tree only, yields status 0; `unreadable file
+     removed from the work tree only, beside a broken `docs/sentinel.md`,
+     yields only the sentinel's line; `unreadable file
      exits 2` — a mode-000 `docs/a.md` yields status 2 and empty stdout
      (skipped when run as root); `extra argument exits 2` — as Item 2.1's;
      `any URI scheme is skipped` (slice 3's code review replaced a
@@ -280,22 +286,26 @@ Cross-cutting, bounded:
      as a relative ROOT with stdin from `/dev/null`, yields its
      `broken-link` line and status 1 (the last three from slice 4's code
      review).
-  6. Shared walk (`scripts/lib/tracked.sh`, pinned through this suite;
+  6. Shared walk, BSD tools and wiring (slices 6–7 merged after slice 5:
+     neither adds behaviour; tests in `tests/check-links-edges.bats`).
+     Shared walk (`scripts/lib/tracked.sh`, pinned through this suite;
      slice 2's code review added each; proven by mutation): `tracked
      symlink is skipped` — a tracked `docs/l.md` symlink to an untracked
-     file holding a broken link yields status 0; `bare-name invocation` —
-     `cd` into `scripts/` and `bash check-links.sh <root>` yields the same
-     stdout and status as slice 1's broken case; `missing helper exits 2` —
-     a copy of the script with no `lib/` beside it yields status 2 and
-     empty stdout, and so does a copy whose `lib/` holds `tracked.sh` but
-     not `strip-code.awk`; `unmerged path walked once` — a real content conflict in
-     `docs/a.md` holding one broken link yields exactly one line.
-  7. BSD tools: `broken link under BSD stubs` — slice 1's broken-link
-     fixture with `make_bsd_stubs grep mktemp` on `PATH` (the stubbed tools
-     the script calls; it calls no `sed`) yields the same stdout and exit
-     status 1. The item's `precommit` wiring rides this slice's GREEN.
-     Open, unverifiable here: a NUL byte under BSD awk (one-true-awk) may
-     drop the rest of its line; the macOS dogfood run is where it shows.
+     file holding a broken link, beside a broken sentinel, yields only the
+     sentinel's line; `bare-name invocation` — `cd` into `scripts/` and
+     `bash check-links.sh <root>` yields the same stdout and status as
+     slice 1's broken case; `missing helper exits 2` — a copy of the
+     script with no `lib/` beside it yields status 2 and empty stdout, and
+     so does a copy whose `lib/` holds `tracked.sh` but not
+     `strip-code.awk`; `unmerged path walked once` — a real content
+     conflict in `docs/a.md` holding one broken link yields exactly one
+     line. BSD tools: slice 1's broken-link fixture with `make_bsd_stubs
+     grep mktemp` on `PATH` (the stubbed tools the script calls; it calls
+     no `sed`) yields the same stdout and exit status 1, named as the smoke
+     run it is if no stub-refused mutation can red it. The item's
+     `precommit` wiring rides this slice's GREEN. Open, unverifiable here:
+     a NUL byte under BSD awk (one-true-awk) may drop the rest of its line;
+     the macOS dogfood run is where it shows.
 
 - Item 2.3: `hooks/hooks.json`, `hooks/annotate.sh`, `lib/verdicts.sh`,
   `lib/matchers.sh`, `tests/hook.bats`, `tests/helpers/hook.bash`,
