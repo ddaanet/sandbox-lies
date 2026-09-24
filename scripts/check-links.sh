@@ -11,8 +11,15 @@
 
 set -euo pipefail
 
-# shellcheck source=scripts/lib/tracked.sh
-source "${BASH_SOURCE[0]%/*}/lib/tracked.sh"
+# The helper beside this script. `%/*` leaves a slash-less path whole, so
+# a bare `bash check-links.sh` from scripts/ gets its own arm. A failed
+# `source` returns 1, which `set -e` would surface as a broken link: exit 2.
+case "${BASH_SOURCE[0]}" in
+*/*) LIB_DIR="${BASH_SOURCE[0]%/*}/lib" ;;
+*) LIB_DIR=lib ;;
+esac
+# shellcheck source-path=SCRIPTDIR source=lib/tracked.sh
+source "$LIB_DIR/tracked.sh" || exit 2
 
 parse_root check-links "$@"
 
@@ -61,9 +68,9 @@ check_links_in() {
 # shellcheck disable=SC2317 # invoked indirectly by name via
 # walk_tracked_files's $handler
 handle_file() {
-    # Not `markdown_in_scope "$1" && check_links_in "$1"`: under `set -e`,
-    # that form's own exit status is 1 for an out-of-scope file, and
-    # walk_tracked_files's caller runs under errexit too.
+    # Not `markdown_in_scope "$1" && check_links_in "$1"`: that form
+    # returns 1 for an out-of-scope file, and walk_tracked_files calls its
+    # handler under `set -e`, so the run would end 1 at the first one.
     if markdown_in_scope "$1"; then
         check_links_in "$1"
     fi

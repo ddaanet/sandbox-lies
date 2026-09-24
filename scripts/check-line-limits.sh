@@ -17,8 +17,15 @@
 
 set -euo pipefail
 
-# shellcheck source=scripts/lib/tracked.sh
-source "${BASH_SOURCE[0]%/*}/lib/tracked.sh"
+# The helper beside this script. `%/*` leaves a slash-less path whole, so
+# a bare `bash check-line-limits.sh` from scripts/ gets its own arm. A failed
+# `source` returns 1, which `set -e` would surface as an overage: exit 2.
+case "${BASH_SOURCE[0]}" in
+*/*) LIB_DIR="${BASH_SOURCE[0]%/*}/lib" ;;
+*) LIB_DIR=lib ;;
+esac
+# shellcheck source-path=SCRIPTDIR source=lib/tracked.sh
+source "$LIB_DIR/tracked.sh" || exit 2
 
 parse_root check-line-limits "$@"
 
@@ -45,9 +52,9 @@ check_cap() {
 }
 
 # Dispatch one tracked file to its cap, or leave it out of scope. Root-level
-# plans/ and plugin-dev/ are excluded for every file type; must precede the
-# script arm below (a script there would otherwise be capped by it) and
-# needs no help from `markdown_in_scope`, which excludes them itself.
+# plans/ and plugin-dev/ are excluded for every file type; the arm must
+# precede the script arm below, which would otherwise cap a script there.
+# Markdown there is already outside `markdown_in_scope`.
 # SKILL.md's own 200 cap must precede the markdown fallback below: both
 # would otherwise match a SKILL.md, and `case` takes the first.
 # shellcheck disable=SC2317 # invoked indirectly by name via
