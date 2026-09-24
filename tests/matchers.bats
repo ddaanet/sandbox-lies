@@ -275,3 +275,44 @@ assert_fixture() {
   [ "$output" = "git-lock" ]
   [ ! -e "$calls" ] || { cat "$calls" >&2; return 1; }
 }
+
+# --------------------------------------------- slice 9: NUL and closed stdin
+
+@test "detect sees past a NUL" {
+  # item-2-3-s8-code-review.md F1: `read -r -d ''` stops at the first NUL, a
+  # silent false negative for a firing line that arrives after one. The
+  # firing line is assembled from two fragments at run time, never written
+  # whole to this file, so the self-quiet sweep (FR-11, tests/docs.bats)
+  # stays quiet under this test too.
+  local frag1 frag2 input_file
+  frag1='could not lock config file .git/config: File'
+  frag2=' exists'
+  input_file="$BATS_TEST_TMPDIR/nul-then-firing.txt"
+  printf 'quiet preamble text\n\000error: %s%s\n' "$frag1" "$frag2" \
+    > "$input_file"
+  # Without the NUL this is a plain firing case; pin that it is there.
+  [ "$(LC_ALL=C tr -cd '\000' < "$input_file" | wc -c)" -eq 1 ]
+
+  run --separate-stderr bash "$MATCHERS" < "$input_file"
+  [ "$status" -eq 0 ]
+  [ "$output" = "config-lock" ]
+  [ -z "$stderr" ]
+}
+
+@test "detect on closed stdin" {
+  # item-2-3-s8-code-review.md F3: a read failure must not hang, and reports
+  # once on stderr rather than as one `text: unbound variable` per matcher.
+  # stdin is closed by an inner `bash -c 'bash "$1" <&-'`: closed on the
+  # outer `run` line instead, the freed fd 0 is taken by run's own capture
+  # pipe (F3's mechanism, one level up), so the SUT would start with stdin
+  # open on that pipe rather than closed. `timeout` bounds a hang.
+  command -v timeout >/dev/null \
+    || skip "no timeout on PATH; cannot bound a hang"
+  # shellcheck disable=SC2016 # $1 is the inner bash -c's own arg, expanded there
+  run --separate-stderr timeout 5 bash -c 'bash "$1" <&-' _ "$MATCHERS"
+  [ "$status" -ne 124 ]
+  [ "$status" -eq 1 ]
+  [ -z "$output" ]
+  # shellcheck disable=SC2154 # set by bats' run --separate-stderr
+  [ "${#stderr_lines[@]}" -eq 1 ]
+}

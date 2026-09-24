@@ -64,6 +64,9 @@ while IFS= read -r name; do
   if [ "$name" = "phantom-chardev" ]; then
     case "$nl$names$nl" in *"${nl}phantom-untracked$nl"*) continue ;; esac
   fi
+  # A detected name with no verdict function contributes nothing; the
+  # other detected names still emit theirs (Item 2.3 slice 9).
+  declare -F "verdict_${name//-/_}" >/dev/null || continue
   out=$("verdict_${name//-/_}" </dev/null) || exit 0
   para=${out%%"$nl"*}
   line=${out#*"$nl"}
