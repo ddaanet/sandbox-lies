@@ -68,8 +68,26 @@ while IFS= read -r name; do
   para=${out%%"$nl"*}
   line=${out#*"$nl"}
   line=${line%%"$nl"*}
-  context="${context:+$context$nl}$para"
   human="${human:+$human }$line"
+
+  # FR-6's 2 KB cap: a paragraph that would push additionalContext past
+  # 2048 BYTES is dropped; its human line is kept regardless (already
+  # appended above). Verdict text carries multibyte characters (em dashes),
+  # so ${#candidate} under the ambient locale would count characters, not
+  # bytes -- LC_ALL=C makes bash treat the string as single-byte, so the
+  # count is bytes. LC_ALL is one of bash's locale special variables:
+  # assigning it re-runs setlocale() for the shell, but under bash 3.2 that
+  # takes effect from the *next* simple command on, not within the one
+  # doing the assignment -- so the assignment, the length read and the
+  # restore are each their own statement, never combined on one line. This
+  # counts bytes with no fork, unlike `wc -c`.
+  candidate="${context:+$context$nl}$para"
+  lc_all_save=${LC_ALL-}
+  LC_ALL=C
+  candidate_bytes=${#candidate}
+  LC_ALL=$lc_all_save
+  [ "$candidate_bytes" -gt 2048 ] && continue
+  context="$candidate"
 done < <(printf '%s\n' "$names")
 
 [ -n "$context" ] || exit 0
