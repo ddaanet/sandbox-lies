@@ -217,14 +217,18 @@ oversized-file: x.sh: 401 lines > 400" ]
   dir=$(make_fixture_root deleted)
   mkdir -p "$dir/docs"
   seq 401 >"$dir/docs/gone.md"
-  git -C "$dir" add docs/gone.md
+  # A present file after it in `git ls-files` order, holding the one overage
+  # to report: a walk that yields nothing, or a skip that ends the walk
+  # (`break` for `continue`), drops its line.
+  seq 401 >"$dir/docs/sentinel.md"
+  git -C "$dir" add docs/gone.md docs/sentinel.md
   # Removed from the work tree only, so it stays in the index: `git ls-files`
-  # still lists it, and `check_cap`'s `[ ! -f … ]` guard must skip it.
+  # still lists it, and walk_tracked_files's `[ ! -f … ]` guard must skip it.
   rm "$dir/docs/gone.md"
 
   run --separate-stderr "$SCRIPT" "$dir"
-  [ "$status" -eq 0 ]
-  [ -z "$output" ]
+  [ "$status" -eq 1 ]
+  [ "$output" = "oversized-file: docs/sentinel.md: 401 lines > 400" ]
   [ -z "$stderr" ]
 }
 
@@ -276,9 +280,12 @@ oversized-file: docs/a b.md: 401 lines > 400" ]
   # The extra argument is itself a valid root, so no failure but the
   # argument check can exit 2 — `extra` would also exit 2 from a script
   # that took the last argument as ROOT and failed `git ls-files` on it.
+  # Joining the arguments into one ROOT ("$*") still fails there, so stderr
+  # names the refusal.
   run --separate-stderr "$SCRIPT" "$dir" "$dir"
   [ "$status" -eq 2 ]
   [ -z "$output" ]
+  [ "$stderr" = "check-line-limits: unexpected extra argument: $dir" ]
 }
 
 @test "oversized markdown survives BSD mktemp" {

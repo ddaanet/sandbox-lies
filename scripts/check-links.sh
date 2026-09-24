@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Relative markdown link gate: every relative link in the tracked markdown
-# scope resolves to an existing path, relative to the linking file.
+# Relative markdown link gate: every relative inline link in the tracked
+# markdown scope resolves to an existing path, relative to the linking file.
+# Inline only: a reference definition (`[r]: path`) is not checked at all.
 #
 # Usage: check-links.sh [ROOT]
 #
@@ -50,12 +51,14 @@ check_links_in() {
     # `x=y` — as a variable assignment and reads stdin in its place.
     # Only the `](target)` half of an inline link: the link text may hold
     # parentheses or nested brackets, and matching it too would cut the
-    # target at the wrong `(` or miss the link outright. Residual: a target
-    # containing `)`, which CommonMark allows when balanced, is cut at its
-    # first `)` and reported broken — loud, not silent. `LC_ALL=C` and `-a`:
-    # in a UTF-8 locale a target with a non-UTF-8 byte fails `[^)]` and goes
-    # unmatched, and a NUL byte makes grep print "binary file matches" in
-    # place of the links, both exit 0 over links never checked.
+    # target at the wrong `(` or miss the link outright. Residuals, each
+    # reported broken — loud, not silent: a target containing `)`, which
+    # CommonMark allows when balanced, cut at its first `)`; a link title
+    # (`(b.md "t")`); an angle-bracketed target (`(<b.md>)`).
+    # `LC_ALL=C` and `-a`: in a UTF-8 locale a target with a non-UTF-8 byte
+    # fails `[^)]` and goes unmatched, and a NUL byte makes grep print
+    # "binary file matches" in place of the links, both exit 0 over links
+    # never checked.
     # Captured rather than read from `< <(…)`: a process substitution
     # discards the pipeline's status. grep's 1 is no match, folded to 0;
     # under `pipefail` any other failure — an unreadable file, which fails
@@ -91,6 +94,8 @@ check_links_in() {
         esac
         # Only the part before `#` must exist; the report prints the target
         # as written, the string a reader finds in the linking file.
+        # Residual, silent: a target climbing out of ROOT (`../../x`) passes
+        # when the host happens to hold that path.
         check_target="${target%%#*}"
         if [ ! -e "$ROOT/$dir/$check_target" ]; then
             printf 'broken-link: %s -> %s\n' "$file" "$target"
