@@ -28,6 +28,7 @@ case "$event" in
     text=$(printf '%s' "$payload" | jq -r '.error // empty') || exit 0
     ;;
   PostToolUse)
+    # jq -r ends each output with a newline: that is the separator.
     text=$(printf '%s' "$payload" | jq -r \
       '.tool_response.stdout // empty, .tool_response.stderr // empty') \
       || exit 0
