@@ -297,9 +297,11 @@ Cross-cutting, bounded:
      slice 1's broken case; `missing helper exits 2` — a copy of the
      script with no `lib/` beside it yields status 2 and empty stdout, and
      so does a copy whose `lib/` holds `tracked.sh` but not
-     `strip-code.awk`; `unmerged path walked once` — a real content
-     conflict in `docs/a.md` holding one broken link yields exactly one
-     line. BSD tools: slice 1's broken-link fixture with `make_bsd_stubs
+     `strip-code.awk` (each asserting the missing file's own diagnostic),
+     and the same copy completed yields slice 1's broken line;
+     `unmerged path walked once` — a real content conflict in `docs/a.md`
+     (asserted by three `git ls-files -u` stages) holding one broken link
+     yields exactly one line. BSD tools: slice 1's broken-link fixture with `make_bsd_stubs
      grep mktemp` on `PATH` (the stubbed tools the script calls; it calls
      no `sed`) yields the same stdout and exit status 1, named as the smoke
      run it is if no stub-refused mutation can red it. The item's
