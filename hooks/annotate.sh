@@ -3,17 +3,18 @@
 # Registered on PostToolUse and PostToolUseFailure, matcher Bash
 # (hooks/hooks.json). Any parse or runtime failure exits 0 with no output
 # (FR-3). The text is the `error` string of a PostToolUseFailure payload, or
-# tool_response.stdout, a newline, and tool_response.stderr of a PostToolUse
-# payload (D-13).
+# whichever of tool_response.stdout and tool_response.stderr are strings,
+# joined by a newline, of a PostToolUse payload (D-13).
 #
 # One jq call reads stdin and cannot error on any input, so nothing reaches
 # stderr: `-Rs` takes it as one raw string and `fromjson?` decodes it,
 # dropping what does not parse; `select(type == "object")` drops a scalar or
 # array, which jq cannot index without a fatal error; only a string field is
-# read as text. The output is the event, then the text, one per line. The
-# event is printed only when it equals one of the two literal names, so the
-# first newline is always the split point. NUL bytes are dropped in jq:
-# bash drops them from a `$(...)` too, but warns on stderr.
+# read as text. The output is the event, then each text part, each ending in
+# a newline, which is the join. The event is printed only when it equals one
+# of the two literal names, so the first newline is always the split point.
+# NUL bytes are dropped in jq: bash drops them from a `$(...)` too, but warns
+# on stderr.
 #
 # Writes nothing (NFR-4): no here-document, which bash before 5.1 spools
 # through a temp file.
@@ -64,10 +65,12 @@ while IFS= read -r name; do
   if [ "$name" = "phantom-chardev" ]; then
     case "$nl$names$nl" in *"${nl}phantom-untracked$nl"*) continue ;; esac
   fi
-  # A detected name with no verdict function contributes nothing; the
-  # other detected names still emit theirs (Item 2.3 slice 9).
-  declare -F "verdict_${name//-/_}" >/dev/null || continue
-  out=$("verdict_${name//-/_}" </dev/null) || exit 0
+  # A detected name with no verdict function contributes nothing and the
+  # other names still emit theirs; the `|| exit 0` below is for a verdict
+  # that exists and fails.
+  fn="verdict_${name//-/_}"
+  declare -F "$fn" >/dev/null || continue
+  out=$("$fn" </dev/null) || exit 0
   para=${out%%"$nl"*}
   line=${out#*"$nl"}
   line=${line%%"$nl"*}
