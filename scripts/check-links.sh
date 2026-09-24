@@ -28,17 +28,39 @@ EXIT_CODE=0
 # Report one line and set the exit code for each link in $1 (root-relative)
 # whose target does not resolve, relative to $1's own directory.
 check_links_in() {
-    local file="$1" dir link target
-    dir=$(dirname "$file")
+    local file="$1" dir links link target status=0
+    # Parameter expansion, not `$(dirname …)`: a command substitution strips
+    # a trailing newline from a directory name.
+    case "$file" in
+    */*) dir="${file%/*}" ;;
+    *) dir=. ;;
+    esac
+    # Only the `](target)` half of an inline link: the link text may hold
+    # parentheses or nested brackets, and matching it too would cut the
+    # target at the wrong `(` or miss the link outright. Residual: a target
+    # containing `)`, which CommonMark allows when balanced, is cut at its
+    # first `)` and reported broken — loud, not silent. `LC_ALL=C` and `-a`:
+    # in a UTF-8 locale a target with a non-UTF-8 byte fails `[^)]` and goes
+    # unmatched, and a NUL byte makes grep print "binary file matches" in
+    # place of the links, both exit 0 over links never checked.
+    # Captured rather than read from `< <(grep …)`: a process substitution
+    # discards grep's status. 1 is no match; 2 is an unreadable file, and
+    # leaves it unchecked: exit 2, since a bare `set -e` abort would surface
+    # as 1 and read as a broken link.
+    links=$(LC_ALL=C grep -aoE -e '\]\([^)]*\)' -- "$ROOT/$file") || status=$?
+    if [ "$status" -gt 1 ]; then
+        printf 'check-links: cannot read %s\n' "$file" >&2
+        exit 2
+    fi
     while IFS= read -r link; do
         [ -n "$link" ] || continue
-        target="${link#*(}"
+        target="${link#](}"
         target="${target%)}"
         if [ ! -e "$ROOT/$dir/$target" ]; then
             printf 'broken-link: %s -> %s\n' "$file" "$target"
             EXIT_CODE=1
         fi
-    done < <(grep -oE '\[[^]]*\]\([^)]*\)' "$ROOT/$file")
+    done <<<"$links"
 }
 
 # `git ls-files -z` spooled to a temp file, read back by the loop below: a
@@ -47,7 +69,7 @@ check_links_in() {
 # tree instead of failing the run. Explicit mktemp template: BSD mktemp has no
 # default one, so a bare `mktemp` is a usage error on macOS. A failed `mktemp`
 # leaves the tree unchecked: exit 2, since a bare `set -e` abort on the
-# assignment would surface as 1 and read as an overage.
+# assignment would surface as 1 and read as a broken link.
 if ! WALK_LIST="$(mktemp "${TMPDIR:-/tmp}/check-links.XXXXXX")"; then
     echo "check-links: cannot create the walk list temp file" >&2
     exit 2
@@ -62,9 +84,11 @@ fi
 while IFS= read -r -d '' file; do
     case "$file" in
     docs/*.md)
-        # What the port's `find -type f` skipped: a symlink, a gitlink's
-        # directory, and a path still in the index but deleted from the work
-        # tree are not files to scan.
+        # A symlink, a gitlink's directory, and a path still in the index
+        # but deleted from the work tree are not files to scan; grep would
+        # fail on the last two and exit the run 2. Residual: a file under an
+        # unsearchable directory tests absent too, and is skipped rather
+        # than failing the run.
         if [ -L "$ROOT/$file" ] || [ ! -f "$ROOT/$file" ]; then
             continue
         fi
