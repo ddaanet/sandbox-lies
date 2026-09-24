@@ -256,14 +256,23 @@ Cross-cutting, bounded:
      status 0.
   3. Non-file targets: `urls and anchors ignored` — links to `https://…`,
      `mailto:` and `#section` yield status 0; a link `b.md#part` checks
-     `b.md` only.
+     `b.md` only; `link text does not cut the target` (slice 1's code
+     review; proven by mutation) — `[a (b)](x.md)` beside an existing
+     `x.md` yields status 0, and `[a [b] c](missing.md)` yields its
+     `broken-link` line.
   4. Code is not a link: `link inside a code span or fence ignored` — a
      broken target inside backticks or a fenced block yields status 0.
-  5. Whitespace: `linking file with a space` — `docs/a b.md` with a broken
-     link yields `broken-link: docs/a b.md -> missing.md`.
+  5. Whitespace and edge inputs (edge cases from slice 1's code review;
+     proven by mutation): `linking file with a space` — `docs/a b.md` with
+     a broken link yields `broken-link: docs/a b.md -> missing.md`;
+     `deleted tracked file is skipped` — a `docs/gone.md` added, then
+     removed from the work tree only, yields status 0; `unreadable file
+     exits 2` — a mode-000 `docs/a.md` yields status 2 and empty stdout
+     (skipped when run as root); `extra argument exits 2` — as Item 2.1's.
   6. BSD tools: `broken link under BSD stubs` — slice 1's broken-link
-     fixture with `make_bsd_stubs grep sed` on `PATH` yields the same stdout
-     and status 1.
+     fixture with `make_bsd_stubs grep mktemp` on `PATH` (the stubbed tools
+     the script calls; it calls no `sed`) yields the same stdout and exit
+     status 1. The item's `precommit` wiring rides this slice's GREEN.
 
 - Item 2.3: `hooks/hooks.json`, `hooks/annotate.sh`, `lib/verdicts.sh`,
   `lib/matchers.sh`, `tests/hook.bats`, `tests/helpers/hook.bash`,
