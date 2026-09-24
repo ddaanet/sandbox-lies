@@ -6,19 +6,14 @@
 # tool_response.stdout, a newline, and tool_response.stderr of a PostToolUse
 # payload (D-13).
 #
-# One jq call reads the whole payload and cannot itself error on any input:
-# `-Rs` slurps stdin as raw text (never auto-decoded, so a non-JSON payload
-# never reaches jq's parser); `fromjson?` attempts the decode inside the
-# filter and `?` swallows a failure there instead of raising
-# (jsonlreadertypeguard); `select(type == "object")` drops a scalar or array
-# payload the same way, since indexing one is fatal; every leaf read
-# (`.error`, `.tool_response.stdout`, `.tool_response.stderr`) ends in
-# `strings`, so a non-string field (a number, an object, an array) is
-# dropped rather than rendered as text. jq prints the event name on its own
-# line, then the text: event names hold no newline (the harness emits only
-# "PostToolUse" or "PostToolUseFailure"), so the first line is always
-# exactly the event and nothing in the text can be mistaken for the split
-# point.
+# One jq call reads stdin and cannot error on any input, so nothing reaches
+# stderr: `-Rs` takes it as one raw string and `fromjson?` decodes it,
+# dropping what does not parse; `select(type == "object")` drops a scalar or
+# array, which jq cannot index without a fatal error; only a string field is
+# read as text. The output is the event, then the text, one per line. The
+# event is printed only when it equals one of the two literal names, so the
+# first newline is always the split point. NUL bytes are dropped in jq:
+# bash drops them from a `$(...)` too, but warns on stderr.
 #
 # Writes nothing (NFR-4): no here-document, which bash before 5.1 spools
 # through a temp file.
@@ -34,22 +29,18 @@ lib_dir="$script_dir/../lib"
 nl='
 '
 
-payload=$(cat) || exit 0
-
-parsed=$(printf '%s' "$payload" | jq -Rrs '
+parsed=$(jq -Rrs '
     fromjson? | select(type == "object") |
-    (.hook_event_name // "") as $event |
-    select($event != "") |
-    $event,
-    (if $event == "PostToolUseFailure" then
-       (.error | strings)
-     elif $event == "PostToolUse" then
-       (.tool_response | objects) as $tr |
-       ($tr.stdout | strings), ($tr.stderr | strings)
-     else empty end)
+    .hook_event_name as $event |
+    if $event == "PostToolUseFailure" then
+      $event, (.error | strings)
+    elif $event == "PostToolUse" then
+      $event,
+      (.tool_response | objects | (.stdout | strings), (.stderr | strings))
+    else empty end |
+    split("\u0000") | join("")
   ') || exit 0
 
-event="$parsed"
 text=""
 case "$parsed" in
   *"$nl"*)
@@ -58,7 +49,6 @@ case "$parsed" in
     ;;
 esac
 
-[ -n "$event" ] || exit 0
 [ -n "$text" ] || exit 0
 
 # Non-zero is either nothing fired or detect failed: both are silent.
