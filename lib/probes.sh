@@ -40,15 +40,43 @@ probe_git_lock() {
         fi
         printf 'path=%s\n' "$path"
     else
-        local bytes mtime now age
-        # BSD wc left-pads its count with spaces; strip before printing.
-        bytes=$(wc -c <"$path" | tr -d '[:space:]')
-        mtime=$(stat -c %Y "$path")
-        now=$(date +%s)
-        age=$((now - mtime))
+        local mtime bytes='' now age
+        # Git removes a lock when its holder exits, so the lock can vanish
+        # after the presence test. stat's stderr is captured, not silenced: a
+        # failure with the lock now absent is that vanish, and reads as gone
+        # under either flag (a real lock existed and git cleaned it); any
+        # other failure goes on to stderr and the age line is left out.
+        if ! mtime=$(stat -c %Y "$path" 2>&1); then
+            if [ ! -e "$path" ] && [ ! -L "$path" ]; then
+                printf 'gone\n'
+                printf 'path=%s\n' "$path"
+                return 0
+            fi
+            printf '%s\n' "$mtime" >&2
+            mtime=''
+        fi
+        # Size only of a readable regular file, else the bytes line is left
+        # out: reading a FIFO blocks until the hook times out, and a
+        # directory, an unreadable file or a dangling symlink errors.
+        # Residual: a lock vanishing between this test and the read still
+        # prints the shell's redirect error.
+        if [ -f "$path" ] && [ -r "$path" ]; then
+            # BSD wc left-pads its count with spaces; strip before printing.
+            bytes=$(wc -c <"$path" | tr -d '[:space:]')
+        fi
         printf 'orphan\n'
-        printf 'bytes=%s\n' "$bytes"
-        printf 'age=%s\n' "$age"
+        if [ -n "$bytes" ]; then
+            printf 'bytes=%s\n' "$bytes"
+        fi
+        if [ -n "$mtime" ]; then
+            now=$(date +%s)
+            age=$((now - mtime))
+            # An mtime in the future (clock skew) reads as just written.
+            if [ "$age" -lt 0 ]; then
+                age=0
+            fi
+            printf 'age=%s\n' "$age"
+        fi
         printf 'path=%s\n' "$path"
     fi
 }
