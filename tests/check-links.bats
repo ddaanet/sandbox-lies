@@ -138,3 +138,83 @@ broken-link: skills/x/references/n.md -> missing.md" ]
   [ -z "$output" ]
   [ -z "$stderr" ]
 }
+
+# Item 2.2 slice 3: non-file targets, and slice 1's code-review fix pinned by
+# mutation.
+
+@test "urls and anchors ignored" {
+  local dir
+  dir=$(make_fixture_root urls)
+  mkdir -p "$dir/docs"
+  # None of these targets resolve as a path relative to docs/ — an http(s),
+  # mailto or anchor target that is still checked as a literal path would
+  # report every one of these as broken. The broken link last is the
+  # sentinel: a skip that abandons the rest of the file (`return` or `break`
+  # in place of `continue`) would drop its line along with the skipped ones.
+  printf '%s\n' '[h](http://example.org/x)' '[s](https://example.com/x)' \
+    '[m](mailto:person@example.com)' '[a](#section)' '[x](missing.md)' \
+    >"$dir/docs/a.md"
+  git -C "$dir" add docs/a.md
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 1 ]
+  [ "$output" = "broken-link: docs/a.md -> missing.md" ]
+  [ -z "$stderr" ]
+}
+
+@test "colon or double slash in a relative target is not mistaken for a URL" {
+  local dir
+  dir=$(make_fixture_root colon-decoy)
+  mkdir -p "$dir/docs"
+  # Neither target has a URL scheme: a scheme is a leading "name:" before
+  # any "/" (RFC 3986 4.2), and here the colon follows one; the double slash
+  # has no scheme before it. A scheme test
+  # broader than that (bare "contains a colon", a letter-led `[a-z]*:*`
+  # glob, "contains //") would wrongly skip these and miss that both are
+  # broken. A colon in the first segment ("note:x.md") is deliberately not
+  # used: per RFC 3986 it is a URI with scheme "note", so skipping it is as
+  # defensible as checking it, and the test must not pick between the two.
+  printf '%s\n' '[n](sub/a:missing.md)' '[d](sub//missing.md)' \
+    >"$dir/docs/a.md"
+  git -C "$dir" add docs/a.md
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 1 ]
+  [ "$output" = "broken-link: docs/a.md -> sub/a:missing.md
+broken-link: docs/a.md -> sub//missing.md" ]
+}
+
+@test "link with an anchor checks only the file part" {
+  local dir
+  dir=$(make_fixture_root anchor-part)
+  mkdir -p "$dir/docs"
+  # b.md exists, so a script checking the whole "b.md#part" string literally
+  # would find no such path and wrongly report it. c.md is missing, so a
+  # script that drops every link holding a "#" would wrongly stay silent.
+  printf '%s\n' '[b](b.md#part)' '[c](c.md#part)' >"$dir/docs/a.md"
+  : >"$dir/docs/b.md"
+  git -C "$dir" add docs/a.md docs/b.md
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 1 ]
+  # The report shows the target as written, "#part" included, matching the
+  # existing broken-link lines' use of the target as written in the link.
+  [ "$output" = "broken-link: docs/a.md -> c.md#part" ]
+}
+
+@test "link text does not cut the target" {
+  local dir
+  dir=$(make_fixture_root text-shape)
+  mkdir -p "$dir/docs"
+  # Parenthesised link text must not cut the target at the text's own "(",
+  # and bracketed link text must not hide the link behind an unmatched "]".
+  # x.md exists, so the first line's target resolves; missing.md does not,
+  # so the second line's is the only line in the report.
+  printf '%s\n' '[a (b)](x.md)' '[a [b] c](missing.md)' >"$dir/docs/a.md"
+  : >"$dir/docs/x.md"
+  git -C "$dir" add docs/a.md docs/x.md
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 1 ]
+  [ "$output" = "broken-link: docs/a.md -> missing.md" ]
+}
