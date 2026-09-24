@@ -80,6 +80,35 @@ $text"
   [ -z "$output" ]
 }
 
+@test "verdict text matches detectors.md" {
+  # Transcribed from docs/references/detectors.md's Verdict paragraphs, not
+  # copied from lib/verdicts.sh: a mismatch between the two must red here.
+  # The phantom-untracked paragraph is documented there as "As
+  # `phantom-chardev`, with: <addition>" — the chardev paragraph plus the
+  # addition, not that sentence transcribed literally.
+  local chardev_para addition line1 line2
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  chardev_para='The character-device entries in this listing are sandbox masks over dotfiles in the project root, not files in the repository; outside the sandbox they do not exist. Leave them out of every add, delete and report. `ls -a` and `git status` run unsandboxed show the real tree.'
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  addition='A cleanliness check that reads these `??` lines as dirty is reading the sandbox, not the tree.'
+
+  line1=$(verdict_text phantom_chardev - | sed -n '1p')
+  line2=$(verdict_text phantom_chardev - | sed -n '2p')
+  [ "$line1" = "$chardev_para" ]
+  [ "$line2" = 'phantom dotfiles — sandbox masks in listing' ]
+
+  line1=$(verdict_text phantom_untracked - | sed -n '1p')
+  line2=$(verdict_text phantom_untracked - | sed -n '2p')
+  [ "$line1" = "${chardev_para} ${addition}" ]
+  [ "$line2" = 'phantom dotfiles — masks listed as untracked' ]
+
+  line1=$(verdict_text phantom_gitadd - | sed -n '1p')
+  line2=$(verdict_text phantom_gitadd - | sed -n '2p')
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  [ "$line1" = '`git add` aborted on a sandbox mask, not a file. Stage explicit paths, or re-run the same command unsandboxed.' ]
+  [ "$line2" = 'git add — refused a sandbox mask' ]
+}
+
 @test "no removal instruction" {
   local all stripped phrase
   all=$(all_verdict_text)

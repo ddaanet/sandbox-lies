@@ -112,6 +112,68 @@ setup() {
     | grep -qF 'reading the sandbox, not the tree'
 }
 
+@test "chardev listing alone keeps its own paragraph" {
+  # The positive half of the shared-paragraph case below, over the same
+  # chardev listing without the porcelain one. A hook that drops
+  # phantom-chardev always, rather than only when phantom-untracked also
+  # fires, passes the shared case and fails here.
+  local text payload expected_ctx expected_sys
+  text=$(cat "$FIXTURES/fire-masks-chardev-explicit.txt")
+  payload=$(post_payload "$text")
+  run bash -c 'printf "%s" "$1" | bash "$2"' \
+    _ "$payload" "$HOOK_COPY/hooks/annotate.sh"
+  [ "$status" -eq 0 ]
+
+  expected_ctx=$(bash -c '. "$1"; verdict_phantom_chardev' \
+    _ "$HOOK_COPY/lib/verdicts.sh" </dev/null | sed -n '1p')
+  expected_sys=$(bash -c '. "$1"; verdict_phantom_chardev' \
+    _ "$HOOK_COPY/lib/verdicts.sh" </dev/null | sed -n '2p')
+  # Empty expectations would match a hook that printed nothing.
+  [ -n "$expected_ctx" ]
+  [ -n "$expected_sys" ]
+
+  [ "$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')" \
+    = "$expected_ctx" ]
+  [ "$(printf '%s' "$output" | jq -r '.systemMessage')" = "$expected_sys" ]
+}
+
+@test "both listing verdicts share one paragraph" {
+  # Item 2.3 says only verdict_phantom_untracked runs when both listing
+  # detectors fire, since its paragraph already restates the chardev one —
+  # so this asserts against verdict_phantom_untracked's own output, not a
+  # substring, because that paragraph contains the chardev text too. The
+  # text is the two listings one after the other, as one call running both
+  # commands prints them.
+  local chardev porcelain text payload expected_ctx expected_sys
+  chardev=$(cat "$FIXTURES/fire-masks-chardev-explicit.txt")
+  porcelain=$(cat "$FIXTURES/fire-masks-porcelain.txt")
+  text=$(printf '%s\n%s' "$chardev" "$porcelain")
+  # Both matchers fire on this text, or a hook emitting only the untracked
+  # paragraph had no chardev one to leave out. Asked of the matchers rather
+  # than of detect, whose output is one place the merge may be implemented.
+  printf '%s\n' "$text" | bash -c '. "$1"; match_phantom_chardev' \
+    _ "$HOOK_COPY/lib/matchers.sh"
+  printf '%s\n' "$text" | bash -c '. "$1"; match_phantom_untracked' \
+    _ "$HOOK_COPY/lib/matchers.sh"
+
+  payload=$(post_payload "$text")
+  run bash -c 'printf "%s" "$1" | bash "$2"' \
+    _ "$payload" "$HOOK_COPY/hooks/annotate.sh"
+  [ "$status" -eq 0 ]
+
+  expected_ctx=$(bash -c '. "$1"; verdict_phantom_untracked' \
+    _ "$HOOK_COPY/lib/verdicts.sh" </dev/null | sed -n '1p')
+  expected_sys=$(bash -c '. "$1"; verdict_phantom_untracked' \
+    _ "$HOOK_COPY/lib/verdicts.sh" </dev/null | sed -n '2p')
+  # Empty expectations would match a hook that printed nothing.
+  [ -n "$expected_ctx" ]
+  [ -n "$expected_sys" ]
+
+  [ "$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')" \
+    = "$expected_ctx" ]
+  [ "$(printf '%s' "$output" | jq -r '.systemMessage')" = "$expected_sys" ]
+}
+
 @test "hooks.json names both events" {
   # Exactly these two events (FR-1: no PreToolUse), each registered once, as
   # the command hook.bats runs: `bash` on the plugin root's script.

@@ -37,19 +37,30 @@ esac
 
 [ -n "$text" ] || exit 0
 
+names=$(printf '%s\n' "$text" | detect)
+
+# detectors.md's phantom-chardev flag policy: when phantom-untracked also
+# fires, its paragraph already restates the chardev one, so only
+# verdict_phantom_untracked runs and phantom-chardev is skipped here.
+untracked_fires=0
+printf '%s\n' "$names" | grep -qFx 'phantom-untracked' && untracked_fires=1
+
 nl='
 '
 context=""
 human=""
 while IFS= read -r name; do
   [ -n "$name" ] || continue
+  if [ "$name" = "phantom-chardev" ] && [ "$untracked_fires" -eq 1 ]; then
+    continue
+  fi
   out=$("verdict_${name//-/_}" </dev/null) || exit 0
   para=${out%%"$nl"*}
   line=${out#*"$nl"}
   line=${line%%"$nl"*}
   context="${context:+$context$nl}$para"
   human="${human:+$human }$line"
-done < <(printf '%s\n' "$text" | detect)
+done < <(printf '%s\n' "$names")
 
 [ -n "$context" ] || exit 0
 
