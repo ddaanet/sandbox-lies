@@ -3,7 +3,7 @@
 # reads the probe's key=value lines on stdin (empty when the detector has no
 # probe), and prints the agent paragraph on line 1, the human line on line 2.
 # Phantom verdicts take no outcome argument. Text from
-# docs/references/detectors.md; Item 4.1 adds the lock verdicts.
+# docs/references/detectors.md.
 set -u
 
 verdict_phantom_chardev() {

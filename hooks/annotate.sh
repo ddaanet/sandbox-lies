@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
-# The hook: payload -> text -> detect -> probes -> one JSON verdict object.
+# The hook: payload -> text -> detect -> verdicts -> one JSON object.
 # Registered on PostToolUse and PostToolUseFailure, matcher Bash
 # (hooks/hooks.json). Any parse or runtime failure exits 0 with no output
-# (FR-3).
+# (FR-3). The text is the `error` string of a PostToolUseFailure payload
+# (D-13); a PostToolUse payload contributes none.
 #
-# Slice 1 (Item 2.3): the failure-payload text comes from `error` (D-13); the
-# PostToolUse success-text rebuild from tool_response.stdout/stderr lands in
-# a later slice, so a success payload contributes no text here yet. Probe
-# calls join in Item 4.1.
+# Writes nothing (NFR-4): no here-document, which bash before 5.1 spools
+# through a temp file.
 set -u
 
 script_dir=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd) || exit 0
@@ -31,26 +30,23 @@ esac
 
 [ -n "$text" ] || exit 0
 
-names=$(printf '%s\n' "$text" | detect)
-[ -n "$names" ] || exit 0
-
-context_parts=()
-human_parts=()
+nl='
+'
+context=""
+human=""
 while IFS= read -r name; do
   [ -n "$name" ] || continue
-  fn="verdict_${name//-/_}"
-  out=$("$fn" </dev/null)
-  context_parts+=("$(printf '%s\n' "$out" | sed -n '1p')")
-  human_parts+=("$(printf '%s\n' "$out" | sed -n '2p')")
-done <<NAMES
-$names
-NAMES
+  out=$("verdict_${name//-/_}" </dev/null) || exit 0
+  para=${out%%"$nl"*}
+  line=${out#*"$nl"}
+  line=${line%%"$nl"*}
+  context="${context:+$context$nl}$para"
+  human="${human:+$human }$line"
+done < <(printf '%s\n' "$text" | detect)
 
-[ "${#context_parts[@]}" -gt 0 ] || exit 0
+[ -n "$context" ] || exit 0
 
-context=$(printf '%s\n' "${context_parts[@]}")
-human=$(printf '%s ' "${human_parts[@]}")
-human="${human% }"
-
-jq -n --arg event "$event" --arg ctx "$context" --arg sys "$human" \
-  '{hookSpecificOutput: {hookEventName: $event, additionalContext: $ctx}, systemMessage: $sys}'
+json=$(jq -n --arg event "$event" --arg ctx "$context" --arg sys "$human" \
+  '{hookSpecificOutput: {hookEventName: $event, additionalContext: $ctx}, systemMessage: $sys}') \
+  || exit 0
+printf '%s\n' "$json"
