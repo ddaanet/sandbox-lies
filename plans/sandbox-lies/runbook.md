@@ -540,15 +540,21 @@ Cross-cutting, bounded:
      stderr; `lsof decides when present` — an `lsof` stub printing two pids
      one per line beside a `fuser` stub answering differently: `pid=` the
      first, exactly one `pid=` line, the stub called with `-w -t <path>`
-     (settles several holders as first pid, one line). These cases go
-     in `tests/probes-edges.bats` (opened by slice 5).
+     (settles several holders as first pid, one line). `dangling symlink
+     lock is a quiet orphan` (slice 5's code review; proven by mutation) —
+     the lock a symlink to a missing file, flag `false` and `true`:
+     `orphan`, `path=`, an `age=` line, no `bytes=` line, empty stderr.
+     These cases go in `tests/probes-edges.bats` (opened by slice 5).
   7. `relative path resolves against cwd` — text naming `.git/index.lock`,
      `$2` the repo dir holding a present lock: `orphan`, `path=` absolute;
      the probe runs from an unrelated working directory, so only `$2` can
      supply the lock (slice 2's code review).
   8. `config-lock reads its own error` — config-lock error text (shaped as
      `fire-configlock-remote-add`) with an absent lock, flag `false`:
-     `mask`; with a present lock: `orphan`.
+     `mask`; with a present lock: `orphan`. The GREEN lifts everything
+     after path extraction in `probe_git_lock` into a helper both probes
+     call (slice 5's code review flagged it, deferred to here so slice 7's
+     `$2` placement is settled first).
   9. `BSD stat` — slice 3 with `make_bsd_stubs stat` on `PATH`: `orphan`,
      `bytes=7`, an `age=` integer ≥ 0, within a minute of now minus the
      backdated mtime (slice 3's code review). `bsd-stubs.bash` also gains a
@@ -557,7 +563,9 @@ Cross-cutting, bounded:
      nothing` (slice 4's code review: its `mktemp` passed every test; proven
      by mutation) — with a `mktemp` spy on `PATH` and `TMPDIR` naming a
      missing directory, held, unheld-present and absent locks each yield
-     their outcome, empty stderr, and no spy call.
+     their outcome, empty stderr, and no spy call. The BSD-first mtime read
+     keeps stderr out of the value and checks it is all digits before the
+     arithmetic (slice 5's code review).
 
 ## Phase 3: Evidence (type: general)
 
@@ -669,7 +677,10 @@ fire case under `make_bsd_stubs grep sed` (Portability).
      `probe_git_lock` printing `mask`: context contains `Re-run the same
      command with` and `GIT_INDEX_FILE`; `systemMessage` equals
      `index.lock — sandbox mask, no file exists`. Verdict table rows added
-     for all ten name/outcome pairs.
+     for all ten name/outcome pairs. The probe reports `mask` for a
+     character device under flag `true` too, where re-running unsandboxed
+     is a no-op: the `mask` paragraph's wording for that case is checked
+     here (Item 2.4 slice 5's code review).
   2. `held interpolates the pid` — stub prints `held` and `pid=4242`:
      context contains `pid 4242`; human line `index.lock — held by pid
      4242`.
