@@ -23,43 +23,43 @@ _probe_lock_path() {
         | head -n 1
 }
 
-# Prints the first pid holding <path> open; empty when neither holder tool
-# is present on PATH, or the present one finds no holder. The first of
-# lsof -t / fuser found on PATH decides, and the other is never tried:
-# lsof is absent on this box, so that branch cannot be exercised here and is
-# kept minimal (lsof -t already prints bare pids, one per line, nothing
-# when unheld, so no further shaping should be needed).
-_probe_holder_pid() {
-    local path="$1"
+# Prints the pids holding <path> open as the holder tool prints them (lsof -t
+# one per line, fuser space-padded on one line); nothing when neither tool is
+# on PATH or the present one finds no holder. The first of lsof and fuser
+# found on PATH decides; the other is never tried. Either tool exits 1 with
+# no pid when nothing holds the file, so only the pids decide, not the exit.
+#
+# The tool's stdout goes straight out through fd 3 while its stderr is held
+# in a variable: the probe writes no file (NFR-4, the hook runs with $TMPDIR
+# unset). That stderr is passed on unless it is one of two expected shapes:
+# - fuser's "<path>:" line, then only access-code letters (psmisc c/e/r/m;
+#   other builds use their own): normal operation, not a diagnostic. POSIX
+#   has fuser print it on every call; psmisc only when it finds a holder.
+# - anything, once the lock is absent: git removed it after the presence
+#   test (a holder that exited), the tool reported the missing file, and the
+#   stat below reads the vanish as gone.
+# lsof runs with -w: its warnings are about other mounts it cannot stat
+# (/proc, FUSE), printed on every call on hosts that have such mounts; an
+# error about <path> itself is not a warning and still arrives. Residual:
+# the lsof branch runs in the suite only on hosts that have lsof.
+_probe_holder_pids() {
+    local path="$1" err rest
     if command -v lsof >/dev/null; then
-        lsof -t "$path" | head -n 1
+        { err=$(lsof -w -t "$path" 2>&1 >&3 3>&-); } 3>&1
+    elif command -v fuser >/dev/null; then
+        { err=$(fuser "$path" 2>&1 >&3 3>&-); } 3>&1
+    else
         return 0
     fi
-    if command -v fuser >/dev/null; then
-        _probe_fuser_pid "$path"
+    [ -n "$err" ] || return 0
+    rest=${err#"$path:"}
+    if [ "$rest" != "$err" ] && [ -z "${rest//[[:alpha:]]/}" ]; then
+        return 0
     fi
-}
-
-# fuser exits 0 with the holder pid(s) on stdout when <path> is held, 1 with
-# nothing on either stream when it is not: that exit is the no-holder
-# result, not an error. fuser also writes "<path>:" to stderr on every call
-# that resolves the path, whether or not a holder is found — normal
-# operation, not a diagnostic — so that exact line is captured and dropped;
-# any other stderr (for example an unquoted path splitting into words that
-# each fail to resolve) is passed through unfiltered.
-_probe_fuser_pid() {
-    local path="$1" out err_file first
-    err_file=$(mktemp)
-    out=$(fuser "$path" 2>"$err_file")
-    if [ "$(cat "$err_file")" != "$path:" ]; then
-        cat "$err_file" >&2
+    if [ ! -e "$path" ] && [ ! -L "$path" ]; then
+        return 0
     fi
-    rm -f "$err_file"
-    first=''
-    for first in $out; do
-        break
-    done
-    [ -n "$first" ] && printf '%s' "$first"
+    printf '%s\n' "$err" >&2
 }
 
 probe_git_lock() {
@@ -79,12 +79,19 @@ probe_git_lock() {
         fi
         printf 'path=%s\n' "$path"
     else
-        local holder_pid
-        # Runs before the size and age reads: a holder that exits during
-        # this check leaves no trace here (fuser/lsof just report no
-        # holder), and falls through to the stat-based vanished-lock check
-        # below, which reads that as gone rather than orphan.
-        holder_pid=$(_probe_holder_pid "$path")
+        local pids holder_pid
+        # Runs before the size and age reads, so a lock removed while this
+        # check runs is absent at the stat below and reads gone, not orphan.
+        # The tools see open descriptors only: git closes a lock before it
+        # renames or removes it, and `commit -a` leaves index.lock present
+        # and closed while its pre-commit hook runs, so a lock in either
+        # state reads unheld. A holder exiting just after the tool saw it
+        # reads held.
+        pids=$(_probe_holder_pids "$path")
+        # First pid only (pid= is singular), parsed without word splitting
+        # or globbing: drop what precedes the first digit, keep that run.
+        pids=${pids#"${pids%%[0-9]*}"}
+        holder_pid=${pids%%[!0-9]*}
         if [ -n "$holder_pid" ]; then
             printf 'held\n'
             printf 'pid=%s\n' "$holder_pid"
