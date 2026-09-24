@@ -157,11 +157,11 @@ Probes are bounded: no recursive `du`, no network, hook timeout 10 s. Where ·
 pinned by: `hooks/hooks.json` timeout · `tests/hook.bats` asserts empty stdout
 on quiet fixtures. Planned.
 
-**NFR-5 — Size and links.** Every document and script is under 400 lines (a
-`SKILL.md` under 200), and every relative markdown link resolves. Where · pinned
-by: `scripts/check-line-limits.sh`, `scripts/check-links.sh` · both run in
-`just precommit`. Partial (80-column reflow and line caps gated; the link check
-pending).
+**NFR-5 — Size and links.** Every document and script is at most 400 lines (a
+`SKILL.md` at most 200), and every relative markdown link resolves. Where ·
+pinned by: `scripts/check-line-limits.sh`, `scripts/check-links.sh` · both run
+in `just precommit`. Partial (80-column reflow and line caps gated; the link
+check pending).
 
 **NFR-4 — Hermetic.** The hook writes nothing (it runs outside the sandbox with
 `$TMPDIR` unset) and reads only the repository the call ran in. Where · pinned
