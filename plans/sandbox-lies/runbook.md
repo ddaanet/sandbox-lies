@@ -200,10 +200,18 @@ Cross-cutting, bounded:
   3. Scripts in scope: `oversized script is reported` — a 401-line
      `lib/x.sh` yields the `> 400` line; `plans/ is out of scope` — a
      401-line `plans/x.md` yields status 0; `untracked file is out of
-     scope` — an untracked 401-line `docs/u.md` yields status 0.
+     scope` — an untracked 401-line `docs/u.md` yields status 0;
+     `deleted tracked file is skipped` — a 401-line `docs/gone.md` added,
+     then removed from the work tree only, yields status 0 (slice 1's code
+     review added the skip; proven by mutation).
   4. Whitespace: `path with a space` — a 401-line `docs/a b.md` is reported
      with its full path.
-  5. BSD tools: `oversized markdown under BSD stubs` — slice 1's 401-line
+  5. Edge inputs (slice 1's code review added both; proven by mutation):
+     `unterminated last line counts` — 401 lines with no final newline
+     yields `oversized-file: docs/a.md: 401 lines > 400` and status 1;
+     `extra argument exits 2` — ROOT then a second argument yields status 2
+     and empty stdout.
+  6. BSD tools: `oversized markdown under BSD stubs` — slice 1's 401-line
      fixture with `make_bsd_stubs grep sed` on `PATH` yields the same stdout
      and status 1.
 
