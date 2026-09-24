@@ -99,7 +99,7 @@ Cross-cutting, bounded:
     executed: runs `detect` on stdin
   - `detect` — stdin: result text; stdout: one detector name per firing
     matcher, catalogue order, one per line; exit 0 when any fired, 1 when
-    none, 2 on a buffering failure (until Item 2.3 removes the buffer)
+    none (exit 2 on a buffering failure went with the buffer in Item 2.3)
   - `tests/fixtures/<fire|quiet>-<topic>-<case>.txt` — one verbatim tool
     result per file
 
