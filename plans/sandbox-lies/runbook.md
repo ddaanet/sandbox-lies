@@ -213,7 +213,8 @@ Cross-cutting, bounded:
      review; proven by mutation); `untracked file is out of
      scope` — an untracked 401-line `docs/u.md` yields status 0;
      `deleted tracked file is skipped` — a 401-line `docs/gone.md` added,
-     then removed from the work tree only, yields status 0 (slice 1's code
+     then removed from the work tree only, beside an oversized sentinel,
+     yields only the sentinel's line (paired by Item 2.2's slice 6 review) (slice 1's code
      review added the skip; proven by mutation).
   5. Remaining contract and wiring (slices 5–7 merged after slice 4: none
      adds behaviour, so each case is proven by mutation, and the item's
