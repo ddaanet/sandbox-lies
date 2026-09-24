@@ -197,21 +197,27 @@ Cross-cutting, bounded:
      `oversized-file: docs/a.md: 401 lines > 400` for a 401-line file.
   2. SKILL.md cap: `SKILL.md capped at 200` — asserts
      `oversized-file: skills/x/SKILL.md: 201 lines > 200` and status 1.
-  3. Scripts in scope: `oversized script is reported` — a 401-line
+  3. Markdown scope (added by slice 2's reviews): `oversized skills node is
+     reported` — a 401-line `skills/x/references/n.md` yields the `> 400`
+     line; `oversized root markdown is reported` — a 401-line `README.md`
+     yields the `> 400` line; `markdown elsewhere is out of scope` — a
+     401-line `lib/x.md` and a 201-line `.claude/skills/y/SKILL.md` yield
+     status 0 (the latter pins the SKILL.md cap's `skills/` anchor).
+  4. Scripts in scope: `oversized script is reported` — a 401-line
      `lib/x.sh` yields the `> 400` line; `plans/ is out of scope` — a
      401-line `plans/x.md` yields status 0; `untracked file is out of
      scope` — an untracked 401-line `docs/u.md` yields status 0;
      `deleted tracked file is skipped` — a 401-line `docs/gone.md` added,
      then removed from the work tree only, yields status 0 (slice 1's code
      review added the skip; proven by mutation).
-  4. Whitespace: `path with a space` — a 401-line `docs/a b.md` is reported
+  5. Whitespace: `path with a space` — a 401-line `docs/a b.md` is reported
      with its full path.
-  5. Edge inputs (slice 1's code review added both; proven by mutation):
+  6. Edge inputs (slice 1's code review added both; proven by mutation):
      `unterminated last line counts` — 401 lines with no final newline
      yields `oversized-file: docs/a.md: 401 lines > 400` and status 1;
      `extra argument exits 2` — ROOT then a second argument yields status 2
      and empty stdout.
-  6. BSD tools: `oversized markdown under BSD stubs` — slice 1's 401-line
+  7. BSD tools: `oversized markdown under BSD stubs` — slice 1's 401-line
      fixture with `make_bsd_stubs grep sed` on `PATH` yields the same stdout
      and status 1.
 
