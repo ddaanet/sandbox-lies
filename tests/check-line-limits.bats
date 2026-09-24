@@ -50,3 +50,23 @@ make_fixture_root() {
   [ "$status" -eq 1 ]
   [ "$output" = "oversized-file: docs/a.md: 401 lines > 400" ]
 }
+
+@test "SKILL.md capped at 200" {
+  local dir
+  dir=$(make_fixture_root skill-cap)
+  mkdir -p "$dir/skills/x/references"
+  # 201 lines: one over the 200 cap this slice adds. The exact "> 200" in the
+  # expected line pins the cap itself — a 400 cap (docs/'s) or a 201 cap
+  # would leave a 201-line file clean, and a 199 cap would print the wrong
+  # number.
+  seq 201 >"$dir/skills/x/SKILL.md"
+  # The same 201 lines in a sibling references node, which the exact
+  # single-line output requires to stay clean: the 200 cap is SKILL.md's
+  # alone, and a 200 cap over all of skills/ markdown reports this too.
+  seq 201 >"$dir/skills/x/references/n.md"
+  git -C "$dir" add skills/x/SKILL.md skills/x/references/n.md
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 1 ]
+  [ "$output" = "oversized-file: skills/x/SKILL.md: 201 lines > 200" ]
+}
