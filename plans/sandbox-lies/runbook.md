@@ -269,7 +269,16 @@ Cross-cutting, bounded:
      removed from the work tree only, yields status 0; `unreadable file
      exits 2` — a mode-000 `docs/a.md` yields status 2 and empty stdout
      (skipped when run as root); `extra argument exits 2` — as Item 2.1's.
-  6. BSD tools: `broken link under BSD stubs` — slice 1's broken-link
+  6. Shared walk (`scripts/lib/tracked.sh`, pinned through this suite;
+     slice 2's code review added each; proven by mutation): `tracked
+     symlink is skipped` — a tracked `docs/l.md` symlink to an untracked
+     file holding a broken link yields status 0; `bare-name invocation` —
+     `cd` into `scripts/` and `bash check-links.sh <root>` yields the same
+     stdout and status as slice 1's broken case; `missing helper exits 2` —
+     a copy of the script with no `lib/` beside it yields status 2 and
+     empty stdout; `unmerged path walked once` — a real content conflict in
+     `docs/a.md` holding one broken link yields exactly one line.
+  7. BSD tools: `broken link under BSD stubs` — slice 1's broken-link
      fixture with `make_bsd_stubs grep mktemp` on `PATH` (the stubbed tools
      the script calls; it calls no `sed`) yields the same stdout and exit
      status 1. The item's `precommit` wiring rides this slice's GREEN.
