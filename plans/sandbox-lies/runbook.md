@@ -246,14 +246,22 @@ Cross-cutting, bounded:
      empty stdout for `docs/a.md` linking `(b.md)` beside an existing
      `docs/b.md`; `broken link is reported` — asserts status 1 and stdout
      `broken-link: docs/a.md -> missing.md`.
-  2. Non-file targets: `urls and anchors ignored` — links to `https://…`,
+  2. Scope (added before the slice started, from Item 2.1's reviews: the
+     scope is where its gaps were): `broken links in scope are reported` —
+     one broken link each in `docs/a.md`, `skills/x/SKILL.md`,
+     `skills/x/references/n.md` and root `README.md` yields four lines in
+     `git ls-files` order; `markdown out of scope is ignored` — a broken
+     link in `plans/x.md`, `plugin-dev/x.md`, `lib/x.md`,
+     `.claude/skills/y/SKILL.md` and an untracked `docs/u.md` yields
+     status 0.
+  3. Non-file targets: `urls and anchors ignored` — links to `https://…`,
      `mailto:` and `#section` yield status 0; a link `b.md#part` checks
      `b.md` only.
-  3. Code is not a link: `link inside a code span or fence ignored` — a
+  4. Code is not a link: `link inside a code span or fence ignored` — a
      broken target inside backticks or a fenced block yields status 0.
-  4. Whitespace: `linking file with a space` — `docs/a b.md` with a broken
+  5. Whitespace: `linking file with a space` — `docs/a b.md` with a broken
      link yields `broken-link: docs/a b.md -> missing.md`.
-  5. BSD tools: `broken link under BSD stubs` — slice 1's broken-link
+  6. BSD tools: `broken link under BSD stubs` — slice 1's broken-link
      fixture with `make_bsd_stubs grep sed` on `PATH` yields the same stdout
      and status 1.
 
