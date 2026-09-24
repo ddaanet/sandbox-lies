@@ -68,3 +68,73 @@ make_fixture_root() {
   [ "$status" -eq 1 ]
   [ "$output" = "broken-link: docs/a.md -> missing.md" ]
 }
+
+# Item 2.2 slice 2: the tracked markdown scope, added from Item 2.1's
+# reviews — the scope is where its gaps were.
+
+@test "broken links in scope are reported" {
+  local dir
+  dir=$(make_fixture_root scope-in)
+  mkdir -p "$dir/docs/plans" "$dir/skills/x/references" \
+    "$dir/skills/plugin-dev"
+  # One broken link each, one per scope arm: root, docs/, skills/ itself,
+  # and skills/ at a deeper nesting.
+  printf '[m](missing.md)\n' >"$dir/README.md"
+  printf '[m](missing.md)\n' >"$dir/docs/a.md"
+  printf '[m](missing.md)\n' >"$dir/skills/x/SKILL.md"
+  printf '[m](missing.md)\n' >"$dir/skills/x/references/n.md"
+  # Directly under skills/, in no skill directory: rules out a skills arm
+  # narrowed to `skills/*/…` that the two files above both satisfy.
+  printf '[m](missing.md)\n' >"$dir/skills/top.md"
+  # A plans/ and a plugin-dev/ below an in-scope directory: only the
+  # root-level ones are excluded, so an unanchored `*plans/*` or
+  # `*plugin-dev/*` exclusion drops one of these. docs/plans/a.md also
+  # rules out a docs arm stopping at docs/'s own files.
+  printf '[m](missing.md)\n' >"$dir/docs/plans/a.md"
+  printf '[m](missing.md)\n' >"$dir/skills/plugin-dev/SKILL.md"
+  git -C "$dir" add README.md docs/a.md skills/x/SKILL.md \
+    skills/x/references/n.md skills/top.md docs/plans/a.md \
+    skills/plugin-dev/SKILL.md
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 1 ]
+  # `git ls-files` order: bytewise, so README.md sorts first ('R' < 'd'),
+  # skills/x/SKILL.md before skills/x/references/n.md ('S' < 'r').
+  [ "$output" = "broken-link: README.md -> missing.md
+broken-link: docs/a.md -> missing.md
+broken-link: docs/plans/a.md -> missing.md
+broken-link: skills/plugin-dev/SKILL.md -> missing.md
+broken-link: skills/top.md -> missing.md
+broken-link: skills/x/SKILL.md -> missing.md
+broken-link: skills/x/references/n.md -> missing.md" ]
+}
+
+@test "markdown out of scope is ignored" {
+  local dir
+  dir=$(make_fixture_root scope-out)
+  mkdir -p "$dir/plans" "$dir/plugin-dev" "$dir/lib/skills/y" \
+    "$dir/.claude/skills/y" "$dir/docs"
+  printf '[m](missing.md)\n' >"$dir/plans/x.md"
+  printf '[m](missing.md)\n' >"$dir/plugin-dev/x.md"
+  printf '[m](missing.md)\n' >"$dir/lib/x.md"
+  # skills/ nested under a dot-directory, not at the root: out of scope the
+  # same way `markdown elsewhere is out of scope` pins it for Item 2.1.
+  printf '[m](missing.md)\n' >"$dir/.claude/skills/y/SKILL.md"
+  # The same, under a plain directory: pins the skills arm's root anchor on
+  # its own. The dot-directory file alone lets an unanchored `*skills/*`
+  # arm pass behind a dot-directory skip.
+  printf '[m](missing.md)\n' >"$dir/lib/skills/y/SKILL.md"
+  # Not markdown, in an in-scope directory: the scope is markdown files, not
+  # every file under docs/ or skills/.
+  printf '[m](missing.md)\n' >"$dir/docs/x.txt"
+  git -C "$dir" add plans/x.md plugin-dev/x.md lib/x.md \
+    .claude/skills/y/SKILL.md lib/skills/y/SKILL.md docs/x.txt
+  # Untracked, in an otherwise in-scope directory: proves the walk itself
+  # excludes it, not just the scope check.
+  printf '[m](missing.md)\n' >"$dir/docs/u.md"
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ -z "$stderr" ]
+}

@@ -4,12 +4,8 @@
 #
 # Usage: check-links.sh [ROOT]
 #
-# ROOT is a git work tree, default `.`. Scope mirrors
-# scripts/check-line-limits.sh's markdown scope (Item 2.1).
-#
-# Slice 1: docs/*.md only. Later slices add skills/, root and exclusions
-# (slice 2); skipping URLs, mailto:, pure anchors and #fragment stripping
-# (slice 3); ignoring code spans and fenced blocks (slice 4).
+# ROOT is a git work tree, default `.`. Scope is `markdown_in_scope`
+# (scripts/lib/tracked.sh), shared with scripts/check-line-limits.sh.
 #
 # Exit codes: 0 clean, 1 on any broken link, 2 on a failure to run.
 
@@ -62,14 +58,15 @@ check_links_in() {
     done <<<"$links"
 }
 
-# Slice 1 scope: docs/*.md only. A later slice widens this to
-# `markdown_in_scope`'s full table (Item 2.2's scope slice).
 # shellcheck disable=SC2317 # invoked indirectly by name via
 # walk_tracked_files's $handler
 handle_file() {
-    case "$1" in
-    docs/*.md) check_links_in "$1" ;;
-    esac
+    # Not `markdown_in_scope "$1" && check_links_in "$1"`: under `set -e`,
+    # that form's own exit status is 1 for an out-of-scope file, and
+    # walk_tracked_files's caller runs under errexit too.
+    if markdown_in_scope "$1"; then
+        check_links_in "$1"
+    fi
 }
 
 walk_tracked_files check-links "$ROOT" handle_file
