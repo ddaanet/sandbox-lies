@@ -39,6 +39,17 @@ probe_git_lock() {
             printf 'mask\n'
         fi
         printf 'path=%s\n' "$path"
+    else
+        local bytes mtime now age
+        # BSD wc left-pads its count with spaces; strip before printing.
+        bytes=$(wc -c <"$path" | tr -d '[:space:]')
+        mtime=$(stat -c %Y "$path")
+        now=$(date +%s)
+        age=$((now - mtime))
+        printf 'orphan\n'
+        printf 'bytes=%s\n' "$bytes"
+        printf 'age=%s\n' "$age"
+        printf 'path=%s\n' "$path"
     fi
 }
 

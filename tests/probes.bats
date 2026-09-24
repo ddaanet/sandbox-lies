@@ -87,3 +87,81 @@ run_probe() {
   [ -z "$stderr" ]
   printf '%s\n' "$output" | grep -qxF "path=$lock"
 }
+
+# The lock holds exactly 7 bytes, no trailing newline. No holder process ever
+# opens it, and the holder tool (lsof or fuser) is on the ordinary PATH. Its
+# mtime is backdated to 2000 (POSIX touch -t), so an age over a day can only
+# come from reading the mtime: a constant 0, or an age taken from the ctime
+# or the clock, stays under it.
+@test "present unheld lock is orphan" {
+  local repo="$BATS_TEST_TMPDIR/r" cwd="$BATS_TEST_TMPDIR/elsewhere" lock age
+  mkdir -p "$repo/.git" "$cwd"
+  lock="$repo/.git/index.lock"
+  printf '1234567' >"$lock"
+  touch -t 200001010000 "$lock"
+
+  run_probe probe_git_lock false "$cwd" "$(git_lock_error "$lock")"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = orphan ]
+  printf '%s\n' "$output" | grep -qxF "bytes=7"
+  printf '%s\n' "$output" | grep -qE '^age=[0-9]+$'
+  age=$(printf '%s\n' "$output" | sed -n 's/^age=//p')
+  [ "$age" -gt 86400 ]
+  printf '%s\n' "$output" | grep -qxF "path=$lock"
+
+  run_probe probe_git_lock true "$cwd" "$(git_lock_error "$lock")"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = orphan ]
+  printf '%s\n' "$output" | grep -qxF "bytes=7"
+  printf '%s\n' "$output" | grep -qE '^age=[0-9]+$'
+  age=$(printf '%s\n' "$output" | sed -n 's/^age=//p')
+  [ "$age" -gt 86400 ]
+  printf '%s\n' "$output" | grep -qxF "path=$lock"
+}
+
+# Only the literal true reads as unsandboxed (slice 2's code review): an
+# empty flag and a wrong-case TRUE must both still read as sandboxed.
+@test "unexpected flag reads as sandboxed" {
+  local repo="$BATS_TEST_TMPDIR/r" cwd="$BATS_TEST_TMPDIR/elsewhere" lock
+  mkdir -p "$repo/.git" "$cwd"
+  lock="$repo/.git/index.lock"
+
+  run_probe probe_git_lock "" "$cwd" "$(git_lock_error "$lock")"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = mask ]
+  printf '%s\n' "$output" | grep -qxF "path=$lock"
+
+  run_probe probe_git_lock TRUE "$cwd" "$(git_lock_error "$lock")"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = mask ]
+  printf '%s\n' "$output" | grep -qxF "path=$lock"
+}
+
+# The repo directory name holds a single quote and a space (slice 1's code
+# review): pins the greedy .lock capture and quoting through the size and
+# mtime reads. Not the holder check's quoting: a split path has no holder
+# either, so it still reads orphan. The lock holds 12 bytes, not 7, so a
+# constant bytes=7 cannot pass every lock test.
+@test "quote and space in the lock path" {
+  local repo="$BATS_TEST_TMPDIR/it's here/r" cwd="$BATS_TEST_TMPDIR/elsewhere" lock
+  mkdir -p "$repo/.git" "$cwd"
+  lock="$repo/.git/index.lock"
+  printf '0123456789ab' >"$lock"
+
+  run_probe probe_git_lock false "$cwd" "$(git_lock_error "$lock")"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = orphan ]
+  printf '%s\n' "$output" | grep -qxF "path=$lock"
+  printf '%s\n' "$output" | grep -qxF "bytes=12"
+  printf '%s\n' "$output" | grep -qE '^age=[0-9]+$'
+}
