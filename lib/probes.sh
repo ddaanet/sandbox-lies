@@ -23,6 +23,45 @@ _probe_lock_path() {
         | head -n 1
 }
 
+# Prints the first pid holding <path> open; empty when neither holder tool
+# is present on PATH, or the present one finds no holder. The first of
+# lsof -t / fuser found on PATH decides, and the other is never tried:
+# lsof is absent on this box, so that branch cannot be exercised here and is
+# kept minimal (lsof -t already prints bare pids, one per line, nothing
+# when unheld, so no further shaping should be needed).
+_probe_holder_pid() {
+    local path="$1"
+    if command -v lsof >/dev/null; then
+        lsof -t "$path" | head -n 1
+        return 0
+    fi
+    if command -v fuser >/dev/null; then
+        _probe_fuser_pid "$path"
+    fi
+}
+
+# fuser exits 0 with the holder pid(s) on stdout when <path> is held, 1 with
+# nothing on either stream when it is not: that exit is the no-holder
+# result, not an error. fuser also writes "<path>:" to stderr on every call
+# that resolves the path, whether or not a holder is found — normal
+# operation, not a diagnostic — so that exact line is captured and dropped;
+# any other stderr (for example an unquoted path splitting into words that
+# each fail to resolve) is passed through unfiltered.
+_probe_fuser_pid() {
+    local path="$1" out err_file first
+    err_file=$(mktemp)
+    out=$(fuser "$path" 2>"$err_file")
+    if [ "$(cat "$err_file")" != "$path:" ]; then
+        cat "$err_file" >&2
+    fi
+    rm -f "$err_file"
+    first=''
+    for first in $out; do
+        break
+    done
+    [ -n "$first" ] && printf '%s' "$first"
+}
+
 probe_git_lock() {
     local flag="$1" text path
     text=$(cat)
@@ -40,6 +79,19 @@ probe_git_lock() {
         fi
         printf 'path=%s\n' "$path"
     else
+        local holder_pid
+        # Runs before the size and age reads: a holder that exits during
+        # this check leaves no trace here (fuser/lsof just report no
+        # holder), and falls through to the stat-based vanished-lock check
+        # below, which reads that as gone rather than orphan.
+        holder_pid=$(_probe_holder_pid "$path")
+        if [ -n "$holder_pid" ]; then
+            printf 'held\n'
+            printf 'pid=%s\n' "$holder_pid"
+            printf 'path=%s\n' "$path"
+            return 0
+        fi
+
         local mtime bytes='' now age
         # Git removes a lock when its holder exits, so the lock can vanish
         # after the presence test. stat's stderr is captured, not silenced: a

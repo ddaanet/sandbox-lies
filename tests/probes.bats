@@ -13,6 +13,19 @@ load helpers/bsd-stubs
 
 setup() {
   source "$ROOT/lib/probes.sh"
+  _probe_holder_pid=
+}
+
+# Kills the lock-holding background job the two "held" tests start. Guarded:
+# every other test leaves _probe_holder_pid at setup's empty default, so
+# there is nothing to kill for them.
+teardown() {
+  if [ -n "${_probe_holder_pid:-}" ]; then
+    # A killed job's wait returns 143, and a failing teardown fails the
+    # test; kill finds no process when the holder died on its own.
+    kill "$_probe_holder_pid" 2>/dev/null || :
+    wait "$_probe_holder_pid" 2>/dev/null || :
+  fi
 }
 
 # Self-quiet (FR-11): git's lock error is built from two fragments at run
@@ -164,4 +177,80 @@ run_probe() {
   printf '%s\n' "$output" | grep -qxF "path=$lock"
   printf '%s\n' "$output" | grep -qxF "bytes=12"
   printf '%s\n' "$output" | grep -qE '^age=[0-9]+$'
+}
+
+# hold_lock <lock> — backgrounds a holder opening <lock> read-only on fd 4
+# (any fd but 3), its pid in _probe_holder_pid for teardown to kill, and
+# returns only once the open has happened: the ready file is written after
+# it, so the probe never runs ahead of the holder. A holder that cannot open
+# the lock never writes the file, and the bounded wait fails the test.
+#
+# fd 3 is closed on the holder: bats duplicates its TAP stream onto fd 3,
+# and a background job holding it open keeps the run from returning until
+# the 30s sleep exits (seen on this box). The subshell execs sleep, so its
+# pid is $! throughout. A finished decoy job runs last, so $! in the test —
+# and in the probe's subshell, which inherits it — no longer names the
+# holder: a probe printing its own $! cannot pass for one naming the holder.
+hold_lock() {
+  local ready="$BATS_TEST_TMPDIR/holder-ready" tries=0
+  (
+    exec 4<"$1"
+    : >"$ready"
+    exec sleep 30
+  ) 3>&- &
+  _probe_holder_pid=$!
+  until [ -e "$ready" ]; do
+    [ "$tries" -lt 50 ] || return 1
+    tries=$((tries + 1))
+    sleep 0.1
+  done
+  : &
+  wait "$!"
+}
+
+# Exactly one pid= line: a holder query wider than the lock (a whole mount,
+# the directory) would list the holder among other pids. The flag only
+# selects mask or gone for an absent lock, so both flags read held.
+@test "held lock names the holder" {
+  local repo="$BATS_TEST_TMPDIR/r" cwd="$BATS_TEST_TMPDIR/elsewhere" lock
+  mkdir -p "$repo/.git" "$cwd"
+  lock="$repo/.git/index.lock"
+  printf '1234567' >"$lock"
+  hold_lock "$lock"
+
+  run_probe probe_git_lock false "$cwd" "$(git_lock_error "$lock")"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = held ]
+  printf '%s\n' "$output" | grep -qxF "pid=$_probe_holder_pid"
+  [ "$(printf '%s\n' "$output" | grep -c '^pid=')" -eq 1 ]
+
+  run_probe probe_git_lock true "$cwd" "$(git_lock_error "$lock")"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = held ]
+  printf '%s\n' "$output" | grep -qxF "pid=$_probe_holder_pid"
+  [ "$(printf '%s\n' "$output" | grep -c '^pid=')" -eq 1 ]
+}
+
+# Same holder, under the quote-and-space path: the only case in this list
+# pinning the holder tool's own quoting (slice 3's reviews). An unquoted
+# lsof/fuser invocation gets two nonexistent paths, finds no holder and
+# reports the misses on stderr (fuser does so, checked on this box).
+@test "held lock under a quoted, spaced path" {
+  local repo="$BATS_TEST_TMPDIR/it's here/r" cwd="$BATS_TEST_TMPDIR/elsewhere" lock
+  mkdir -p "$repo/.git" "$cwd"
+  lock="$repo/.git/index.lock"
+  printf '1234567' >"$lock"
+  hold_lock "$lock"
+
+  run_probe probe_git_lock false "$cwd" "$(git_lock_error "$lock")"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = held ]
+  printf '%s\n' "$output" | grep -qxF "pid=$_probe_holder_pid"
+  [ "$(printf '%s\n' "$output" | grep -c '^pid=')" -eq 1 ]
 }
