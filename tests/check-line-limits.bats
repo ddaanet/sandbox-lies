@@ -131,3 +131,117 @@ oversized-file: skills/x/references/n.md: 401 lines > 400" ]
   [ -z "$output" ]
   [ -z "$stderr" ]
 }
+
+@test "oversized script is reported" {
+  local dir
+  dir=$(make_fixture_root scripts)
+  mkdir -p "$dir/lib" "$dir/tools/plans" "$dir/tools/plugin-dev"
+  # One 401-line file per script type this item scopes in: an arm layout
+  # that leaves any one type uncounted drops its line from the output.
+  seq 401 >"$dir/lib/x.bash"
+  seq 401 >"$dir/lib/x.bats"
+  seq 401 >"$dir/lib/x.py"
+  seq 401 >"$dir/lib/x.sh"
+  # A `plans/` and a `plugin-dev/` that are not at the root: an unanchored
+  # exclusion (`*plans/*`) drops these. Under `tools/`, a directory the real
+  # tree lacks, so an arm listing the tree's script directories (as the
+  # port's `for dir in src tests` walk does) misses them too.
+  seq 401 >"$dir/tools/plans/x.sh"
+  seq 401 >"$dir/tools/plugin-dev/x.sh"
+  # A script at the root: an arm requiring a directory (`*/*.sh`) misses it.
+  seq 401 >"$dir/x.sh"
+  git -C "$dir" add lib/x.bash lib/x.bats lib/x.py lib/x.sh \
+    tools/plans/x.sh tools/plugin-dev/x.sh x.sh
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 1 ]
+  # `git ls-files` order: bytewise, so .bash < .bats < .py < .sh, and
+  # lib/ < tools/ < x.sh.
+  [ "$output" = "oversized-file: lib/x.bash: 401 lines > 400
+oversized-file: lib/x.bats: 401 lines > 400
+oversized-file: lib/x.py: 401 lines > 400
+oversized-file: lib/x.sh: 401 lines > 400
+oversized-file: tools/plans/x.sh: 401 lines > 400
+oversized-file: tools/plugin-dev/x.sh: 401 lines > 400
+oversized-file: x.sh: 401 lines > 400" ]
+}
+
+@test "plans/ is out of scope" {
+  local dir
+  dir=$(make_fixture_root plans-scope)
+  mkdir -p "$dir/plans"
+  seq 401 >"$dir/plans/x.md"
+  # Every script type `oversized script is reported` counts, so an exclusion
+  # narrowed to the types it names (`plans/*.sh`) leaves one reported.
+  seq 401 >"$dir/plans/x.bash"
+  seq 401 >"$dir/plans/x.bats"
+  seq 401 >"$dir/plans/x.py"
+  seq 401 >"$dir/plans/x.sh"
+  git -C "$dir" add plans/x.md plans/x.bash plans/x.bats plans/x.py \
+    plans/x.sh
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ -z "$stderr" ]
+}
+
+@test "plugin-dev/ is out of scope" {
+  local dir
+  dir=$(make_fixture_root plugin-dev-scope)
+  mkdir -p "$dir/plugin-dev"
+  # Every script type, as in `plans/ is out of scope`.
+  seq 401 >"$dir/plugin-dev/x.bash"
+  seq 401 >"$dir/plugin-dev/x.bats"
+  seq 401 >"$dir/plugin-dev/x.py"
+  seq 401 >"$dir/plugin-dev/x.sh"
+  git -C "$dir" add plugin-dev/x.bash plugin-dev/x.bats plugin-dev/x.py \
+    plugin-dev/x.sh
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ -z "$stderr" ]
+}
+
+@test "markdown directly under skills/" {
+  local dir
+  dir=$(make_fixture_root skills-top)
+  mkdir -p "$dir/skills"
+  seq 401 >"$dir/skills/top.md"
+  git -C "$dir" add skills/top.md
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 1 ]
+  [ "$output" = "oversized-file: skills/top.md: 401 lines > 400" ]
+}
+
+@test "untracked file is out of scope" {
+  local dir
+  dir=$(make_fixture_root untracked)
+  mkdir -p "$dir/docs"
+  seq 401 >"$dir/docs/u.md"
+  # Deliberately not `git add`ed: the walk is `git ls-files`, so this must
+  # never reach the `case`.
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ -z "$stderr" ]
+}
+
+@test "deleted tracked file is skipped" {
+  local dir
+  dir=$(make_fixture_root deleted)
+  mkdir -p "$dir/docs"
+  seq 401 >"$dir/docs/gone.md"
+  git -C "$dir" add docs/gone.md
+  # Removed from the work tree only, so it stays in the index: `git ls-files`
+  # still lists it, and `check_cap`'s `[ ! -f … ]` guard must skip it.
+  rm "$dir/docs/gone.md"
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ -z "$stderr" ]
+}

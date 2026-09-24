@@ -10,7 +10,9 @@
 # Scope (grows across later slices of this item), in root-relative paths,
 # where a `case` `*` crosses `/`: markdown at any depth under docs/, cap
 # 400; under skills/, cap 200 for a `skills/*/SKILL.md` and 400 for any
-# other; at the root itself (no `/` in the path), cap 400.
+# other; at the root itself (no `/` in the path), cap 400. A script
+# (`.sh`, `.bash`, `.bats`, `.py`) at any depth, cap 400, except under a
+# root-level `plans/` or `plugin-dev/`.
 #
 # Exit codes: 0 clean, 1 on any overage, 2 on a failure to run.
 
@@ -71,6 +73,12 @@ fi
 
 while IFS= read -r -d '' file; do
     case "$file" in
+    # Must precede the script arm below: `case` takes the first match, and a
+    # script under a root-level `plans/` or `plugin-dev/` would otherwise be
+    # capped by it. Root-anchored: an unadorned `plans/*` only matches a path
+    # that starts with it, so a nested `tools/plans/x.sh` still reaches the
+    # script arm.
+    plans/* | plugin-dev/*) ;;
     docs/*.md) check_cap "$file" 400 ;;
     # Must precede the general skills/ arm below: `case` takes the first
     # match, and a SKILL.md is also `skills/*.md`.
@@ -82,6 +90,7 @@ while IFS= read -r -d '' file; do
     # arm for another file type works in any position.
     */*.md) ;;
     *.md) check_cap "$file" 400 ;;
+    *.sh | *.bash | *.bats | *.py) check_cap "$file" 400 ;;
     esac
 done <"$WALK_LIST"
 
