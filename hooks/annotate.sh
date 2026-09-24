@@ -37,13 +37,8 @@ esac
 
 [ -n "$text" ] || exit 0
 
-names=$(printf '%s\n' "$text" | detect)
-
-# detectors.md's phantom-chardev flag policy: when phantom-untracked also
-# fires, its paragraph already restates the chardev one, so only
-# verdict_phantom_untracked runs and phantom-chardev is skipped here.
-untracked_fires=0
-printf '%s\n' "$names" | grep -qFx 'phantom-untracked' && untracked_fires=1
+# Non-zero is either nothing fired or detect failed: both are silent.
+names=$(printf '%s\n' "$text" | detect) || exit 0
 
 nl='
 '
@@ -51,8 +46,11 @@ context=""
 human=""
 while IFS= read -r name; do
   [ -n "$name" ] || continue
-  if [ "$name" = "phantom-chardev" ] && [ "$untracked_fires" -eq 1 ]; then
-    continue
+  # detectors.md's phantom-chardev flag policy: one paragraph when both
+  # listing detectors fire. The untracked paragraph restates the chardev
+  # one, so phantom-chardev is the name skipped.
+  if [ "$name" = "phantom-chardev" ]; then
+    case "$nl$names$nl" in *"${nl}phantom-untracked$nl"*) continue ;; esac
   fi
   out=$("verdict_${name//-/_}" </dev/null) || exit 0
   para=${out%%"$nl"*}
