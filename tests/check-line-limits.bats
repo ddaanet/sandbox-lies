@@ -70,3 +70,64 @@ make_fixture_root() {
   [ "$status" -eq 1 ]
   [ "$output" = "oversized-file: skills/x/SKILL.md: 201 lines > 200" ]
 }
+
+@test "oversized skills node is reported" {
+  local dir
+  dir=$(make_fixture_root skills-node)
+  mkdir -p "$dir/skills/x/references"
+  # 401 lines: over the 400 cap non-SKILL skills/ markdown is scoped at. The
+  # exact "> 400" in its expected line pins the cap: a 200 cap prints "> 200".
+  seq 401 >"$dir/skills/x/references/n.md"
+  # The same 401 lines at the skill's root, outside references/: its own
+  # expected line pins the arm to all markdown under skills/, where one
+  # narrowed to `skills/*/references/*.md` leaves it clean.
+  seq 401 >"$dir/skills/x/p.md"
+  git -C "$dir" add skills/x/references/n.md skills/x/p.md
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 1 ]
+  # `git ls-files` order: bytewise, so p.md sorts before references/.
+  [ "$output" = "oversized-file: skills/x/p.md: 401 lines > 400
+oversized-file: skills/x/references/n.md: 401 lines > 400" ]
+}
+
+@test "oversized root markdown is reported" {
+  local dir
+  dir=$(make_fixture_root root-markdown)
+  mkdir -p "$dir/notes"
+  seq 401 >"$dir/README.md"
+  # Same 401 lines one directory down. Left clean, this rules out a root arm
+  # that crosses `/` (`*.md` unanchored, or `**/*.md`): it would flag this
+  # too and break the exact single-line assertion below. A root arm leaking
+  # into dot-directories only is pinned in `markdown elsewhere is out of
+  # scope`.
+  seq 401 >"$dir/notes/deep.md"
+  git -C "$dir" add README.md notes/deep.md
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 1 ]
+  [ "$output" = "oversized-file: README.md: 401 lines > 400" ]
+}
+
+@test "markdown elsewhere is out of scope" {
+  local dir
+  dir=$(make_fixture_root elsewhere)
+  mkdir -p "$dir/lib" "$dir/.claude/skills/y/references"
+  seq 401 >"$dir/lib/x.md"
+  # 201 lines, over SKILL.md's own 200 cap: left clean, this pins the
+  # SKILL.md arm's anchor to a root-level `skills/`, not any `skills/`
+  # segment wherever it falls in the path.
+  seq 201 >"$dir/.claude/skills/y/SKILL.md"
+  # `oversized skills node is reported`'s 401-line node, moved under a
+  # dot-directory. Left clean, this pins the skills node arm's anchor the
+  # same way (`*skills/*.md` flags it), and rules out a root arm that skips
+  # only non-dot subdirectories.
+  seq 401 >"$dir/.claude/skills/y/references/n.md"
+  git -C "$dir" add lib/x.md .claude/skills/y/SKILL.md \
+    .claude/skills/y/references/n.md
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ -z "$stderr" ]
+}

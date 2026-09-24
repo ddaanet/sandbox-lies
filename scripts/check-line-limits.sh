@@ -8,8 +8,9 @@
 # `git ls-files -z` instead of `find` so `.venv/` and gitlinks stay out.
 #
 # Scope (grows across later slices of this item): markdown under docs/, cap
-# 400; a SKILL.md at any depth under skills/, cap 200 (a `case` `*` crosses
-# `/`).
+# 400; a SKILL.md at any depth under root-level skills/, cap 200; other
+# markdown under root-level skills/, cap 400; root-level markdown (no `/` in
+# the path), cap 400 (a `case` `*` crosses `/`).
 #
 # Exit codes: 0 clean, 1 on any overage, 2 on a failure to run.
 
@@ -71,7 +72,16 @@ fi
 while IFS= read -r -d '' file; do
     case "$file" in
     docs/*.md) check_cap "$file" 400 ;;
+    # Must precede the general skills/ arm below: `case` takes the first
+    # match, and a SKILL.md is also `skills/*.md`.
     skills/*/SKILL.md) check_cap "$file" 200 ;;
+    skills/*.md) check_cap "$file" 400 ;;
+    # Anything else carrying a `/` (docs/skills/ already matched above, so
+    # this is markdown under any other directory, tracked or not — e.g.
+    # `.claude/skills/`, `lib/`) is out of scope: fall through without
+    # matching the root-only arm below.
+    */*) ;;
+    *.md) check_cap "$file" 400 ;;
     esac
 done <"$WALK_LIST"
 
