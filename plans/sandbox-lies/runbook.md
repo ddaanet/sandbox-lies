@@ -268,7 +268,11 @@ Cross-cutting, bounded:
      `deleted tracked file is skipped` — a `docs/gone.md` added, then
      removed from the work tree only, yields status 0; `unreadable file
      exits 2` — a mode-000 `docs/a.md` yields status 2 and empty stdout
-     (skipped when run as root); `extra argument exits 2` — as Item 2.1's.
+     (skipped when run as root); `extra argument exits 2` — as Item 2.1's;
+     `any URI scheme is skipped` (slice 3's code review replaced a
+     three-scheme list with an RFC 3986 match) — `ftp://h/x`, `HTTP://X`
+     and `x:y.md` (no such file) ahead of a broken sentinel yield only the
+     sentinel's line.
   6. Shared walk (`scripts/lib/tracked.sh`, pinned through this suite;
      slice 2's code review added each; proven by mutation): `tracked
      symlink is skipped` — a tracked `docs/l.md` symlink to an untracked
