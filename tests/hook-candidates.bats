@@ -88,6 +88,23 @@ run_hook() {
   [ -z "$output" ]
 }
 
+@test "hook silent without a verdict" {
+  # readonly-path fires (Item 4.3 slice 1) but has no verdict_readonly_path
+  # yet (Item 6.1 ships it): the declare -F gate on the verdict must run
+  # before the probe is even looked up (hooks/annotate.sh), so this probe is
+  # never reached.
+  stub_probe readonly_path writable
+  local text payload
+  text=$(cat "$FIXTURES/fire-readonly-path-cp-tmp.txt")
+  payload=$(failure_payload "$text")
+
+  run_hook "$payload"
+
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ ! -f "$PROBE_CALLED" ]
+}
+
 @test "tmpdir-unset flag policy survives BSD grep and sed" {
   local text payload bsd ctx sys
   text=$(cat "$FIXTURES/fire-tmpdir-unset-redirect.txt")

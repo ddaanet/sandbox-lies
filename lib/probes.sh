@@ -10,6 +10,17 @@
 # variable an error when a test sources this file directly.
 set -u
 
+# probe_readonly_path reuses lib/matchers.sh's own matching-line
+# discriminator (_readonly_path_line) rather than a second copy of the
+# pattern. hooks/annotate.sh already sources matchers.sh before this file, so
+# this re-source is only load-bearing where a caller (the probes.bats family)
+# sources lib/probes.sh on its own; sourcing twice just redefines the same
+# functions.
+_probes_lib_dir=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd) || return 1
+# shellcheck disable=SC1091 # lib/ sits beside this file; path is dynamic
+. "$_probes_lib_dir/matchers.sh" || return 1
+unset _probes_lib_dir
+
 probe_git_lock() {
     local flag="$1" text path
     text=$(cat)
@@ -31,6 +42,63 @@ probe_config_lock() {
     fi
     path=$(_probe_resolve_path "$path" "${2-}")
     _probe_lock_at "$flag" "$path"
+}
+
+# probe_readonly_path <flag> <cwd> — A-3 contract for the readonly-path
+# candidate (Item 4.3's Interfaces block; no verdict ships yet, Item 6.1).
+# <flag> is part of the interface but unread here: whether the hook calls
+# this probe at all is the candidate's flag policy
+# (docs/references/detectors.md), decided before the probe runs, not inside
+# it.
+probe_readonly_path() {
+    local cwd="${2-}" text line path target outcome
+    text=$(cat)
+    line=$(printf '%s\n' "$text" | _readonly_path_line)
+    path=$(printf '%s\n' "$line" | _probe_readonly_path_from_line)
+    if [ -z "$path" ]; then
+        printf '%s\n' nopath
+        return 0
+    fi
+    path=$(_probe_readonly_resolve "$path" "$cwd")
+    target="$path"
+    if [ ! -e "$path" ] && [ ! -L "$path" ]; then
+        target="${path%/*}"
+        [ -n "$target" ] || target=/
+    fi
+    if [ -w "$target" ]; then
+        outcome=writable
+    else
+        outcome="readonly"
+    fi
+    printf '%s\n' "$outcome" "path=$path"
+}
+
+# _probe_readonly_resolve <path> <cwd> — joins a relative <path> onto <cwd>
+# (or the probe's own working directory when <cwd> is missing or empty, as
+# _probe_resolve_path falls back for the lock probes); an absolute or empty
+# <path> is unchanged. Never walks up to a .git directory: readonly-path's
+# producers (cp, mv, touch, bash, Python) resolve a relative path against
+# their own process cwd, not against git's own convention for a lock path.
+_probe_readonly_resolve() {
+    local path="$1" cwd="${2:-$PWD}"
+    case "$path" in
+        /* | '')
+            printf '%s\n' "$path"
+            return
+            ;;
+    esac
+    case "$cwd" in
+        /*) ;;
+        *) cwd="$PWD/$cwd" ;;
+    esac
+    printf '%s/%s\n' "${cwd%/}" "$path"
+}
+
+# Prints the first single-quoted segment on stdin (one line), nothing when
+# there is none. A path is quoted because it may hold a blank, so the
+# capture keeps every character but a quote between the pair.
+_probe_readonly_path_from_line() {
+    sed -n "s/^[^']*'\([^']*\)'.*/\1/p"
 }
 
 # _probe_lock_at <flag> <path> — the A-3 contract once a probe has extracted

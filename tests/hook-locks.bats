@@ -22,19 +22,11 @@ run_hook() {
     _ "$1" "$HOOK_COPY/hooks/annotate.sh"
 }
 
-# stub_probe <name> <outcome> — overrides probe_<name> in the copied
-# lib/probes.sh with one that drains stdin, prints <outcome>, and touches
-# $PROBE_CALLED. A case asserts that file exists: the real probe_git_lock on
-# this fixture's lock path also answers mask when the path is absent, so a
-# stub the hook never reached would otherwise pass while the real probe
-# stats the host path, and so would a verdict defaulting to mask with no
-# probe call at all.
-stub_probe() {
-  local name="$1" outcome="$2" called
-  PROBE_CALLED="$BATS_TEST_TMPDIR/probe-$name-called"
-  called=$(printf '%q' "$PROBE_CALLED")
-  stub_lib probes.sh "probe_${name}() { cat >/dev/null; : >${called}; printf '%s\\npath=stub\\n' '${outcome}'; }"
-}
+# stub_probe is shared, in helpers/hook.bash: this fixture's lock path also
+# answers mask under the real probe when the path is absent, so a stub the
+# hook never reached would otherwise pass while the real probe stats the
+# host path, and so would a verdict defaulting to mask with no probe call at
+# all.
 
 # assert_lacks <haystack> <pattern> — <pattern> (fixed string) must not occur
 # in <haystack>; a grep exit other than 1 (found, or errored) fails the

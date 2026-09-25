@@ -2,6 +2,11 @@
 # Loaded by every hook suite. Copies hooks/ and lib/ under $BATS_TEST_TMPDIR
 # so a case can stub a copied lib file without touching the tracked source,
 # and builds payload JSON from the Item 1.4 recorded fixtures with jq.
+#
+# stub_probe (below) is shared by tests/hook-locks.bats and
+# tests/hook-candidates.bats: any case that fires a probe-gated detector
+# stubs its probe, so no fixture's absolute path reaches the host
+# filesystem.
 
 FIXTURES="${BATS_TEST_DIRNAME}/fixtures"
 
@@ -60,4 +65,18 @@ stub_lib() {
     return 1
   }
   printf '%s\n' "$body" >>"$HOOK_COPY/lib/$file"
+}
+
+# stub_probe <name> <outcome> — overrides probe_<name> in the copied
+# lib/probes.sh with one that drains stdin, prints <outcome>, and touches
+# $PROBE_CALLED. A case asserts that file exists: the real probe on a
+# fixture's own path would also answer without being reached, so a stub the
+# hook never reached would otherwise pass while the real probe stats the
+# host path, and so would a verdict defaulting to an outcome with no probe
+# call at all.
+stub_probe() {
+  local name="$1" outcome="$2" called
+  PROBE_CALLED="$BATS_TEST_TMPDIR/probe-$name-called"
+  called=$(printf '%q' "$PROBE_CALLED")
+  stub_lib probes.sh "probe_${name}() { cat >/dev/null; : >${called}; printf '%s\\npath=stub\\n' '${outcome}'; }"
 }

@@ -1,7 +1,8 @@
 # Shared helpers for tests/probes.bats, tests/probes-edges.bats,
-# tests/probes-tools.bats and tests/probes-config.bats: the error builders,
-# the `run` wrappers, the tools-only PATH, the lock holder and the no-.git
-# precondition their probe cases use.
+# tests/probes-tools.bats, tests/probes-config.bats and
+# tests/probes-readonly.bats: the error builders, the `run` wrappers, the
+# tools-only PATH, the lock holder and the no-.git precondition their probe
+# cases use.
 
 # Self-quiet (FR-11): git's lock error is built from two fragments at run
 # time, as lib/matchers.sh match_git_lock builds its follow-on, so no test
@@ -25,6 +26,20 @@ config_lock_error() {
   text="error: could not lock config file $path: File"
   text="${text} exists"
   printf '%s\n' "$text"
+}
+
+# readonly_path_text <fixture> <replacement> — the cut fire-readonly-path-*
+# fixture (tests/fixtures/<fixture>.txt) with its first single-quoted path
+# replaced by <replacement>, built at run time as git_lock_error is, so this
+# file never holds the readonly-path refusal whole (self-quiet, FR-11).
+# <replacement> is inserted verbatim: the caller quotes it itself (a path
+# under $BATS_TEST_TMPDIR), or passes empty to remove the quoted segment
+# entirely, leaving no quoted path on the line. `#` as the sed delimiter,
+# since <replacement> is a path and may hold `/`. Residual: a <replacement>
+# holding `#`, `&` or a backslash is read by sed, not inserted verbatim.
+readonly_path_text() {
+  local fixture="$1" replacement="$2"
+  sed -E "s#'[^']*'#${replacement}#" "${BATS_TEST_DIRNAME}/fixtures/${fixture}.txt"
 }
 
 # run_probe <probe> <flag> <cwd> <text> — the probe under bats' run with

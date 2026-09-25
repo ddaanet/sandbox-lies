@@ -132,6 +132,16 @@ match_phantom_gitadd() {
     grep -qE '^error: .*: can only add regular files, symbolic links or git-directories'
 }
 
+# _readonly_path_line -- prints stdin's first line match_readonly_path
+# accepts, nothing when there is none. Shared with probe_readonly_path
+# (lib/probes.sh, sourced there) so the discriminator lives in one place
+# rather than as two copies that could drift apart.
+_readonly_path_line() {
+    grep -m1 -E \
+        '^[^`|:[:space:]]+: .*: (Read-only file system|Device or resource busy)[[:space:]]*$'\
+'|^[A-Za-z]+Error: \[Errno (30|16)\] (Read-only file system|Device or resource busy):'
+}
+
 # A line that opens with a tool's own prefix (a run free of blanks,
 # backticks, pipes and colons, then ": ", as `cp`, `mv`, git's `error` and
 # bash's own `/bin/bash: line N:` all print it) and ends in the kernel's
@@ -147,9 +157,7 @@ match_phantom_gitadd() {
 # line of their own. See docs/references/detectors.md's `### readonly-path`
 # entry for the corpus figures this discriminator was measured against.
 match_readonly_path() {
-    grep -qE \
-        '^[^`|:[:space:]]+: .*: (Read-only file system|Device or resource busy)[[:space:]]*$'\
-'|^[A-Za-z]+Error: \[Errno (30|16)\] (Read-only file system|Device or resource busy):'
+    _readonly_path_line >/dev/null
 }
 
 # The shape an empty $TMPDIR expansion produces, as the replay selected it: a
