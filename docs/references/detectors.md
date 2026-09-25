@@ -232,9 +232,9 @@ backticks, pipes and colons, then a colon and a space, as `cp`, `mv`, `rm`,
 `touch`, `/bin/bash` (then `line N`) and git's `error`, `fatal`, `warning` print
 it — and ends in a colon, a space and the kernel's read-only-filesystem (EROFS)
 or busy-device (EBUSY) message, trailing blanks allowed. Or Python's: a line
-beginning with an exception name ending in `Error`, errno 30 or 16 in brackets,
-the same message, a colon. The store quotes both mid-line. Expected residual: a
-path not writable outside the sandbox either.
+beginning with an exception name ending in `Error`, a colon and a space, errno
+30 or 16 in brackets, the same message, a colon. The store quotes both mid-line.
+Expected residual: a path not writable outside the sandbox either.
 
 **Flag policy.** Silent when the flag is true.
 
@@ -329,7 +329,7 @@ Re-run the same command with `dangerouslyDisableSandbox: true`. ·
 `zellij — socket unreachable from sandbox`
 
 **Corpus.** 0 hits, zero true positives, 2026-09-25; unanchored and case-blind,
-67, all quoting the store.
+67 matches, all quoting the store.
 
 **Decision: stays a candidate.**
 

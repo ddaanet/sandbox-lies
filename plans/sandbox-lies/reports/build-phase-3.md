@@ -1,9 +1,9 @@
 # Build report — Phase 3 (Evidence)
 
 Runbook: `plans/sandbox-lies/runbook.md`, Phase 3. Build baseline:
-`.git/build-baseline` (unchanged). Status: **stopped at Item 3.2's runbook
-escalation point**. Gate 3 (`readonly-path`) is open for my human partner,
-below; gates 1 and 2 are answered.
+`.git/build-baseline` (unchanged). Status: **Phase 3 is complete.** The
+boundary corrector has run and been committed, and all three gates are
+answered. No gate is open.
 
 ## Commits
 
@@ -14,6 +14,9 @@ below; gates 1 and 2 are answered.
 - 📝 Item 3.1 — sandbox tell: sh -c shape confirmed sandboxed
 - 📝 Item 3.1 — main session's git call also sandboxed
 - 📝 Item 3.2 — candidate triage and measurement
+- 📝 Phase 3 build report — Item 3.2 outcome; readonly-path gate
+- 📝 Item 3.2 — readonly-path ships
+- 📝 Phase 3 checkpoint — readonly-path Python anchor; zellij count; FR-4 status
 
 ## Entry
 
@@ -182,7 +185,25 @@ as well. `detectors.md` is now **398/400** lines.
 Per the build skill, general items get no per-item review: this item's review
 is the Phase 3 boundary corrector, which has not run yet.
 
-## Open gate 3 — five `readonly-path` false positives the executor may not classify
+## Gate 3 (answered) — five `readonly-path` false positives the executor may not classify
+
+Answered by my human partner:
+
+1. FP 1–4 are true positives. A read of a file with a conventional
+   command-output name (`*.output`, `*.log`, `*.out`, `*.err` and the like)
+   that carries a sandbox refusal is a legitimate flag. The same refusal in a
+   `*.md` or other document is D-10 self-reference.
+2. FP 5 falls under the named residual, widened in place.
+3. `readonly-path` ships.
+
+The follow-up went to `edify:artisan` (Opus), report
+`item-3-2-readonly-path.md`, commit "Item 3.2 — readonly-path ships". The
+`Corpus.` line is now 162 hits, 161 true and 1 residual (99%), and it records
+the classification rule. The entry carries `Decision: ships`. Three `fire`
+fixtures and one `quiet` fixture were cut, each with an `expected_for` row.
+`detectors.md` is at 397/400. After the commit, `verify-step.sh` reported CLEAN.
+
+The question list below is kept as it was asked.
 
 The runbook says a false positive that is neither self-reference (D-10) nor
 the entry's named residual ("a genuinely read-only mount") must be escalated
@@ -213,6 +234,27 @@ paths and context, are in `item-3-2.md` under "Gated false positives".
    `detectors.md` has 2 lines left, so any residual wording must rewrite lines
    in place. If it cannot fit, that is the split escalation, a gate.
 
+## Phase 3 boundary corrector
+
+`edify:corrector` (Fable) reviewed the phase diff from abee0f5 to the
+follow-up commit. Its report is `phase-3-corrector.md`, with the overall
+assessment "Ready" and no UNFIXABLE. It fixed two minor issues in
+`detectors.md`: it spelled out the separator in the Python form of
+`readonly-path`'s `Matcher.`, which is part of the anchor Item 4.3 implements,
+and it named the bare "67" in `zellij-socket`'s `Corpus.` as a match count.
+
+It deferred one design.md status line with an exact in-place rewrite. I applied
+it, because the runbook's status-flip rule requires it and it fits in place:
+FR-4 "Partial (live proof: Item 3.1; …)" became "Partial (lock probes proved
+live; …)". The two lines were rewritten and `design.md` stays at 400/400. The
+corrector judged that FR-7 (`Planned`) and NFR-1 (`Partial (harness
+promoted)`) stay accurate, so the Item 3.2 executor's suggested NFR-1 text was
+not applied.
+
+The corrector also checked that all eleven fixtures re-cut byte-identically
+from `tests/extract-fixtures.py`, and that a regex built from the recorded
+discriminators fires on no tracked file. Precommit passed with bats 131/131.
+
 ## Review findings worth my human partner's attention
 
 - The git-lock mask did not reproduce under the default sandbox in two
@@ -227,6 +269,14 @@ paths and context, are in `item-3-2.md` under "Gated false positives".
   `sh -c` shapes.
 - config-lock `mask` is proved live on 2026-09-25.
 - `zellij-socket` stays a candidate: there are zero corpus hits.
+- Gate 3 answer (my human partner, 2026-09-25): `readonly-path` false
+  positives 1–4 are true positives, by the command-output-file rule;
+  false positive 5 is the widened residual; `readonly-path` ships.
+- Shipping candidates: `readonly-path` (99%), `tmpdir-unset` (100%, 13 hits),
+  `resume-lost` (100%, 2 hits), `seccomp-init` (100%, 8 hits).
+- The `git:*` entry in `excludedCommands` did not unsandbox a visible git call,
+  either in the delegate's session or in the main session (2026-09-25; recorded
+  in `detectors.md`).
 
 ## Deviations
 
@@ -236,28 +286,25 @@ paths and context, are in `item-3-2.md` under "Gated false positives".
 
 ## Resume
 
-Nothing is in flight, and the tracked tree is clean after this report's commit.
-The last item commit is "Item 3.2 — candidate triage and measurement".
+Nothing is in flight. Phase 3 is closed, and the tracked tree is clean after
+this report's commit. A fresh delegate starts Phase 4 from the block below.
 
-Position: Items 3.1 and 3.2 are committed. Gates 1 and 2 are answered.
-`readonly-path` waits on gate 3. Next comes the gate 3 answer, then a
-follow-up dispatch for `readonly-path` (its residual wording, its `Decision:`
-line, and, if it ships, a fire/quiet fixture pair plus `expected_for` rows),
-then the Phase 3 boundary corrector.
+## Phase 3 boundary resume block
 
-Carry:
-
-- `docs/design.md` is at 400/400 lines and `detectors.md` at 398/400.
-- The Item 3.2 executor judges these design.md status text changes owed:
-  NFR-1 `Partial` gains "candidates measured 2026-09-25", and FR-7 must note
-  `zellij-socket` when it flips. The boundary corrector should decide them;
-  neither may grow design.md.
-- This session's triage printed survivor texts raw, so the next corpus
-  re-measurement (Items 4.2/4.3) will find D-10 self-reference hits dated
-  2026-09-25 from sandbox-lies.
-- The scratch repo `/tmp/claude/sandbox-lies-3-1/` is safe to delete.
+```text
+Resume /build at Phase 4 of /Users/david/code/sandbox-lies/plans/sandbox-lies/runbook.md.
+Phase 3 closed at commit "Phase 3 checkpoint — readonly-path Python anchor; zellij count; FR-4 status".
+Build baseline: .git/build-baseline. verify-step: /Users/david/.claude/plugins/cache/ddaanet/edify/0.3.0/skills/build/scripts/verify-step.sh (run unsandboxed).
+Next: Item 4.1 (git-lock and config-lock verdicts, all five outcomes), Item 4.2 (the verdict-only candidates), Item 4.3 (readonly-path matcher and probe, no verdict yet), then the Phase 4 boundary corrector.
+Carry: docs/design.md is at 400/400 lines and detectors.md at 397/400; status flips rewrite lines in place.
+Candidates shipping: readonly-path, tmpdir-unset, resume-lost, seccomp-init; zellij-socket stays a candidate (zero hits).
+Item 4.3 list revision (my human partner's rule, not yet in the runbook): when the flagged Bash command is a read (cat, tail, sed, grep, or a pipeline of them) of a command-output-named file (*.output, *.log, *.out, *.err and the like), the readonly-path verdict points at the command that produced the file, not "re-run the whole call". Item 4.3 builds no readonly-path verdict (that comes in Item 6.1), so the list revision decides whether 4.3's matcher or probe exposes the read, and Item 6.1's verdict carries the wording.
+Git-lock mask is accepted as proved by composition; its "owed" paragraph stays.
+Corpus re-measurement in 4.2/4.3 will meet D-10 self-reference hits dated 2026-09-25 from this project's triage output.
+```
 
 ## Context usage
 
-My own context is about 105k tokens at the time of this report. The
+My own context is about 125k tokens at the time of this report, below the 200k
+stop. The
 session-wide budget showed about 14.91M of 15M remaining.
