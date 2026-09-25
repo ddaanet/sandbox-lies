@@ -1,8 +1,9 @@
 # Build report — Phase 3 (Evidence)
 
 Runbook: `plans/sandbox-lies/runbook.md`, Phase 3. Build baseline:
-`.git/build-baseline` (unchanged). Status: **stopped at Item 3.1's runbook
-escalation point** — gate 2 open for my human partner, below (gate 1 answered).
+`.git/build-baseline` (unchanged). Status: **stopped at Item 3.2's runbook
+escalation point**. Gate 3 (`readonly-path`) is open for my human partner,
+below; gates 1 and 2 are answered.
 
 ## Commits
 
@@ -12,6 +13,7 @@ escalation point** — gate 2 open for my human partner, below (gate 1 answered)
 - 📝 Item 3.1 — opaque-script reruns: no index-lock mask; config-lock mask confirmed
 - 📝 Item 3.1 — sandbox tell: sh -c shape confirmed sandboxed
 - 📝 Item 3.1 — main session's git call also sandboxed
+- 📝 Item 3.2 — candidate triage and measurement
 
 ## Entry
 
@@ -119,7 +121,7 @@ It is under the self-review threshold at 2 lines in 1 file, and I
 self-reviewed the diff. Gate 2 stands unchanged, with question 2 settled: no
 rewrite.
 
-## Open gate 2 — no index-lock mask in this session under any shape
+## Gate 2 (answered: (a)) — no index-lock mask in this session under any shape
 
 1. **How should the git-lock `mask` outcome be handled now?** Default **(a)**.
    - (a) Accept it by composition, as argued under gate 1 below, and continue
@@ -157,6 +159,60 @@ rewrite.
    - **(c)** Hold Item 4.1's git-lock `mask` wiring until a session hits the
      mask naturally. It can start mid-session, per `sandbox-effects.md`.
 
+## Item 3.2 — candidate triage (delegated, committed, one candidate gated)
+
+The work went to `edify:artisan` (Opus; the deliverable is prose). Its report
+is `item-3-2.md`, and the work is in the commit "Item 3.2 — candidate triage
+and measurement". After the commit, `verify-step.sh` reported CLEAN. Replays
+ran one at a time.
+
+| candidate | hits | true | decision |
+|---|---:|---:|---|
+| `readonly-path` | 162 | 157 | **gated**: no `Decision:` line, no fixtures |
+| `tmpdir-unset` | 13 | 13 | ships (100%) |
+| `resume-lost` | 2 | 2 | ships (100%, two-hit base) |
+| `zellij-socket` | 0 | 0 | stays a candidate (zero true positives) |
+| `seccomp-init` | 8 | 8 | ships (100%) |
+
+Fixtures were cut for the three that ship, one `fire` and one `quiet` each
+(`tmpdir-unset` has two `fire`), with `expected_for` rows expecting no
+verdict. `tests/corpus-eval.py` and `tests/extract-fixtures.py` were extended
+as well. `detectors.md` is now **398/400** lines.
+
+Per the build skill, general items get no per-item review: this item's review
+is the Phase 3 boundary corrector, which has not run yet.
+
+## Open gate 3 — five `readonly-path` false positives the executor may not classify
+
+The runbook says a false positive that is neither self-reference (D-10) nor
+the entry's named residual ("a genuinely read-only mount") must be escalated
+before `Decision: ships` is written. There are five. Samples, with transcript
+paths and context, are in `item-3-2.md` under "Gated false positives".
+
+- **FP 1–4:** reading a background task's output file (or a log) back into
+  the model. The file holds an earlier *sandboxed* call's read-only refusal,
+  such as bash refusing a redirect to `/tmp/...` or git refusing the user git
+  config. The diagnosis is right, since it was a sandbox refusal. The verdict's
+  "re-run the whole call" points at the read rather than at the command that
+  failed.
+- **FP 5:** `mkdir` of a path directly under `/`, produced by an empty
+  variable. It is not writable outside the sandbox either, so the probe would
+  print `readonly` ("not a sandbox effect").
+
+1. **How are FP 1–4 classified?** Default **true positive** (the diagnosis
+   holds). The alternative is a new named residual, "a background task's
+   output read back". That one needs a residual clause in the entry, and
+   `detectors.md` has 2 lines of headroom.
+2. **Is FP 5 the named residual?** Default **yes**: widen the entry's residual
+   from "a genuinely read-only mount" to "a path not writable outside the
+   sandbox either", as a reword in place of the existing sentence.
+3. **Should `readonly-path` then ship?** Default **yes**: 161 of 162 true, or
+   157 with 5 in residuals. Adding `Decision: ships`, a fire/quiet fixture
+   pair and two `expected_for` rows is follow-up work before the Phase 3
+   boundary corrector. I would dispatch it under the answers above.
+   `detectors.md` has 2 lines left, so any residual wording must rewrite lines
+   in place. If it cannot fit, that is the split escalation, a gate.
+
 ## Review findings worth my human partner's attention
 
 - The git-lock mask did not reproduce under the default sandbox in two
@@ -166,9 +222,11 @@ rewrite.
 
 ## For the run summary at Finish
 
-- git-lock `mask` is proved by composition, not by a live run (pending the gate
-  above).
+- Gate 2 answer (my human partner, 2026-09-25): git-lock `mask` is accepted as
+  proved by composition. The "owed" paragraph stays, and so do the recorded
+  `sh -c` shapes.
 - config-lock `mask` is proved live on 2026-09-25.
+- `zellij-socket` stays a candidate: there are zero corpus hits.
 
 ## Deviations
 
@@ -178,21 +236,28 @@ rewrite.
 
 ## Resume
 
-Nothing is in flight. The tracked tree is clean after this report's commit.
-The last item commit was "Item 3.1 — main session's git call also
-sandboxed". Position: Item 3.1 is done except git-lock
-`mask`, which waits on gate 2. Next: the gate 2 answer, then (under (a))
-Item 3.2, then the Phase 3 boundary corrector. Under (b), once the deny entry
-is live: rerun `sh /tmp/claude/sandbox-lies-3-1/opaque.sh` sandboxed, after
-changing its `git status` to `git add f`, and `echo y >> f` first. Then run
-`probe_git_lock false /tmp/claude/sandbox-lies-3-1/repo` unsandboxed on its
-output. Replace the "owed" paragraph before Item 3.2.
+Nothing is in flight, and the tracked tree is clean after this report's commit.
+The last item commit is "Item 3.2 — candidate triage and measurement".
 
-Carry: `docs/design.md` is at 400/400 lines. Item 3.2's replays run one at a
-time. The scratch repo `/tmp/claude/sandbox-lies-3-1/` still exists and is safe
-to reuse or delete.
+Position: Items 3.1 and 3.2 are committed. Gates 1 and 2 are answered.
+`readonly-path` waits on gate 3. Next comes the gate 3 answer, then a
+follow-up dispatch for `readonly-path` (its residual wording, its `Decision:`
+line, and, if it ships, a fire/quiet fixture pair plus `expected_for` rows),
+then the Phase 3 boundary corrector.
+
+Carry:
+
+- `docs/design.md` is at 400/400 lines and `detectors.md` at 398/400.
+- The Item 3.2 executor judges these design.md status text changes owed:
+  NFR-1 `Partial` gains "candidates measured 2026-09-25", and FR-7 must note
+  `zellij-socket` when it flips. The boundary corrector should decide them;
+  neither may grow design.md.
+- This session's triage printed survivor texts raw, so the next corpus
+  re-measurement (Items 4.2/4.3) will find D-10 self-reference hits dated
+  2026-09-25 from sandbox-lies.
+- The scratch repo `/tmp/claude/sandbox-lies-3-1/` is safe to delete.
 
 ## Context usage
 
-My own context is about 60k tokens at the time of this report. The
+My own context is about 105k tokens at the time of this report. The
 session-wide budget showed about 14.91M of 15M remaining.
