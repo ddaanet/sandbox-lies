@@ -608,8 +608,24 @@ Cross-cutting, bounded:
   8 and 9's `BSD stat` in `tests/probes.bats`; slice 9's `probe writes
   nothing` in `tests/probes-edges.bats` (358 lines after slice 9); slice 10
   opens `tests/probes-tools.bats` for the tool-behaviour stub cases.
-  Order as executed: slice 8 waits on the escalated path-base question,
-  so slices 9 and 10 run before it and slice 8 closes the item.
+  11. Follow-up from slice 8's code review (each proven by mutation; tests
+      only, in `tests/probes-config.bats`): `relative cwd terminates at the
+      working directory` — run from a `.git`-free `$BATS_TEST_TMPDIR/w`,
+      relative git-lock text, `$2` = `rel` then `rel/x`, lock absent, flag
+      `false`: `mask`, `path=$BATS_TEST_TMPDIR/w/rel/.git/index.lock`,
+      bounded by a background job and `kill` so a hang fails; `a .git file
+      is walked past` — `<r>/.git` a directory, `<r>/sm/.git` a file, `$2` =
+      `<r>/sm/d`, config-lock text naming `.git/config`, lock present at
+      `<r>/.git/config.lock`: `orphan`, that `path=` (git prints a relative
+      lock path only from a `.git` directory's top-level; a linked worktree
+      or submodule gets it absolute); `trailing slash on cwd` — `$2` =
+      `<repo>/`: `path=<repo>/.git/index.lock`, no `//`. Residuals, not
+      tested: a config path holding `: File exists` or a non-UTF-8 byte (the
+      git-lock twin pins the shared technique); a symlinked base walks the
+      link's lexical parents; a base inside a gitdir resolves against an
+      enclosing worktree.
+  Order as executed: slice 8 waited on the escalated path-base question,
+  so slices 9 and 10 ran before it; slice 11 closes the item.
 
 ## Phase 3: Evidence (type: general)
 
