@@ -2,12 +2,14 @@
 
 Runbook: `plans/sandbox-lies/runbook.md`, Phase 3. Build baseline:
 `.git/build-baseline` (unchanged). Status: **stopped at Item 3.1's runbook
-escalation point** — one gate open for my human partner, below.
+escalation point** — gate 2 open for my human partner, below (gate 1 answered).
 
 ## Commits
 
 - 📝 Item 3.1 — live reproductions: git-lock orphan and held, config-lock mask;
   git-lock mask owed
+- 📝 Phase 3 build report — Item 3.1 escalation gate
+- 📝 Item 3.1 — opaque-script reruns: no index-lock mask; config-lock mask confirmed
 
 ## Entry
 
@@ -59,7 +61,63 @@ shape. No UNFIXABLE. After the commit, `verify-step.sh` reported CLEAN.
 Item 3.2 has not been started. The runbook stops the phase at this point, so I
 did not run it as non-contingent work.
 
-## Open gate — git-lock `mask` has no live reproduction
+## Gate 1 answer and follow-up (opaque-script shape)
+
+The answer came back as a correction rather than (a), (b) or (c): `git:*` is in
+the user settings' `sandbox.excludedCommands`, so the `sh -c` commit would have
+run unsandboxed. I was told to rerun both reproductions from an opaque script,
+to fix every `sh -c` shape, and to come back as a gate if the error still did
+not appear. What the rerun showed:
+
+- A script run as `sh <script>`, with no `git` on the command line, ran `ls`
+  on both lock paths and then `git status`. It did this in the scratch repo
+  and in this checkout's root. `index.lock` was absent in both places. The
+  root's `.git/config.lock` showed as a character device. `git status` exited
+  0 in both. **No index lock was masked, so the git-lock error cannot arise.**
+- **config-lock, opaque shape:** the script's `git config sandboxlies.probe 1`
+  in the root failed with the config-lock error (exit 255). The unsandboxed
+  probe printed `mask` with the same path as before. The key was not written.
+- **The correction's premise did not hold in this session.** A visible
+  `cd <root> && git config sandboxlies.probe 1` failed the same way. So did a
+  bare `git -C <root> config sandboxlies.probe 1`. Unsandboxed,
+  `.git/config.lock` does not exist and `git config --get sandboxlies.probe`
+  exits 1. Every one of those git calls therefore ran sandboxed, even though
+  `git:*` is in `~/.claude/settings.json`. The sandbox configuration this
+  teammate session was given lists no `excludedCommands` at all. The earlier
+  `sh -c` commit was very likely sandboxed too. It succeeded because nothing
+  masked the index lock, not because the exclusion lifted the sandbox.
+- For that reason I have **not** rewritten `sh -c` to the opaque-script shape
+  in the runbook's Item 3.1 text or in the carry list. Doing so would record a
+  reason that is false here. `detectors.md` now records the opaque-script
+  attempts and the exclusion observation as facts, beside the `sh -c` ones.
+  It makes no claim about which shape escapes the exclusion.
+- Review: `edify:corrector` (Fable), report `item-3-1-review-2.md`. It fixed
+  2 major issues: a sentence overclaiming "every shape" of git call, and the
+  exclusion observation, which had not been recorded. It also fixed minor
+  wording. No UNFIXABLE.
+
+## Open gate 2 — no index-lock mask in this session under any shape
+
+1. **How should the git-lock `mask` outcome be handled now?** Default **(a)**.
+   - (a) Accept it by composition, as argued under gate 1 below, and continue
+     with Item 3.2.
+   - (b) Mask the scratch lock path deliberately. Add
+     `/tmp/claude/sandbox-lies-3-1/repo/.git/index.lock` to the sandbox's
+     write-deny list, in settings I may not edit. Bubblewrap then presents it
+     as a character device, as it does `.git/config.lock`, and the scratch
+     `git add` fails.
+   - (c) Hold the wiring until a session hits the mask naturally.
+2. **Should the `sh -c` shapes still be rewritten to the opaque-script shape?**
+   Default: **no.** Leave the runbook and carry text as they are. The opaque
+   shape is only recorded as an equivalent that also works. The rewrite's
+   premise, that `git:*` unsandboxes a visible git call, was contradicted in
+   this session. Whether it holds in the main session is worth one check
+   there: run `git -C /Users/david/code/sandbox-lies config sandboxlies.probe 1`
+   with the default sandbox. If it succeeds, it was unsandboxed; then remove
+   the key with
+   `git -C /Users/david/code/sandbox-lies config --unset sandboxlies.probe`.
+
+## Gate 1 (superseded by gate 2) — git-lock `mask` has no live reproduction
 
 1. **How should the git-lock `mask` outcome be handled?** Default **(a)**.
    - **(a)** Accept what was proved and continue with Item 3.2 and then
@@ -101,14 +159,14 @@ did not run it as non-contingent work.
 ## Resume
 
 Nothing is in flight. The tracked tree is clean after this report's commit.
-The last item commit was "Item 3.1 — live reproductions: git-lock orphan and
-held, config-lock mask; git-lock mask owed". Position: Item 3.1 is done except
-git-lock `mask`, which waits on the gate. Next: the gate answer, then (under
-(a)) Item 3.2, then the Phase 3 boundary corrector. Under (b), redo only the
-sandboxed scratch commit (`sh -c 'git add f && git commit -m x'` in
-`/tmp/claude/sandbox-lies-3-1/repo` after `echo y >> f`) and the unsandboxed
-`probe_git_lock false <repo>` on its output. Then replace the "owed" paragraph
-before Item 3.2.
+The last item commit was "Item 3.1 — opaque-script reruns: no index-lock mask;
+config-lock mask confirmed". Position: Item 3.1 is done except git-lock
+`mask`, which waits on gate 2. Next: the gate 2 answer, then (under (a))
+Item 3.2, then the Phase 3 boundary corrector. Under (b), once the deny entry
+is live: rerun `sh /tmp/claude/sandbox-lies-3-1/opaque.sh` sandboxed, after
+changing its `git status` to `git add f`, and `echo y >> f` first. Then run
+`probe_git_lock false /tmp/claude/sandbox-lies-3-1/repo` unsandboxed on its
+output. Replace the "owed" paragraph before Item 3.2.
 
 Carry: `docs/design.md` is at 400/400 lines. Item 3.2's replays run one at a
 time. The scratch repo `/tmp/claude/sandbox-lies-3-1/` still exists and is safe

@@ -100,11 +100,14 @@ background `sleep 30 9>>.git/index.lock`; the same probe call on the same text
 printed `held`, `pid=<the sleep's pid>`, and the same `path=`.
 
 **Live reproduction owed: `mask`.** On 2026-09-25 a sandboxed
-`sh -c 'git add f && git commit -m x'` in that scratch repo — nested so the
-`git:*` exclusion does not lift it — committed cleanly, its hook's staging
-included, as a 2026-09-23 attempt had: that session's sandbox masked
-`.git/config.lock` in the project root but no `index.lock` there or in the
-scratch repo, so the error never arose and the probe had no text to read.
+`sh -c 'git add f && git commit -m x'` in that scratch repo committed cleanly,
+its hook's staging included, as a 2026-09-23 attempt had. A script run as
+`sh <script>`, no `git` on the command line, then ran `ls -la` on both lock
+paths and `git status` in the scratch repo and in the project root: no
+`index.lock` in either, only the project root's `.git/config.lock` as a
+character device. With no index lock masked, the error could not arise. Git did
+run sandboxed there: every shape of the config-lock write below, a bare
+`git -C <root> config` included, hit a mask that exists only inside the sandbox.
 
 ### config-lock
 
@@ -134,6 +137,10 @@ unsandboxed one showed no such file, a sandboxed
 `sh -c 'git config sandboxlies.probe 1'` raised the config-lock error naming
 `.git/config` relative; `probe_config_lock false <root>` run unsandboxed on that
 text printed `mask`, `path=<root>/.git/config.lock`. The key was not written.
+The same write from a script run as `sh <script>`, with no `git` on the command
+line, gave the same error and the same probe output; a visible
+`cd <root> && git config` and a bare `git -C <root> config` gave the same error
+too, despite `git:*` in the user settings' `sandbox.excludedCommands`.
 
 **Corpus.** 4 hits, 4 true. 100%, 2026-09-03.
 
