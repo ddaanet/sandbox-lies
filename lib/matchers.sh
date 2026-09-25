@@ -135,9 +135,13 @@ match_phantom_gitadd() {
 # _readonly_path_line -- prints stdin's first line match_readonly_path
 # accepts, nothing when there is none. Shared with probe_readonly_path
 # (lib/probes.sh, sourced there) so the discriminator lives in one place
-# rather than as two copies that could drift apart.
+# rather than as two copies that could drift apart. LC_ALL=C: under a UTF-8
+# locale GNU grep reads a line holding an invalid byte as binary, and on a
+# Python refusal (whose alternative stops before the path) it exits 0 but
+# prints "binary file matches" to stderr in place of the line, so the
+# matcher fired while the probe read no path.
 _readonly_path_line() {
-    grep -m1 -E \
+    LC_ALL=C grep -m1 -E \
         '^[^`|:[:space:]]+: .*: (Read-only file system|Device or resource busy)[[:space:]]*$'\
 '|^[A-Za-z]+Error: \[Errno (30|16)\] (Read-only file system|Device or resource busy):'
 }

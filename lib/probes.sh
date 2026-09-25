@@ -51,18 +51,30 @@ probe_config_lock() {
 # (docs/references/detectors.md), decided before the probe runs, not inside
 # it.
 probe_readonly_path() {
-    local cwd="${2-}" text line path target outcome
+    local cwd="${2-}" text path target outcome
     text=$(cat)
-    line=$(printf '%s\n' "$text" | _readonly_path_line)
-    path=$(printf '%s\n' "$line" | _probe_readonly_path_from_line)
+    # One pipeline ending in sed, which exits 0: grep's 1 on a text with no
+    # matching line never becomes the assignment's status, so a caller
+    # running under set -e still gets nopath.
+    path=$(printf '%s\n' "$text" | _readonly_path_line \
+        | _probe_readonly_path_from_line)
     if [ -z "$path" ]; then
         printf '%s\n' nopath
         return 0
     fi
     path=$(_probe_readonly_resolve "$path" "$cwd")
     target="$path"
-    if [ ! -e "$path" ] && [ ! -L "$path" ]; then
-        target="${path%/*}"
+    # Absent, a dangling symlink included (`-w` follows the link and would
+    # read it unwritable whatever its directory allows): the parent decides,
+    # taken after any trailing slash, as mkdir prints its operand, so the
+    # parent of `dir/new/` is `dir`, not `dir/new`. Residual: a write
+    # through a dangling link lands in the link target's directory, which
+    # may not be the link's own.
+    if [ ! -e "$path" ]; then
+        while [ "${target%/}" != "$target" ]; do
+            target="${target%/}"
+        done
+        target="${target%/*}"
         [ -n "$target" ] || target=/
     fi
     if [ -w "$target" ]; then
@@ -96,9 +108,12 @@ _probe_readonly_resolve() {
 
 # Prints the first single-quoted segment on stdin (one line), nothing when
 # there is none. A path is quoted because it may hold a blank, so the
-# capture keeps every character but a quote between the pair.
+# capture keeps every character but a quote between the pair. LC_ALL=C for
+# the same byte-safety reason as _probe_lock_path. Residual: a path holding
+# a single quote, which GNU coreutils prints double-quoted or as
+# `'it'\''s'`, yields nopath or its first quoted piece.
 _probe_readonly_path_from_line() {
-    sed -n "s/^[^']*'\([^']*\)'.*/\1/p"
+    LC_ALL=C sed -n "s/^[^']*'\([^']*\)'.*/\1/p"
 }
 
 # _probe_lock_at <flag> <path> — the A-3 contract once a probe has extracted
