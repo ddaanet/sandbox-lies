@@ -234,7 +234,7 @@ it — and ends in a colon, a space and the kernel's read-only-filesystem (EROFS
 or busy-device (EBUSY) message, trailing blanks allowed. Or Python's: a line
 beginning with an exception name ending in `Error`, errno 30 or 16 in brackets,
 the same message, a colon. The store quotes both mid-line. Expected residual: a
-genuinely read-only mount.
+path not writable outside the sandbox either.
 
 **Flag policy.** Silent when the flag is true.
 
@@ -259,17 +259,16 @@ it, or on its parent when it does not exist.
   a sandbox effect. · `read-only — real`
 - `nopath` — the `writable` paragraph without the path.
 
-**Corpus.** 162 hits, 157 true — sandbox refusals under `/tmp`, `~/.cache`,
-`~/.claude`, sibling repositories, harness-mounted config and the masks, 11 of
-them this project's traffic. 97% on 2026-09-25 if these five are false, which
-are escalated to my human partner, unclassified:
+**Corpus.** 162 hits, 161 true, 1 the residual (`mkdir` of a path directly under
+`/`, left by an empty variable). 99% on 2026-09-25; 11 hits this project's
+traffic. True: sandbox refusals under `/tmp`, `~/.cache`, `~/.claude`, sibling
+repositories, harness-mounted config and the masks, and four reads of a file
+with a command-output name — a background task's `*.output`, a `*.log` —
+carrying an earlier sandboxed call's refusal. Any such name (`*.out`, `*.err`
+and the like too) is a legitimate flag; a `*.md` or other document carrying one
+is material about sandbox effects, self-reference (D-10).
 
-- three reads of a background task's output file holding bash's refusal of that
-  task's redirect (gitlore, 2026-07-23, 2026-09-07, 2026-09-10);
-- a read of a debug log holding a nested `claude -p` hook's refusal to lock the
-  user's git config (gitlore, 2026-09-19);
-- `mkdir` refused a path directly under `/`, left by an empty variable and not
-  writable outside the sandbox either (gitlore, 2026-09-14).
+**Decision: ships.**
 
 ### tmpdir-unset
 

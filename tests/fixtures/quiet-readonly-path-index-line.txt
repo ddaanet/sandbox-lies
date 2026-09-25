@@ -1,0 +1,1 @@
+48:- [claude-plugin-dev toolkit](claude-plugin-dev.md) — shared release infra for ddaa's plugins; VERSION file SOT, self-release recipe, marketplace bump; `just release` must be run unsandboxed or it dies at that bump on `mv: inter-device move failed`/`Read-only file system`, leaving a half-done release `resume-release` finishes

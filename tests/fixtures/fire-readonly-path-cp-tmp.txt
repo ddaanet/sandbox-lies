@@ -1,0 +1,2 @@
+Exit code 1
+cp: cannot create regular file '/tmp/checkpoint.py.orig': Read-only file system

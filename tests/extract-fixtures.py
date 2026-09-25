@@ -102,6 +102,20 @@ SPEC = [
     ("quiet-seccomp-init-heading", "-Users-david-code-gitlore", "2026-09-01",
      'grep -n "^## " memory/ddaanet/sandbox-effects.md', "apply-seccomp",
      "short", 60, 4000),
+    # a quoted path, as the Item 4.3 probe tests reuse
+    ("fire-readonly-path-cp-tmp", "-Users-david-code-handoff", "2026-09-18",
+     "cp scripts/checkpoint.py /tmp/checkpoint.py.orig",
+     "'/tmp/checkpoint.py.orig'", "short", 40, 4000),
+    # a background task's output file read back: a true positive
+    ("fire-readonly-path-task-output", "-Users-david-code-gitlore",
+     "2026-09-07", "bo7z9uyq2.output", "gitlore-precommit-item11s1.log",
+     "short", 40, 4000),
+    ("fire-readonly-path-python-errno", "-Users-david-code-gitlore",
+     "2026-07-15", "p='hooks/hooks.json'", "[Errno 30]", "short", 40, 4000),
+    # the memory index line naming the message mid-line
+    ("quiet-readonly-path-index-line", "-Users-david-code-gitlore",
+     "2026-08-13", 'grep -n "claude-plugin-dev" memory/ddaanet/MEMORY.md',
+     "inter-device move failed", "short", 60, 4000),
 ]
 
 

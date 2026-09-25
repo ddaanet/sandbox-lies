@@ -53,6 +53,11 @@ expected_for() {
     quiet-resume-lost-index-line)  : ;;
     fire-seccomp-init-sed)         : ;;
     quiet-seccomp-init-heading)    : ;;
+    # readonly-path: Item 4.3 builds its matcher and flips these fire-* rows.
+    fire-readonly-path-cp-tmp)       : ;;
+    fire-readonly-path-task-output)  : ;;
+    fire-readonly-path-python-errno) : ;;
+    quiet-readonly-path-index-line)  : ;;
     *) return 1 ;;
   esac
 }

@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "<stdin>", line 9, in <module>
+OSError: [Errno 30] Read-only file system: 'hooks/hooks.json'
+["PostToolUse","PreToolUse","SessionStart","WorktreeRemove"]
+null
+["Bash","EnterWorktree|ExitWorktree","Write|Edit"]
