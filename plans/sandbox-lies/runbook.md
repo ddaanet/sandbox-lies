@@ -836,6 +836,21 @@ fire case under `make_bsd_stubs grep sed` (Portability).
      fixture as a failure payload, flag absent, with a stub
      `probe_readonly_path` recording its calls: empty stdout, no call
      recorded.
+  List revision (my human partner's rule on reads of command-output
+  files): when the flagged call is a read (`cat`, `tail`, `sed`, `grep`, or a
+  pipeline of them) of a file with a command-output name (`*.output`,
+  `*.log`, `*.out`, `*.err` and the like), the verdict points at the command
+  that produced the file, not at re-running the whole call. Neither this
+  item's matcher nor its probe exposes the read: the file read is named only
+  in the command, which FR-2 and the probe contract never read, and the
+  refusal line in the text is identical to a live one. Item 6.1's verdict
+  carries it as a conditional clause in the `writable` and `nopath`
+  paragraphs.
+  Item 4.2's deferred test gaps (`item-4-2-s1-code-review.md`) ride slice
+  1's dispatch: a cut fixture pinning `tmpdir-unset`'s bare-after-prefix
+  fire shape, and quiet cases pinning its quote-free-words rule, the bare
+  alternative's root slash, and the line-start anchors of `resume-lost` and
+  `seccomp-init`.
 
 ## Phase 5: readonly-path live proof (type: general)
 
