@@ -11,6 +11,7 @@ escalation point** — gate 2 open for my human partner, below (gate 1 answered)
 - 📝 Phase 3 build report — Item 3.1 escalation gate
 - 📝 Item 3.1 — opaque-script reruns: no index-lock mask; config-lock mask confirmed
 - 📝 Item 3.1 — sandbox tell: sh -c shape confirmed sandboxed
+- 📝 Item 3.1 — main session's git call also sandboxed
 
 ## Entry
 
@@ -130,9 +131,11 @@ rewrite.
      `git add` fails.
    - (c) Hold the wiring until a session hits the mask naturally.
 2. ~~Should the `sh -c` shapes be rewritten?~~ Settled by the sandbox
-   tell: shape 1 is sandboxed, so there is no rewrite. It is still open
-   whether a visible git call is unsandboxed in the main session; this
-   teammate session applies no `excludedCommands`.
+   tell: shape 1 is sandboxed, so there is no rewrite. The main session
+   was checked too (relayed by team-lead): a visible bare `git -C <root>
+   config` failed on the mask there too, and the key was not written.
+   `git:*` lifts neither session's sandbox. That fact is recorded in
+   `detectors.md` beside the exclusion observation.
 
 ## Gate 1 (superseded by gate 2) — git-lock `mask` has no live reproduction
 
@@ -176,7 +179,7 @@ rewrite.
 ## Resume
 
 Nothing is in flight. The tracked tree is clean after this report's commit.
-The last item commit was "Item 3.1 — sandbox tell: sh -c shape confirmed
+The last item commit was "Item 3.1 — main session's git call also
 sandboxed". Position: Item 3.1 is done except git-lock
 `mask`, which waits on gate 2. Next: the gate 2 answer, then (under (a))
 Item 3.2, then the Phase 3 boundary corrector. Under (b), once the deny entry

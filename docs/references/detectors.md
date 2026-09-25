@@ -142,7 +142,9 @@ text printed `mask`, `path=<root>/.git/config.lock`. The key was not written.
 The same write from a script run as `sh <script>`, with no `git` on the command
 line, gave the same error and the same probe output; a visible
 `cd <root> && git config` and a bare `git -C <root> config` gave the same error
-too, despite `git:*` in the user settings' `sandbox.excludedCommands`.
+too, despite `git:*` in the user settings' `sandbox.excludedCommands`. These ran
+in a delegated agent's session; the bare form did the same, key unwritten, in
+the main session that dispatched it.
 
 **Corpus.** 4 hits, 4 true. 100%, 2026-09-03.
 
