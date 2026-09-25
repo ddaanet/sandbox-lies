@@ -92,16 +92,17 @@ STUB
 # (attached or not, with or without -L, several operands, no operand meaning
 # stdin) from the real `stat -c %Y`: on Linux the real `stat -f` reports
 # filesystem info, not file info, so without this the BSD path would be
-# untestable here. Every other BSD option or -f format exits 2 naming itself
-# as not emulated, rather than handing it to GNU stat, whose -f/-t/-x mean
-# different things. Residual: a missing file's message is GNU's wording, not
+# untestable here. Everything else BSD accepts — another option or -f
+# format, or no -f at all (BSD's default output is not GNU's) — exits 2
+# naming itself as not emulated, rather than reaching GNU stat, whose
+# -f/-t/-x mean different things. Residual: a missing file's message is GNU's wording, not
 # BSD's `stat: <file>: stat: No such file or directory`; the exit status (1)
 # matches.
 _bsd_stub_stat() {
   # unquoted EOF: $2 (the real stat) expands now; \$ forms stay for run time
   cat > "$1" <<STUB
 #!/bin/sh
-link= fmt= other=
+args=\$* link= fmt= other=
 while getopts ':FLlnqrsxf:t:' o; do
   case "\$o" in
     L) link=1 ;;
@@ -118,15 +119,9 @@ while getopts ':FLlnqrsxf:t:' o; do
   esac
 done
 shift \$((OPTIND - 1))
-if [ -n "\$other" ] || { [ -n "\$fmt" ] && [ "\$fmt" != %m ]; }; then
-  echo "make_bsd_stubs stat: only -f %m is emulated (got -\${other:-f \$fmt})" >&2
+if [ -n "\$other" ] || [ "\$fmt" != %m ]; then
+  printf 'make_bsd_stubs stat: only -f %%m is emulated (got: stat %s)\n' "\$args" >&2
   exit 2
-fi
-if [ -z "\$fmt" ]; then
-  if [ -n "\$link" ]; then
-    exec "$2" -L -- "\$@"
-  fi
-  exec "$2" -- "\$@"
 fi
 [ "\$#" -gt 0 ] || set -- -
 if [ -n "\$link" ]; then
