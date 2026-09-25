@@ -136,8 +136,8 @@ match_phantom_gitadd() {
 # backticks, pipes and colons, then ": ", as `cp`, `mv`, git's `error` and
 # bash's own `/bin/bash: line N:` all print it) and ends in the kernel's
 # read-only-filesystem or busy-device message, trailing blanks allowed. Or
-# Python's: an exception name ending in `Error`, then the same errno (30 or
-# 16) and message in brackets, then a colon -- the quoted path that usually
+# Python's: an exception name ending in `Error`, `[Errno 30]` or
+# `[Errno 16]`, the same message, then a colon -- the quoted path that
 # follows is not required, since the discriminator anchors at the message,
 # not the line end, for this alternative.
 #
@@ -149,7 +149,7 @@ match_phantom_gitadd() {
 match_readonly_path() {
     grep -qE \
         '^[^`|:[:space:]]+: .*: (Read-only file system|Device or resource busy)[[:space:]]*$'\
-'|^[A-Za-z]+Error: \[Errno (30|16)\] (Read-only file system|Device or resource busy): '
+'|^[A-Za-z]+Error: \[Errno (30|16)\] (Read-only file system|Device or resource busy):'
 }
 
 # The shape an empty $TMPDIR expansion produces, as the replay selected it: a

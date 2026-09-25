@@ -19,9 +19,10 @@ them) is ~21,000 process spawns and blows the 10-minute cap:
 
 Usage:
   python3 tests/corpus-eval.py extract --outdir DIR
-  # then, in bash:
+  # then, in bash (detect prints one verdict per line; aggregate reads one
+  # line per file, its verdicts blank-separated, so tr joins them):
   #   for f in DIR/survivors/*; do
-  #     v=$(bash lib/matchers.sh <"$f")
+  #     v=$(bash lib/matchers.sh <"$f" | tr '\n' ' ')
   #     [ -n "$v" ] && printf '%s\t%s\n' "$(basename "$f")" "$v" >>DIR/verdicts.tsv
   #   done
   python3 tests/corpus-eval.py aggregate --outdir DIR

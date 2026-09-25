@@ -86,8 +86,8 @@ SPEC = [
      "short", 40, 4000),
     ("fire-tmpdir-unset-cp-stat", "-Users-david-code-micro", "2026-07-04",
      'cp "$TMPDIR/micro-build"', "/micro-build'", "short", 40, 4000),
-    # the bare-after-prefix shape with no "line N:" locator (item-4-2-s1-code
-    # -review.md gap a)
+    # the bare-after-prefix shape with no "line N:" locator
+    # (item-4-2-s1-code-review.md gap a)
     ("fire-tmpdir-unset-bash-bare", "-Users-david-code-devddaanet", "2026-09-13",
      "move-strays.sh", "No such file or directory", "short", 40, 4000),
     # a missing-file refusal on a path deeper than one component, flag set
