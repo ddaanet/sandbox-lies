@@ -584,10 +584,23 @@ Cross-cutting, bounded:
       and non-empty stderr. `present unheld lock is orphan` and
       `unexpected holder-tool stderr is passed through` stay the positives.
       The phase-boundary corrector widens `detectors.md`'s `unknown` row to
-      "or the holder check errored".
+      "or the holder check errored". Added by slice 9's code review, each
+      proven by mutation: `a file named %m in the cwd` — an unheld 7-byte
+      lock, no stubs, the probe run from a directory holding an empty file
+      named `%m`: `orphan`, `bytes=7`, an `age=` integer, empty stderr (GNU
+      `stat -f %m` exits 0 there with a filesystem report); `non-seconds
+      stat output is dropped` — a `stat` stub failing `-f` and printing
+      non-digits with a stderr line on `-c`, exit 0: `orphan`, `bytes=7`, no
+      `age=`, both lines on stderr; `vanished lock is gone under BSD stat` —
+      the vanish case with its removing wrapper exec'ing the BSD `stat`
+      stub: `gone`, `path=`, empty stderr, both flags. Not pinned: a
+      pre-epoch mtime (low value).
   Placement (slice 6's test review, against the 400-line cap): slices 7,
   8 and 9's `BSD stat` in `tests/probes.bats`; slice 9's `probe writes
-  nothing` and slice 10 in `tests/probes-edges.bats`.
+  nothing` in `tests/probes-edges.bats` (358 lines after slice 9); slice 10
+  opens `tests/probes-tools.bats` for the tool-behaviour stub cases.
+  Order as executed: slice 8 waits on the escalated path-base question,
+  so slices 9 and 10 run before it and slice 8 closes the item.
 
 ## Phase 3: Evidence (type: general)
 
