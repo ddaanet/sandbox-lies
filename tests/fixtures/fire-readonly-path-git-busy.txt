@@ -1,0 +1,2 @@
+Exit code 255
+error: failed to delete '/Users/david/code/gitlore/.eval-tmp/head-tree': Device or resource busy

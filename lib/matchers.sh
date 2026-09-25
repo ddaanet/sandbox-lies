@@ -36,6 +36,7 @@ detect() {
     match_phantom_chardev < <(printf '%s\n' "$text") && { printf 'phantom-chardev\n'; status=0; }
     match_phantom_untracked < <(printf '%s\n' "$text") && { printf 'phantom-untracked\n'; status=0; }
     match_phantom_gitadd < <(printf '%s\n' "$text") && { printf 'phantom-gitadd\n'; status=0; }
+    match_readonly_path < <(printf '%s\n' "$text") && { printf 'readonly-path\n'; status=0; }
     match_tmpdir_unset < <(printf '%s\n' "$text") && { printf 'tmpdir-unset\n'; status=0; }
     match_resume_lost < <(printf '%s\n' "$text") && { printf 'resume-lost\n'; status=0; }
     match_seccomp_init < <(printf '%s\n' "$text") && { printf 'seccomp-init\n'; status=0; }
@@ -129,6 +130,26 @@ match_phantom_untracked() {
 # would match. No such call exists in the 21,272-call corpus.
 match_phantom_gitadd() {
     grep -qE '^error: .*: can only add regular files, symbolic links or git-directories'
+}
+
+# A line that opens with a tool's own prefix (a run free of blanks,
+# backticks, pipes and colons, then ": ", as `cp`, `mv`, git's `error` and
+# bash's own `/bin/bash: line N:` all print it) and ends in the kernel's
+# read-only-filesystem or busy-device message, trailing blanks allowed. Or
+# Python's: an exception name ending in `Error`, then the same errno (30 or
+# 16) and message in brackets, then a colon -- the quoted path that usually
+# follows is not required, since the discriminator anchors at the message,
+# not the line end, for this alternative.
+#
+# Anchoring at line start is what the corpus needed (99% precision, 162
+# hits): the memory store and this suite's own index/heredoc lines quote
+# both messages mid-line or mid-word, never as a bare refusal starting a
+# line of their own. See docs/references/detectors.md's `### readonly-path`
+# entry for the corpus figures this discriminator was measured against.
+match_readonly_path() {
+    grep -qE \
+        '^[^`|:[:space:]]+: .*: (Read-only file system|Device or resource busy)[[:space:]]*$'\
+'|^[A-Za-z]+Error: \[Errno (30|16)\] (Read-only file system|Device or resource busy): '
 }
 
 # The shape an empty $TMPDIR expansion produces, as the replay selected it: a

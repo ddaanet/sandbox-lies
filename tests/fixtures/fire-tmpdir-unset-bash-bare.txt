@@ -1,0 +1,2 @@
+Exit code 127
+bash: /move-strays.sh: No such file or directory

@@ -47,15 +47,17 @@ expected_for() {
     # Item 4.2 (zellij-socket stays a candidate and has no fixture).
     fire-tmpdir-unset-redirect)    printf 'tmpdir-unset\n' ;;
     fire-tmpdir-unset-cp-stat)     printf 'tmpdir-unset\n' ;;
+    fire-tmpdir-unset-bash-bare)   printf 'tmpdir-unset\n' ;;
     quiet-tmpdir-unset-deep-path)  : ;;
     fire-resume-lost-two-turn)     printf 'resume-lost\n' ;;
     quiet-resume-lost-index-line)  : ;;
     fire-seccomp-init-sed)         printf 'seccomp-init\n' ;;
     quiet-seccomp-init-heading)    : ;;
-    # readonly-path: Item 4.3 builds its matcher and flips these fire-* rows.
-    fire-readonly-path-cp-tmp)       : ;;
-    fire-readonly-path-task-output)  : ;;
-    fire-readonly-path-python-errno) : ;;
+    # readonly-path: Item 4.3 slice 1's matcher (this is its red).
+    fire-readonly-path-cp-tmp)       printf 'readonly-path\n' ;;
+    fire-readonly-path-task-output)  printf 'readonly-path\n' ;;
+    fire-readonly-path-python-errno) printf 'readonly-path\n' ;;
+    fire-readonly-path-git-busy)     printf 'readonly-path\n' ;;
     quiet-readonly-path-index-line)  : ;;
     *) return 1 ;;
   esac
@@ -185,6 +187,13 @@ assert_fixture() {
   assert_fixture fire-tmpdir-unset-cp-stat
 }
 
+@test "tmpdir-unset fires on the bare shape directly after the tool prefix" {
+  # item-4-2-s1-code-review.md gap (a): no "line N:" locator between the
+  # prefix and the root slash -- the bare shape Critical 1 fixed.
+  assert_fixture fire-tmpdir-unset-bash-bare
+  grep -qE '^bash: /[^/]+: No such file' "$FIXTURES/fire-tmpdir-unset-bash-bare.txt"
+}
+
 @test "resume-lost fires on a lost transcript refusal" {
   assert_fixture fire-resume-lost-two-turn
 }
@@ -214,6 +223,36 @@ assert_fixture() {
   assert_fixture quiet-seccomp-init-heading
   grep -qF 'unshare(CLONE_NEWUSER)' "$f"
   run ! grep -q '^apply-seccomp' "$f"
+}
+
+# --------------------------------------- detector E: readonly-path (matcher)
+#
+# Item 4.3 slice 1: match_readonly_path is stubbed inert in lib/matchers.sh,
+# so these fire-* fixtures red until the slice's GREEN builds the
+# discriminator; the quiet fixture already passes against the stub, and
+# tests/matchers-edges.bats pins the line-start anchor it cannot.
+
+@test "readonly-path fires on a quoted cp refusal under /tmp" {
+  assert_fixture fire-readonly-path-cp-tmp
+}
+
+@test "readonly-path fires on a background task's output file read" {
+  assert_fixture fire-readonly-path-task-output
+}
+
+@test "readonly-path fires on a Python OSError errno 30 refusal" {
+  assert_fixture fire-readonly-path-python-errno
+}
+
+@test "readonly-path fires on git's busy-device refusal" {
+  assert_fixture fire-readonly-path-git-busy
+}
+
+@test "readonly-path stays quiet on the memory index line naming the message" {
+  assert_fixture quiet-readonly-path-index-line
+  local f="$FIXTURES/quiet-readonly-path-index-line.txt"
+  grep -qF 'inter-device move failed' "$f"
+  grep -qF 'Read-only file system' "$f"
 }
 
 # --------------------------------------------------- the store's own strings
@@ -329,45 +368,4 @@ assert_fixture() {
   [ "$status" -eq 0 ]
   [ "$output" = "git-lock" ]
   [ ! -e "$calls" ] || { cat "$calls" >&2; return 1; }
-}
-
-# --------------------------------------------- slice 9: NUL and closed stdin
-
-@test "detect sees past a NUL" {
-  # item-2-3-s8-code-review.md F1: `read -r -d ''` stops at the first NUL, a
-  # silent false negative for a firing line that arrives after one. The
-  # firing line is assembled from two fragments at run time, never written
-  # whole to this file, so the self-quiet sweep (FR-11, tests/docs.bats)
-  # stays quiet under this test too.
-  local frag1 frag2 input_file
-  frag1='could not lock config file .git/config: File'
-  frag2=' exists'
-  input_file="$BATS_TEST_TMPDIR/nul-then-firing.txt"
-  printf 'quiet preamble text\n\000error: %s%s\n' "$frag1" "$frag2" \
-    > "$input_file"
-  # Without the NUL this is a plain firing case; pin that it is there.
-  [ "$(LC_ALL=C tr -cd '\000' < "$input_file" | wc -c)" -eq 1 ]
-
-  run --separate-stderr bash "$MATCHERS" < "$input_file"
-  [ "$status" -eq 0 ]
-  [ "$output" = "config-lock" ]
-  [ -z "$stderr" ]
-}
-
-@test "detect on closed stdin" {
-  # item-2-3-s8-code-review.md F3: a read failure must not hang, and reports
-  # once on stderr rather than as one `text: unbound variable` per matcher.
-  # stdin is closed by an inner `bash -c 'bash "$1" <&-'`: closed on the
-  # outer `run` line instead, the freed fd 0 is taken by run's own capture
-  # pipe (F3's mechanism, one level up), so the SUT would start with stdin
-  # open on that pipe rather than closed. `timeout` bounds a hang.
-  command -v timeout >/dev/null \
-    || skip "no timeout on PATH; cannot bound a hang"
-  # shellcheck disable=SC2016 # $1 is the inner bash -c's own arg, expanded there
-  run --separate-stderr timeout 5 bash -c 'bash "$1" <&-' _ "$MATCHERS"
-  [ "$status" -ne 124 ]
-  [ "$status" -eq 1 ]
-  [ -z "$output" ]
-  # shellcheck disable=SC2154 # set by bats' run --separate-stderr
-  [ "${#stderr_lines[@]}" -eq 1 ]
 }

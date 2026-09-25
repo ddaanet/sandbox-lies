@@ -86,6 +86,10 @@ SPEC = [
      "short", 40, 4000),
     ("fire-tmpdir-unset-cp-stat", "-Users-david-code-micro", "2026-07-04",
      'cp "$TMPDIR/micro-build"', "/micro-build'", "short", 40, 4000),
+    # the bare-after-prefix shape with no "line N:" locator (item-4-2-s1-code
+    # -review.md gap a)
+    ("fire-tmpdir-unset-bash-bare", "-Users-david-code-devddaanet", "2026-09-13",
+     "move-strays.sh", "No such file or directory", "short", 40, 4000),
     # a missing-file refusal on a path deeper than one component, flag set
     ("quiet-tmpdir-unset-deep-path", "-Users-david-code-micro", "2026-07-22",
      "ls -la /Users/david/code/micro/.git/index.lock 2>&1 ||",
@@ -112,6 +116,10 @@ SPEC = [
      "short", 40, 4000),
     ("fire-readonly-path-python-errno", "-Users-david-code-gitlore",
      "2026-07-15", "p='hooks/hooks.json'", "[Errno 30]", "short", 40, 4000),
+    # git's busy-device refusal: the EBUSY half of the message alternation
+    ("fire-readonly-path-git-busy", "-Users-david-code-gitlore", "2026-07-23",
+     "git worktree remove /Users/david/code/gitlore/.eval-tmp/head-tree",
+     "Device or resource busy", "short", 40, 4000),
     # the memory index line naming the message mid-line
     ("quiet-readonly-path-index-line", "-Users-david-code-gitlore",
      "2026-08-13", 'grep -n "claude-plugin-dev" memory/ddaanet/MEMORY.md',

@@ -16,7 +16,7 @@ git_lock_error() {
 
 # config_lock_error <path> — git's config-lock error line, built from two
 # fragments at run time (self-quiet, FR-11), the same split
-# tests/matchers.bats "detect sees past a NUL" uses for match_config_lock's
+# tests/matchers-edges.bats "detect sees past a NUL" uses for match_config_lock's
 # own pattern, so no source line here reads "error: could not lock config
 # file ...: File exists" whole. <path> names the config file, not the lock:
 # the probe appends ".lock" itself.
