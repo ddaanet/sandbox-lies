@@ -22,9 +22,10 @@ probe_config_lock() {
     local flag="$1" text path
     text=$(cat)
     path=$(printf '%s\n' "$text" | _probe_config_lock_path)
-    # Empty means no config-lock line in the text: leave it empty rather than
-    # naming "<base>/.lock", which _probe_resolve_path would treat as an
-    # ordinary relative path and resolve to a real, holdable directory entry.
+    # Empty means no config-lock line in the text: it stays empty, the
+    # pathless case, rather than becoming ".lock", a relative path
+    # _probe_resolve_path would join onto the base, naming a file no error
+    # named.
     if [ -n "$path" ]; then
         path="$path.lock"
     fi
@@ -171,12 +172,19 @@ _probe_config_lock_path() {
 # prints unchanged. An empty one is not joined either, because joined it
 # would name the base itself, a directory the holder check would then read
 # as held by whatever sits in it. A relative <path> is joined onto the
-# nearest directory at or above the base that holds `.git` (`-e`, not `-d`:
-# a linked worktree's `.git` is a file), walking up in pure shell with no
-# git process, no canonicalisation and no tool call other than the walk
-# itself; with no such ancestor it joins onto the base unchanged. The base is
-# <cwd-arg> (the probe's own $2), or the probe's own working directory when
-# <cwd-arg> is missing or empty — never `/`.
+# nearest directory at or above the base holding a `.git` directory, else
+# onto the base unchanged. Git prints a relative lock path only from a
+# `.git` directory's top-level; from a linked worktree or a submodule, whose
+# `.git` is a file, it prints the path absolute, so a `.git` file is walked
+# past. The base is <cwd-arg> (the probe's own $2), or the probe's own
+# working directory when <cwd-arg> is missing or empty — never `/`; a
+# relative base is taken from that working directory too, so each step
+# drops one component of an absolute path and the walk ends at `/`, one
+# `[ -d ]` per ancestor and no process. Lexical, not canonical. Residuals: a
+# base reached through a symlink walks the link's parents, not the target's,
+# where git would find the top-level; a base inside a gitdir (bare, or
+# `.git` itself), where git prints paths relative to that gitdir, resolves
+# against an enclosing worktree when one exists.
 _probe_resolve_path() {
     local base dir
     case "$1" in
@@ -186,9 +194,13 @@ _probe_resolve_path() {
             ;;
     esac
     dir="${2:-$PWD}"
+    case "$dir" in
+        /*) ;;
+        *) dir="$PWD/$dir" ;;
+    esac
     base="$dir"
     while :; do
-        if [ -e "$dir/.git" ]; then
+        if [ -d "$dir/.git" ]; then
             base="$dir"
             break
         fi
@@ -196,7 +208,7 @@ _probe_resolve_path() {
         dir="${dir%/*}"
         [ -n "$dir" ] || dir=/
     done
-    printf '%s/%s\n' "$base" "$1"
+    printf '%s/%s\n' "${base%/}" "$1"
 }
 
 # Prints the pids holding <path> open as the holder tool prints them (lsof -t
