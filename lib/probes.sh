@@ -24,14 +24,12 @@ _probe_lock_path() {
 }
 
 # Prints the pids holding <path> open as the holder tool prints them (lsof -t
-# one per line, fuser space-padded on one line); nothing when neither tool is
-# on PATH or the present one finds no holder. The first of lsof and fuser
-# found on PATH decides; the other is never tried. Either tool exits 1 with
-# no pid when nothing holds the file, so only the pids decide, not the exit —
-# except the neither-tool case, which this function reports through its own
-# exit status (2) since its stdout is empty either way: the caller tells
-# "checked, no holder" (orphan) from "no tool to check with" (unknown) by
-# that status, not by the (identical, empty) output.
+# one per line, fuser space-padded on one line); nothing when it finds no
+# holder. The first of lsof and fuser found on PATH decides; the other is
+# never tried. Either tool exits 1 with no pid when nothing holds the file, so
+# the tool's exit is ignored and only the pids decide. Returns 2, printing
+# nothing, when neither tool is on PATH: the empty output alone cannot tell
+# that from a check that found no holder.
 #
 # The tool's stdout goes straight out through fd 3 while its stderr is held
 # in a variable: the probe writes no file (NFR-4, the hook runs with $TMPDIR
@@ -68,7 +66,7 @@ _probe_holder_pids() {
 }
 
 probe_git_lock() {
-    local flag="$1" text path pids holder_status holder_pid mtime bytes=''
+    local flag="$1" text path pids holder_status=0 holder_pid mtime bytes=''
     local now age outcome
     text=$(cat)
     path=$(printf '%s\n' "$text" | _probe_lock_path)
@@ -104,8 +102,8 @@ probe_git_lock() {
     # and closed while its pre-commit hook runs, so a lock in either
     # state reads unheld. A holder exiting just after the tool saw it
     # reads held.
-    pids=$(_probe_holder_pids "$path")
-    holder_status=$?
+    # Status taken on `||` so a caller running under set -e survives the 2.
+    pids=$(_probe_holder_pids "$path") || holder_status=$?
     # First pid only (pid= is singular), parsed without word splitting
     # or globbing: drop what precedes the first digit, keep that run.
     pids=${pids#"${pids%%[0-9]*}"}
@@ -137,8 +135,8 @@ probe_git_lock() {
         # BSD wc left-pads its count with spaces; strip before printing.
         bytes=$(wc -c <"$path" | tr -d '[:space:]')
     fi
-    # holder_status 2 is _probe_holder_pids' "no tool to check with"; any
-    # other status got here by actually checking and finding no holder.
+    # Status 2: no holder tool on PATH. Otherwise a tool ran and named no
+    # holder.
     if [ "$holder_status" -eq 2 ]; then
         outcome=unknown
     else
