@@ -744,7 +744,12 @@ fire case under `make_bsd_stubs grep sed` (Portability).
      `fire-lock-add-commit` as a failure payload with a stub
      `probe_git_lock` printing `mask`: context contains `Re-run the same
      command with` and `GIT_INDEX_FILE`; `systemMessage` equals
-     `index.lock — sandbox mask, no file exists`. Verdict table rows added
+     `index.lock — sandbox mask, not a real lock` (list revision: the
+     flag-neutral `mask` wording in `docs/references/lock-detectors.md`,
+     report `item-4-1-docs.md`). Item 4.1's hook cases go in a new
+     `tests/hook-locks.bats` (loading `helpers/hook.bash`, with one case
+     under `make_bsd_stubs grep sed`), since `tests/hook.bats` is at 378 of
+     400 lines; slice 9 goes in `tests/hook-cap.bats`. Verdict table rows added
      for all ten name/outcome pairs. The probe reports `mask` for a
      character device under flag `true` too, where re-running unsandboxed
      is a no-op: the `mask` paragraph's wording for that case is checked
@@ -780,7 +785,9 @@ fire case under `make_bsd_stubs grep sed` (Portability).
      paragraph, which the lock verdicts first supply) — three verdicts in
      catalogue order where the second alone would cross 2 KB and the third
      fits: the context holds the first and third paragraphs, and
-     `systemMessage` all three human lines.
+     `systemMessage` all three human lines joined by `; ` (list revision:
+     the joiner changes from a space to `; `, code-review recommendation
+     adopted as the default).
 
 - Item 4.2: `lib/matchers.sh`, `lib/verdicts.sh`, `tests/matchers.bats`,
   `tests/hook-candidates.bats`, `tests/verdicts.bats` — the four
