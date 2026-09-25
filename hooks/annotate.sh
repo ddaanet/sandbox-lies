@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# The hook: payload -> text -> detect -> verdicts -> one JSON object.
-# Registered on PostToolUse and PostToolUseFailure, matcher Bash
+# The hook: payload -> text -> detect -> probes -> verdicts -> one JSON
+# object. Registered on PostToolUse and PostToolUseFailure, matcher Bash
 # (hooks/hooks.json). Any parse or runtime failure exits 0 with no output
 # (FR-3). The text is the `error` string of a PostToolUseFailure payload, or
 # whichever of tool_response.stdout and tool_response.stderr are strings,
@@ -10,11 +10,12 @@
 # stderr: `-Rs` takes it as one raw string and `fromjson?` decodes it,
 # dropping what does not parse; `select(type == "object")` drops a scalar or
 # array, which jq cannot index without a fatal error; only a string field is
-# read as text. The output is the event, then each text part, each ending in
-# a newline, which is the join. The event is printed only when it equals one
-# of the two literal names, so the first newline is always the split point.
-# NUL bytes are dropped in jq: bash drops them from a `$(...)` too, but warns
-# on stderr.
+# read as text. The output is the event, the sandbox flag, the payload cwd,
+# then each text part, each ending in a newline, which is the join. The
+# event is printed only when it equals one of the two literal names, so the
+# first three newlines are always the split points for event/flag/cwd. NUL
+# bytes are dropped in jq: bash drops them from a `$(...)` too, but warns on
+# stderr.
 #
 # Writes nothing (NFR-4): no here-document, which bash before 5.1 spools
 # through a temp file.
@@ -25,28 +26,41 @@ lib_dir="$script_dir/../lib"
 # shellcheck disable=SC1091 # lib/ sits beside this script; path is dynamic
 . "$lib_dir/matchers.sh" || exit 0
 # shellcheck disable=SC1091 # lib/ sits beside this script; path is dynamic
+. "$lib_dir/probes.sh" || exit 0
+# shellcheck disable=SC1091 # lib/ sits beside this script; path is dynamic
 . "$lib_dir/verdicts.sh" || exit 0
 
 nl='
 '
 
+# FR-5: dangerouslyDisableSandbox reads as "true" only when literally true;
+# absent or any other shape reads as "false". `?` guards .tool_input being
+# something jq cannot index (a scalar), which select(type == "object") above
+# does not rule out for a nested field.
 parsed=$(jq -Rrs '
     fromjson? | select(type == "object") |
     .hook_event_name as $event |
+    (if (.tool_input.dangerouslyDisableSandbox? == true)
+     then "true" else "false" end) as $flag |
+    ((.cwd | strings) // "") as $cwd |
     if $event == "PostToolUseFailure" then
-      $event, (.error | strings)
+      $event, $flag, $cwd, (.error | strings)
     elif $event == "PostToolUse" then
-      $event,
+      $event, $flag, $cwd,
       (.tool_response | objects | (.stdout | strings), (.stderr | strings))
     else empty end |
     split("\u0000") | join("")
   ') || exit 0
 
-text=""
+event="" flag=false cwd="" text=""
 case "$parsed" in
-  *"$nl"*)
+  *"$nl"*"$nl"*"$nl"*)
     event=${parsed%%"$nl"*}
-    text=${parsed#*"$nl"}
+    rest=${parsed#*"$nl"}
+    flag=${rest%%"$nl"*}
+    rest=${rest#*"$nl"}
+    cwd=${rest%%"$nl"*}
+    text=${rest#*"$nl"}
     ;;
 esac
 
@@ -70,7 +84,28 @@ while IFS= read -r name; do
   # that exists and fails.
   fn="verdict_${name//-/_}"
   declare -F "$fn" >/dev/null || continue
-  out=$("$fn" </dev/null) || exit 0
+
+  # FR-4: a name whose probe is also defined runs it first, outside the
+  # sandbox, with the result text on stdin and the flag and cwd as its
+  # arguments; the probe's first line becomes the verdict's outcome argument
+  # and any lines after it become the verdict's stdin.
+  probe_fn="probe_${name//-/_}"
+  if declare -F "$probe_fn" >/dev/null; then
+    probe_out=$(printf '%s\n' "$text" | "$probe_fn" "$flag" "$cwd") || exit 0
+    case "$probe_out" in
+      *"$nl"*)
+        outcome=${probe_out%%"$nl"*}
+        probe_rest=${probe_out#*"$nl"}
+        ;;
+      *)
+        outcome=$probe_out
+        probe_rest=""
+        ;;
+    esac
+    out=$(printf '%s\n' "$probe_rest" | "$fn" "$outcome") || exit 0
+  else
+    out=$("$fn" </dev/null) || exit 0
+  fi
   para=${out%%"$nl"*}
   line=${out#*"$nl"}
   line=${line%%"$nl"*}

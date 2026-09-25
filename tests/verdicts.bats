@@ -17,6 +17,16 @@ rows() {
 phantom_chardev -
 phantom_untracked -
 phantom_gitadd -
+git_lock mask
+git_lock gone
+git_lock held
+git_lock orphan
+git_lock unknown
+config_lock mask
+config_lock gone
+config_lock held
+config_lock orphan
+config_lock unknown
 ROWS
 }
 
@@ -107,6 +117,36 @@ $text"
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   [ "$line1" = '`git add` aborted on a sandbox mask, not a file. Stage explicit paths, or re-run the same command unsandboxed.' ]
   [ "$line2" = 'git add — refused a sandbox mask' ]
+}
+
+@test "lock verdict text matches lock-detectors.md" {
+  # Transcribed from docs/references/lock-detectors.md's git-lock and
+  # config-lock Verdicts lists — mask and gone only; held/orphan/unknown
+  # interpolate probe values and are checked in slices 2 and 3.
+  local line1 line2
+
+  line1=$(verdict_text git_lock mask | sed -n '1p')
+  line2=$(verdict_text git_lock mask | sed -n '2p')
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  [ "$line1" = 'The lock in this error is a sandbox artefact and the repository is healthy. Re-run the same command with `dangerouslyDisableSandbox: true`; if it already ran that way, re-run it once no sandboxed command is running. A repeat failure on a commit whose hook stages files is that hook leaking `GIT_INDEX_FILE`, not the sandbox.' ]
+  [ "$line2" = 'index.lock — sandbox mask, not a real lock' ]
+
+  line1=$(verdict_text git_lock gone | sed -n '1p')
+  line2=$(verdict_text git_lock gone | sed -n '2p')
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  [ "$line1" = 'No lock exists now; git cleaned it after the failure. Retry once. A repeat failure on a commit whose hook stages files is that hook leaking `GIT_INDEX_FILE`, not the sandbox.' ]
+  [ "$line2" = 'index.lock — cleared after failure' ]
+
+  line1=$(verdict_text config_lock mask | sed -n '1p')
+  line2=$(verdict_text config_lock mask | sed -n '2p')
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  [ "$line1" = 'The lock in this error is a sandbox artefact and the repository is healthy. Re-run the same command with `dangerouslyDisableSandbox: true`; if it already ran that way, re-run it once no sandboxed command is running. Run the `git config` or `git remote` write unsandboxed, or through the `update-config` skill when the target is `.claude/settings.json`.' ]
+  [ "$line2" = 'config.lock — sandbox mask, not a real lock' ]
+
+  line1=$(verdict_text config_lock gone | sed -n '1p')
+  line2=$(verdict_text config_lock gone | sed -n '2p')
+  [ "$line1" = 'No lock exists now; git cleaned it after the failure. Retry once.' ]
+  [ "$line2" = 'config.lock — cleared after failure' ]
 }
 
 @test "no removal instruction" {

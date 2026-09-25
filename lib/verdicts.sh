@@ -3,7 +3,8 @@
 # reads the probe's key=value lines on stdin (empty when the detector has no
 # probe), and prints the agent paragraph on line 1, the human line on line 2.
 # Phantom verdicts take no outcome argument. Text from
-# docs/references/detectors.md.
+# docs/references/detectors.md, except git_lock and config_lock, whose text
+# comes from docs/references/lock-detectors.md.
 set -u
 
 verdict_phantom_chardev() {
@@ -22,4 +23,61 @@ verdict_phantom_gitadd() {
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   printf '%s\n' '`git add` aborted on a sandbox mask, not a file. Stage explicit paths, or re-run the same command unsandboxed.'
   printf '%s\n' 'git add — refused a sandbox mask'
+}
+
+# held/orphan/unknown carry a literal N placeholder here: interpolating
+# pid=/bytes=/age= from the probe's stdin lands in Item 4.1 slices 2 and 3.
+verdict_git_lock() {
+  local outcome="$1"
+  case "$outcome" in
+    mask)
+      # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+      printf '%s\n' 'The lock in this error is a sandbox artefact and the repository is healthy. Re-run the same command with `dangerouslyDisableSandbox: true`; if it already ran that way, re-run it once no sandboxed command is running. A repeat failure on a commit whose hook stages files is that hook leaking `GIT_INDEX_FILE`, not the sandbox.'
+      printf '%s\n' 'index.lock — sandbox mask, not a real lock'
+      ;;
+    gone)
+      # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+      printf '%s\n' 'No lock exists now; git cleaned it after the failure. Retry once. A repeat failure on a commit whose hook stages files is that hook leaking `GIT_INDEX_FILE`, not the sandbox.'
+      printf '%s\n' 'index.lock — cleared after failure'
+      ;;
+    held)
+      printf '%s\n' 'A process (pid N) holds the lock. Wait for it, then retry.'
+      printf '%s\n' 'index.lock — held by pid N'
+      ;;
+    orphan)
+      printf '%s\n' 'The lock exists outside the sandbox (N bytes, age Ns) and no process holds it. Retry the command unsandboxed; a second identical failure means the lock predates this session.'
+      printf '%s\n' 'index.lock — present, no holder'
+      ;;
+    unknown)
+      printf '%s\n' 'The lock exists outside the sandbox (N bytes, age Ns); no holder check is available here. Retry the command unsandboxed.'
+      printf '%s\n' 'index.lock — present, holder unknown'
+      ;;
+  esac
+}
+
+verdict_config_lock() {
+  local outcome="$1"
+  case "$outcome" in
+    mask)
+      # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+      printf '%s\n' 'The lock in this error is a sandbox artefact and the repository is healthy. Re-run the same command with `dangerouslyDisableSandbox: true`; if it already ran that way, re-run it once no sandboxed command is running. Run the `git config` or `git remote` write unsandboxed, or through the `update-config` skill when the target is `.claude/settings.json`.'
+      printf '%s\n' 'config.lock — sandbox mask, not a real lock'
+      ;;
+    gone)
+      printf '%s\n' 'No lock exists now; git cleaned it after the failure. Retry once.'
+      printf '%s\n' 'config.lock — cleared after failure'
+      ;;
+    held)
+      printf '%s\n' 'A process (pid N) holds the lock. Wait for it, then retry.'
+      printf '%s\n' 'config.lock — held by pid N'
+      ;;
+    orphan)
+      printf '%s\n' 'The lock exists outside the sandbox (N bytes, age Ns) and no process holds it. Retry the command unsandboxed; a second identical failure means the lock predates this session.'
+      printf '%s\n' 'config.lock — present, no holder'
+      ;;
+    unknown)
+      printf '%s\n' 'The lock exists outside the sandbox (N bytes, age Ns); no holder check is available here. Retry the command unsandboxed.'
+      printf '%s\n' 'config.lock — present, holder unknown'
+      ;;
+  esac
 }
