@@ -10,6 +10,7 @@ escalation point** — gate 2 open for my human partner, below (gate 1 answered)
   git-lock mask owed
 - 📝 Phase 3 build report — Item 3.1 escalation gate
 - 📝 Item 3.1 — opaque-script reruns: no index-lock mask; config-lock mask confirmed
+- 📝 Item 3.1 — sandbox tell: sh -c shape confirmed sandboxed
 
 ## Entry
 
@@ -96,6 +97,27 @@ not appear. What the rerun showed:
   exclusion observation, which had not been recorded. It also fixed minor
   wording. No UNFIXABLE.
 
+## Sandbox tell (the amendment's check)
+
+Both runs were made from this checkout's root. The tell is the
+`.git/config.lock` character device, which exists only inside the sandbox.
+
+- Shape 1, `sh -c 'git status >/dev/null; test -c .git/config.lock && echo
+  SANDBOXED || echo UNSANDBOXED'`, printed **SANDBOXED**.
+- Shape 2, the same two lines in `/tmp/claude/sandbox-lies-3-1/tell.sh` run as
+  `sh <script>`, printed **SANDBOXED**.
+- The git-lock attempt was repeated with the tell in the same call. In the
+  scratch repo, `sh -c 'git add f && git commit -qm y; echo rc=$?; test -c
+  <root>/.git/config.lock && …'` printed `rc=0` and then `SANDBOXED`. The
+  commit ran sandboxed and succeeded.
+
+Shape 1 prints SANDBOXED, so the recorded `sh -c` shapes, the config-lock
+reproduction, and the runbook and carry text stay as they are. The one
+`detectors.md` addition is a sentence recording the tell-confirmed repeat.
+It is under the self-review threshold at 2 lines in 1 file, and I
+self-reviewed the diff. Gate 2 stands unchanged, with question 2 settled: no
+rewrite.
+
 ## Open gate 2 — no index-lock mask in this session under any shape
 
 1. **How should the git-lock `mask` outcome be handled now?** Default **(a)**.
@@ -107,15 +129,10 @@ not appear. What the rerun showed:
      as a character device, as it does `.git/config.lock`, and the scratch
      `git add` fails.
    - (c) Hold the wiring until a session hits the mask naturally.
-2. **Should the `sh -c` shapes still be rewritten to the opaque-script shape?**
-   Default: **no.** Leave the runbook and carry text as they are. The opaque
-   shape is only recorded as an equivalent that also works. The rewrite's
-   premise, that `git:*` unsandboxes a visible git call, was contradicted in
-   this session. Whether it holds in the main session is worth one check
-   there: run `git -C /Users/david/code/sandbox-lies config sandboxlies.probe 1`
-   with the default sandbox. If it succeeds, it was unsandboxed; then remove
-   the key with
-   `git -C /Users/david/code/sandbox-lies config --unset sandboxlies.probe`.
+2. ~~Should the `sh -c` shapes be rewritten?~~ Settled by the sandbox
+   tell: shape 1 is sandboxed, so there is no rewrite. It is still open
+   whether a visible git call is unsandboxed in the main session; this
+   teammate session applies no `excludedCommands`.
 
 ## Gate 1 (superseded by gate 2) — git-lock `mask` has no live reproduction
 
@@ -159,8 +176,8 @@ not appear. What the rerun showed:
 ## Resume
 
 Nothing is in flight. The tracked tree is clean after this report's commit.
-The last item commit was "Item 3.1 — opaque-script reruns: no index-lock mask;
-config-lock mask confirmed". Position: Item 3.1 is done except git-lock
+The last item commit was "Item 3.1 — sandbox tell: sh -c shape confirmed
+sandboxed". Position: Item 3.1 is done except git-lock
 `mask`, which waits on gate 2. Next: the gate 2 answer, then (under (a))
 Item 3.2, then the Phase 3 boundary corrector. Under (b), once the deny entry
 is live: rerun `sh /tmp/claude/sandbox-lies-3-1/opaque.sh` sandboxed, after

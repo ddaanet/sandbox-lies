@@ -108,6 +108,8 @@ paths and `git status` in the scratch repo and in the project root: no
 character device. With no index lock masked, the error could not arise. Git did
 run sandboxed there: every shape of the config-lock write below, a bare
 `git -C <root> config` included, hit a mask that exists only inside the sandbox.
+A repeat of the scratch commit in one `sh -c` string, then a `test -c` of that
+mask in the same string, committed and reported the mask present.
 
 ### config-lock
 
