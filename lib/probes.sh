@@ -65,14 +65,15 @@ _probe_holder_pids() {
     printf '%s\n' "$err" >&2
 }
 
-# Joins a relative <path> onto <base> with one `/` separator; an absolute
-# path is returned unchanged. <base> is $2 (the payload cwd) as the caller
-# gives it, not canonicalised. Kept in one place so a later change of the
-# base directory (e.g. to the worktree top-level) is a one-line edit at the
-# call site below.
+# Prints a relative <path> joined onto <base> with one `/` separator, <base>
+# used as given, not canonicalised. An absolute <path> prints unchanged, and
+# so does an empty one (text with no lock line): joined, it would name <base>
+# itself, a directory the holder check reads as held by whatever has it as
+# its cwd. The probe passes its own $2 (the payload cwd) as <base>, so
+# resolving against another directory is an edit to that argument alone.
 _probe_resolve_path() {
     case "$1" in
-        /*) printf '%s\n' "$1" ;;
+        /* | '') printf '%s\n' "$1" ;;
         *) printf '%s/%s\n' "$2" "$1" ;;
     esac
 }
