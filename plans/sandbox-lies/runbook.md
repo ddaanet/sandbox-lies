@@ -554,7 +554,16 @@ Cross-cutting, bounded:
      `mask`; with a present lock: `orphan`. The GREEN lifts everything
      after path extraction in `probe_git_lock` into a helper both probes
      call (slice 5's code review flagged it, deferred to here so slice 7's
-     `$2` placement is settled first).
+     `$2` placement is settled first). `pathless text never names the base`
+     (slice 7's code review; proven by mutation) — text with no lock line,
+     `$2` an existing directory that is also the probe's working directory,
+     flag `false` and `true`: line 1 neither `held` nor `orphan`, no `pid=`,
+     empty stderr (the pathless outcome itself stays open). Open before this
+     slice starts, escalated: the base a relative lock path resolves
+     against — git prints the config-lock path relative to the main
+     worktree's top-level even from a subdirectory (verified, git 2.47.3;
+     absolute from a linked worktree) — and the outcome for a missing or
+     empty `$2`.
   9. `BSD stat` — slice 3 with `make_bsd_stubs stat` on `PATH`: `orphan`,
      `bytes=7`, an `age=` integer ≥ 0, within a minute of now minus the
      backdated mtime (slice 3's code review). `bsd-stubs.bash` also gains a
