@@ -45,7 +45,7 @@ verdict_config_lock() {
   case "$1" in
     mask)
       # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-      printf '%s\n' 'The `config.lock` in this error is a sandbox artefact and the repository is healthy. Re-run the same command with `dangerouslyDisableSandbox: true`; if it already ran that way, re-run it once no sandboxed command is running. Run the `git config` or `git remote` write unsandboxed, or through the `update-config` skill when the target is `.claude/settings.json`.'
+      printf '%s\n' 'The `config.lock` behind this error is a sandbox artefact and the repository is healthy. Re-run the same command with `dangerouslyDisableSandbox: true`; if it already ran that way, re-run it once no sandboxed command is running. Run the `git config` or `git remote` write unsandboxed, or through the `update-config` skill when the target is `.claude/settings.json`.'
       printf '%s\n' 'config.lock — sandbox mask, not a real lock'
       ;;
     gone)
