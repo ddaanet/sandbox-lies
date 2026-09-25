@@ -149,6 +149,64 @@ $text"
   [ "$line2" = 'config.lock — cleared after failure' ]
 }
 
+@test "verdict_git_lock held|orphan|unknown interpolate probe values" {
+  # Transcribed from lock-detectors.md's git-lock Verdicts list with the N
+  # placeholders substituted by the probe's key=value stdin lines. The lines
+  # are keyed, not positional: they arrive here out of the probe's own order,
+  # after a path= line holding digits, spaces and sed/eval metacharacters.
+  local path_line text line1 line2
+  path_line='path=/tmp/lock 99/a&b\1/.git/index.lock'
+
+  # shellcheck disable=SC1090 # $VERDICTS is lib/verdicts.sh, resolved above
+  text=$(printf '%s\n' "$path_line" 'pid=4242' | ( . "$VERDICTS"; verdict_git_lock held ))
+  line1=$(printf '%s\n' "$text" | sed -n '1p')
+  line2=$(printf '%s\n' "$text" | sed -n '2p')
+  [ "$line1" = 'A process (pid 4242) holds the lock. Wait for it, then retry.' ]
+  [ "$line2" = 'index.lock — held by pid 4242' ]
+
+  # shellcheck disable=SC1090
+  text=$(printf '%s\n' 'age=12' "$path_line" 'bytes=7' | ( . "$VERDICTS"; verdict_git_lock orphan ))
+  line1=$(printf '%s\n' "$text" | sed -n '1p')
+  line2=$(printf '%s\n' "$text" | sed -n '2p')
+  [ "$line1" = 'The lock exists outside the sandbox (7 bytes, age 12s) and no process holds it. Retry the command unsandboxed; a second identical failure means the lock predates this session.' ]
+  [ "$line2" = 'index.lock — present, no holder' ]
+
+  # shellcheck disable=SC1090
+  text=$(printf '%s\n' 'age=12' "$path_line" 'bytes=7' | ( . "$VERDICTS"; verdict_git_lock unknown ))
+  line1=$(printf '%s\n' "$text" | sed -n '1p')
+  line2=$(printf '%s\n' "$text" | sed -n '2p')
+  [ "$line1" = 'The lock exists outside the sandbox (7 bytes, age 12s); no holder check is available here. Retry the command unsandboxed.' ]
+  [ "$line2" = 'index.lock — present, holder unknown' ]
+}
+
+@test "verdict_config_lock held|orphan|unknown interpolate probe values" {
+  # Transcribed from lock-detectors.md's config-lock Verdicts list, N
+  # substituted as for git-lock, from lines in the probe's own order.
+  local path_line text line1 line2
+  path_line='path=/tmp/lock 99/a&b\1/.git/config.lock'
+
+  # shellcheck disable=SC1090 # $VERDICTS is lib/verdicts.sh, resolved above
+  text=$(printf '%s\n' 'pid=4242' "$path_line" | ( . "$VERDICTS"; verdict_config_lock held ))
+  line1=$(printf '%s\n' "$text" | sed -n '1p')
+  line2=$(printf '%s\n' "$text" | sed -n '2p')
+  [ "$line1" = 'A process (pid 4242) holds the lock. Wait for it, then retry.' ]
+  [ "$line2" = 'config.lock — held by pid 4242' ]
+
+  # shellcheck disable=SC1090
+  text=$(printf '%s\n' 'bytes=7' 'age=12' "$path_line" | ( . "$VERDICTS"; verdict_config_lock orphan ))
+  line1=$(printf '%s\n' "$text" | sed -n '1p')
+  line2=$(printf '%s\n' "$text" | sed -n '2p')
+  [ "$line1" = 'The lock exists outside the sandbox (7 bytes, age 12s) and no process holds it. Retry the command unsandboxed; a second identical failure means the lock predates this session.' ]
+  [ "$line2" = 'config.lock — present, no holder' ]
+
+  # shellcheck disable=SC1090
+  text=$(printf '%s\n' 'bytes=7' 'age=12' "$path_line" | ( . "$VERDICTS"; verdict_config_lock unknown ))
+  line1=$(printf '%s\n' "$text" | sed -n '1p')
+  line2=$(printf '%s\n' "$text" | sed -n '2p')
+  [ "$line1" = 'The lock exists outside the sandbox (7 bytes, age 12s); no holder check is available here. Retry the command unsandboxed.' ]
+  [ "$line2" = 'config.lock — present, holder unknown' ]
+}
+
 @test "no removal instruction" {
   local all stripped phrase
   all=$(all_verdict_text)
