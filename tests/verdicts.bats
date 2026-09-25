@@ -140,7 +140,7 @@ $text"
   line1=$(verdict_text config_lock mask | sed -n '1p')
   line2=$(verdict_text config_lock mask | sed -n '2p')
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  [ "$line1" = 'The lock in this error is a sandbox artefact and the repository is healthy. Re-run the same command with `dangerouslyDisableSandbox: true`; if it already ran that way, re-run it once no sandboxed command is running. Run the `git config` or `git remote` write unsandboxed, or through the `update-config` skill when the target is `.claude/settings.json`.' ]
+  [ "$line1" = 'The `config.lock` in this error is a sandbox artefact and the repository is healthy. Re-run the same command with `dangerouslyDisableSandbox: true`; if it already ran that way, re-run it once no sandboxed command is running. Run the `git config` or `git remote` write unsandboxed, or through the `update-config` skill when the target is `.claude/settings.json`.' ]
   [ "$line2" = 'config.lock — sandbox mask, not a real lock' ]
 
   line1=$(verdict_text config_lock gone | sed -n '1p')

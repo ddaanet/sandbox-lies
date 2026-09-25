@@ -107,12 +107,12 @@ sandboxed write fails on a bind-mount, not on a file.
 leak clause, which concerns `index.lock` only; the `mask` paragraph adds the
 config write.
 
-- `mask` — The lock in this error is a sandbox artefact and the repository is
-  healthy. Re-run the same command with `dangerouslyDisableSandbox: true`; if it
-  already ran that way, re-run it once no sandboxed command is running. Run the
-  `git config` or `git remote` write unsandboxed, or through the `update-config`
-  skill when the target is `.claude/settings.json`. ·
-  `config.lock — sandbox mask, not a real lock`
+- `mask` — The `config.lock` in this error is a sandbox artefact and the
+  repository is healthy. Re-run the same command with
+  `dangerouslyDisableSandbox: true`; if it already ran that way, re-run it once
+  no sandboxed command is running. Run the `git config` or `git remote` write
+  unsandboxed, or through the `update-config` skill when the target is
+  `.claude/settings.json`. · `config.lock — sandbox mask, not a real lock`
 - `gone` — No lock exists now; git cleaned it after the failure. Retry once. ·
   `config.lock — cleared after failure`
 - `held` — A process (pid N) holds the lock. Wait for it, then retry. ·

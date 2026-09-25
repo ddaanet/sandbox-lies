@@ -180,6 +180,64 @@ stub_probe_kv() {
   assert_lacks "$ctx" 'age Ns'
 }
 
+@test "probe receives flag and cwd" {
+  # The stub brackets every argument it receives, so an extra argument, a
+  # dropped one, or a cwd split on whitespace records differently from the
+  # two the interface names. The last cwd carries a run of spaces and a
+  # backslash, which the hook escapes through jq and undoes with printf %b:
+  # `\c` left undecoded, or decoded twice, changes what the probe sees.
+  local text recorded body
+  recorded="$BATS_TEST_TMPDIR/probe-git_lock-args"
+  # shellcheck disable=SC2016 # "$@" is literal, expanded when the stub runs
+  body='probe_git_lock() { cat >/dev/null; printf "[%s]" "$@" >'"$(printf '%q' "$recorded")"'; printf "%s\n" mask; }'
+  stub_lib probes.sh "$body"
+  text=$(cat "$FIXTURES/fire-lock-add-commit.txt")
+
+  run_hook "$(failure_payload "$text" true | jq '.cwd = "/x"')"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$recorded")" = '[true][/x]' ]
+
+  rm -f "$recorded"
+  run_hook "$(failure_payload "$text" | jq '.cwd = "/x"')"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$recorded")" = '[false][/x]' ]
+
+  rm -f "$recorded"
+  run_hook "$(failure_payload "$text" | jq --arg c '/a  b\c' '.cwd = $c')"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$recorded")" = '[false][/a  b\c]' ]
+}
+
+@test "config-lock mask names config.lock and update-config" {
+  stub_probe config_lock mask
+  local text payload ctx
+  text=$(cat "$FIXTURES/fire-configlock-remote-add.txt")
+  payload=$(failure_payload "$text")
+
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  [ -f "$PROBE_CALLED" ]
+  ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
+  # The human line also names config.lock: context carrying it would satisfy
+  # the first grep without the paragraph naming the file.
+  assert_lacks "$ctx" 'sandbox mask, not a real lock'
+  printf '%s' "$ctx" | grep -qF 'config.lock'
+  printf '%s' "$ctx" | grep -qF 'update-config'
+}
+
+@test "piped lock failure on a success payload" {
+  stub_probe git_lock mask
+  local text payload ctx
+  text=$(cat "$FIXTURES/fire-lock-piped-tail.txt")
+  payload=$(post_payload "$text")
+
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  [ -f "$PROBE_CALLED" ]
+  ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
+  printf '%s' "$ctx" | grep -qF 'GIT_INDEX_FILE'
+}
+
 @test "orphan with one of bytes and age interpolates that one alone" {
   # The probe omits bytes= and age= independently (see the case above), so
   # each may arrive alone: the one given is interpolated, the other leaves
