@@ -357,15 +357,16 @@ stub_probe_kv() {
   local recorded="$BATS_TEST_TMPDIR/probe-stdin"
   stub_lib probes.sh 'probe_git_lock() { cat >'"$(printf '%q' "$recorded")"'; printf "mask\n"; }'
 
-  local stdout stderr payload text
-  stdout="fatal: Unable to create '/tmp/d13-probe-stdin/.git/index.lock': File exists."
-  stderr='Another git process seems to be running'
-  stderr="$stderr in this repository."
-  payload=$(post_payload "$stdout" "$stderr")
+  # Not named stderr: bats' run unsets a variable of that name in the caller.
+  local out_text err_text payload text
+  out_text="fatal: Unable to create '/tmp/d13-probe-stdin/.git/index.lock': File exists."
+  err_text='Another git process seems to be running'
+  err_text="$err_text in this repository."
+  payload=$(post_payload "$out_text" "$err_text")
   run_hook "$payload"
   [ "$status" -eq 0 ]
   [ -f "$recorded" ]
-  [ "$(cat "$recorded")" = "$(printf '%s\n%s' "$stdout" "$stderr")" ]
+  [ "$(cat "$recorded")" = "$(printf '%s\n%s' "$out_text" "$err_text")" ]
 
   rm -f "$recorded"
   text=$(cat "$FIXTURES/fire-lock-add-commit.txt")
