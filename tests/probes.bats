@@ -293,3 +293,28 @@ hold_lock() {
   [ "${output%%$'\n'*}" = unknown ]
   printf '%s\n' "$output" | grep -qxF "bytes=7"
 }
+
+# The error text names the lock relative to git's cwd (".git/index.lock").
+# The probe runs from an unrelated directory holding a 3-byte decoy lock at
+# that same relative path (slice 2's code review): a probe resolving against
+# its process cwd, even only as a first try before $2, reads the decoy, so
+# bytes=7 and the absolute path= can only come from $2. $2 reaches the repo
+# through a symlink, and path= keeps it as given rather than canonicalised,
+# as every other case prints the path the error text gave.
+@test "relative path resolves against cwd" {
+  local repo="$BATS_TEST_TMPDIR/r" unrelated="$BATS_TEST_TMPDIR/elsewhere"
+  local link="$BATS_TEST_TMPDIR/link"
+  mkdir -p "$repo/.git" "$unrelated/.git"
+  ln -s "$repo" "$link"
+  printf '1234567' >"$repo/.git/index.lock"
+  printf 'abc' >"$unrelated/.git/index.lock"
+  cd "$unrelated"
+
+  run_probe probe_git_lock false "$link" "$(git_lock_error .git/index.lock)"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = orphan ]
+  printf '%s\n' "$output" | grep -qxF "bytes=7"
+  printf '%s\n' "$output" | grep -qxF "path=$link/.git/index.lock"
+}

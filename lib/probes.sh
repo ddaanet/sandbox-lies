@@ -65,11 +65,24 @@ _probe_holder_pids() {
     printf '%s\n' "$err" >&2
 }
 
+# Joins a relative <path> onto <base> with one `/` separator; an absolute
+# path is returned unchanged. <base> is $2 (the payload cwd) as the caller
+# gives it, not canonicalised. Kept in one place so a later change of the
+# base directory (e.g. to the worktree top-level) is a one-line edit at the
+# call site below.
+_probe_resolve_path() {
+    case "$1" in
+        /*) printf '%s\n' "$1" ;;
+        *) printf '%s/%s\n' "$2" "$1" ;;
+    esac
+}
+
 probe_git_lock() {
     local flag="$1" text path pids holder_status=0 holder_pid mtime bytes=''
     local now age outcome
     text=$(cat)
     path=$(printf '%s\n' "$text" | _probe_lock_path)
+    path=$(_probe_resolve_path "$path" "${2-}")
 
     # Only the literal `true` reads as unsandboxed, as FR-5 reads an absent
     # flag as false. A wrong mask still ends in the right diagnosis (its
