@@ -25,19 +25,8 @@ verdict_phantom_gitadd() {
   printf '%s\n' 'git add — refused a sandbox mask'
 }
 
-# held/orphan/unknown read pid=/bytes=/age= from the probe's remaining lines
-# on stdin (path= and any other key ignored) and interpolate them; a key
-# that is absent drops its clause rather than leaving an empty value.
 verdict_git_lock() {
-  local outcome="$1" line pid='' bytes='' age=''
-  while IFS= read -r line || [ -n "$line" ]; do
-    case "$line" in
-      pid=*) pid=${line#pid=} ;;
-      bytes=*) bytes=${line#bytes=} ;;
-      age=*) age=${line#age=} ;;
-    esac
-  done
-  case "$outcome" in
+  case "$1" in
     mask)
       # shellcheck disable=SC2016 # backticks are literal prose, not expansion
       printf '%s\n' 'The lock in this error is a sandbox artefact and the repository is healthy. Re-run the same command with `dangerouslyDisableSandbox: true`; if it already ran that way, re-run it once no sandboxed command is running. A repeat failure on a commit whose hook stages files is that hook leaking `GIT_INDEX_FILE`, not the sandbox.'
@@ -48,52 +37,12 @@ verdict_git_lock() {
       printf '%s\n' 'No lock exists now; git cleaned it after the failure. Retry once. A repeat failure on a commit whose hook stages files is that hook leaking `GIT_INDEX_FILE`, not the sandbox.'
       printf '%s\n' 'index.lock — cleared after failure'
       ;;
-    held)
-      local held_clause='' held_line='index.lock — held'
-      if [ -n "$pid" ]; then
-        held_clause=" (pid ${pid})"
-        held_line="index.lock — held by pid ${pid}"
-      fi
-      printf '%s\n' "A process${held_clause} holds the lock. Wait for it, then retry."
-      printf '%s\n' "$held_line"
-      ;;
-    orphan)
-      local size_clause=''
-      if [ -n "$bytes" ] && [ -n "$age" ]; then
-        size_clause=" (${bytes} bytes, age ${age}s)"
-      elif [ -n "$bytes" ]; then
-        size_clause=" (${bytes} bytes)"
-      elif [ -n "$age" ]; then
-        size_clause=" (age ${age}s)"
-      fi
-      printf '%s\n' "The lock exists outside the sandbox${size_clause} and no process holds it. Retry the command unsandboxed; a second identical failure means the lock predates this session."
-      printf '%s\n' 'index.lock — present, no holder'
-      ;;
-    unknown)
-      local size_clause=''
-      if [ -n "$bytes" ] && [ -n "$age" ]; then
-        size_clause=" (${bytes} bytes, age ${age}s)"
-      elif [ -n "$bytes" ]; then
-        size_clause=" (${bytes} bytes)"
-      elif [ -n "$age" ]; then
-        size_clause=" (age ${age}s)"
-      fi
-      printf '%s\n' "The lock exists outside the sandbox${size_clause}; no holder check is available here. Retry the command unsandboxed."
-      printf '%s\n' 'index.lock — present, holder unknown'
-      ;;
+    *) _verdict_lock_present index.lock "$1" ;;
   esac
 }
 
 verdict_config_lock() {
-  local outcome="$1" line pid='' bytes='' age=''
-  while IFS= read -r line || [ -n "$line" ]; do
-    case "$line" in
-      pid=*) pid=${line#pid=} ;;
-      bytes=*) bytes=${line#bytes=} ;;
-      age=*) age=${line#age=} ;;
-    esac
-  done
-  case "$outcome" in
+  case "$1" in
     mask)
       # shellcheck disable=SC2016 # backticks are literal prose, not expansion
       printf '%s\n' 'The lock in this error is a sandbox artefact and the repository is healthy. Re-run the same command with `dangerouslyDisableSandbox: true`; if it already ran that way, re-run it once no sandboxed command is running. Run the `git config` or `git remote` write unsandboxed, or through the `update-config` skill when the target is `.claude/settings.json`.'
@@ -103,38 +52,44 @@ verdict_config_lock() {
       printf '%s\n' 'No lock exists now; git cleaned it after the failure. Retry once.'
       printf '%s\n' 'config.lock — cleared after failure'
       ;;
+    *) _verdict_lock_present config.lock "$1" ;;
+  esac
+}
+
+# `_verdict_lock_present <lock file> <outcome>` — the held, orphan and unknown
+# verdicts, whose text the two lock detectors share but for the file they
+# name. Interpolates pid=/bytes=/age= from the probe's remaining lines on
+# stdin (path= and any other key ignored). A key that is absent, or whose
+# value is not all digits as the probe contract has it, drops its clause
+# rather than leaving an empty or foreign value. Any other outcome prints
+# nothing.
+_verdict_lock_present() {
+  local lock="$1" outcome="$2" line pid='' bytes='' age='' size=''
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      *=*[!0-9]*) ;;
+      pid=*) pid=${line#pid=} ;;
+      bytes=*) bytes=${line#bytes=} ;;
+      age=*) age=${line#age=} ;;
+    esac
+  done
+  if [ -n "$bytes" ]; then
+    size=" (${bytes} bytes${age:+, age ${age}s})"
+  elif [ -n "$age" ]; then
+    size=" (age ${age}s)"
+  fi
+  case "$outcome" in
     held)
-      local held_clause='' held_line='config.lock — held'
-      if [ -n "$pid" ]; then
-        held_clause=" (pid ${pid})"
-        held_line="config.lock — held by pid ${pid}"
-      fi
-      printf '%s\n' "A process${held_clause} holds the lock. Wait for it, then retry."
-      printf '%s\n' "$held_line"
+      printf '%s\n' "A process${pid:+ (pid ${pid})} holds the lock. Wait for it, then retry."
+      printf '%s\n' "${lock} — held${pid:+ by pid ${pid}}"
       ;;
     orphan)
-      local size_clause=''
-      if [ -n "$bytes" ] && [ -n "$age" ]; then
-        size_clause=" (${bytes} bytes, age ${age}s)"
-      elif [ -n "$bytes" ]; then
-        size_clause=" (${bytes} bytes)"
-      elif [ -n "$age" ]; then
-        size_clause=" (age ${age}s)"
-      fi
-      printf '%s\n' "The lock exists outside the sandbox${size_clause} and no process holds it. Retry the command unsandboxed; a second identical failure means the lock predates this session."
-      printf '%s\n' 'config.lock — present, no holder'
+      printf '%s\n' "The lock exists outside the sandbox${size} and no process holds it. Retry the command unsandboxed; a second identical failure means the lock predates this session."
+      printf '%s\n' "${lock} — present, no holder"
       ;;
     unknown)
-      local size_clause=''
-      if [ -n "$bytes" ] && [ -n "$age" ]; then
-        size_clause=" (${bytes} bytes, age ${age}s)"
-      elif [ -n "$bytes" ]; then
-        size_clause=" (${bytes} bytes)"
-      elif [ -n "$age" ]; then
-        size_clause=" (age ${age}s)"
-      fi
-      printf '%s\n' "The lock exists outside the sandbox${size_clause}; no holder check is available here. Retry the command unsandboxed."
-      printf '%s\n' 'config.lock — present, holder unknown'
+      printf '%s\n' "The lock exists outside the sandbox${size}; no holder check is available here. Retry the command unsandboxed."
+      printf '%s\n' "${lock} — present, holder unknown"
       ;;
   esac
 }
