@@ -269,6 +269,113 @@ stub_probe_kv() {
   assert_lacks "$ctx" '( '
 }
 
+@test "every lock fixture yields its verdict" {
+  # Item 2.3's sweep rule: a fixture whose first line is an Exit code line
+  # goes into a failure payload's error, any other into a success payload's
+  # tool_response.stdout. Misses collect across every fixture and flag value
+  # into one string asserted empty at the end, so one red names every broken
+  # fixture instead of stopping at the first. Each run must reach its own
+  # detector's stub: the real probes also answer mask for a lock path absent
+  # here, so a sweep the stubs never reached would pass while statting the
+  # fixtures' host paths.
+  local lock_called config_called called
+  stub_probe git_lock mask
+  lock_called=$PROBE_CALLED
+  stub_probe config_lock mask
+  config_called=$PROBE_CALLED
+  local f text payload sys expected flag misses="" count=0
+  for f in "$FIXTURES"/fire-lock-*.txt "$FIXTURES"/fire-configlock-*.txt; do
+    count=$((count + 1))
+    text=$(cat "$f")
+    case "$f" in
+      */fire-configlock-*)
+        expected='config.lock — sandbox mask, not a real lock'
+        called=$config_called ;;
+      *)
+        expected='index.lock — sandbox mask, not a real lock'
+        called=$lock_called ;;
+    esac
+
+    for flag in '' true; do
+      case "$text" in
+        "Exit code"*) payload=$(failure_payload "$text" "$flag") ;;
+        *)            payload=$(post_payload "$text" "" "$flag") ;;
+      esac
+      rm -f "$lock_called" "$config_called"
+      run_hook "$payload"
+      [ -f "$called" ] \
+        || misses="${misses}$(basename "$f") (flag ${flag:-absent}): stub probe not called"$'\n'
+      if [ "$status" -ne 0 ]; then
+        misses="${misses}$(basename "$f") (flag ${flag:-absent}): exit $status"$'\n'
+        continue
+      fi
+      sys=$(printf '%s' "$output" | jq -r '.systemMessage')
+      [ "$sys" = "$expected" ] \
+        || misses="${misses}$(basename "$f") (flag ${flag:-absent}): got '${sys}'"$'\n'
+    done
+  done
+  [ "$count" -gt 0 ]
+  [ -z "$misses" ] || { printf '%s' "$misses" >&2; return 1; }
+}
+
+@test "no probe without a verdict" {
+  # A name with no verdict_<name> function contributes nothing and never
+  # reaches its probe (annotate.sh's declare -F gate on the verdict runs
+  # before the probe is even looked up). Stubbing detect itself to report
+  # such a name is simpler than adding a permanently unverdicted detector to
+  # lib/matchers.sh just for this case.
+  local called="$BATS_TEST_TMPDIR/probe-fake-called"
+  stub_lib matchers.sh 'detect() { cat >/dev/null; printf "fake\n"; }'
+  stub_lib probes.sh 'probe_fake() { cat >/dev/null; : >'"$(printf '%q' "$called")"'; printf "mask\n"; }'
+
+  local text payload
+  text=$(cat "$FIXTURES/fire-lock-add-commit.txt")
+  payload=$(failure_payload "$text")
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ ! -f "$called" ]
+
+  # The same run with verdict_fake defined reaches probe_fake: the stubbed
+  # detect is the one sourced and the recording stub records, so the absence
+  # above is the missing verdict's doing.
+  stub_lib verdicts.sh 'verdict_fake() { cat >/dev/null; printf "fake paragraph\nfake line\n"; }'
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  [ -f "$called" ]
+  [ "$(printf '%s' "$output" | jq -r '.systemMessage')" = 'fake line' ]
+}
+
+@test "probe reads the result text on stdin" {
+  # D-13's join (hooks/annotate.sh's header comment): a PostToolUse text is
+  # tool_response.stdout, a newline, tool_response.stderr; a
+  # PostToolUseFailure text is the error string verbatim. annotate.sh pipes
+  # that text into the probe with one added trailing newline (printf '%s\n'
+  # "$text" | "$probe_fn"), which $(cat ...) strips back off on both sides of
+  # this comparison. The stderr part is git's follow-on sentence, assembled
+  # from two fragments so this file never holds it whole (self-quiet).
+  local recorded="$BATS_TEST_TMPDIR/probe-stdin"
+  stub_lib probes.sh 'probe_git_lock() { cat >'"$(printf '%q' "$recorded")"'; printf "mask\n"; }'
+
+  local stdout stderr payload text
+  stdout="fatal: Unable to create '/tmp/d13-probe-stdin/.git/index.lock': File exists."
+  stderr='Another git process seems to be running'
+  stderr="$stderr in this repository."
+  payload=$(post_payload "$stdout" "$stderr")
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  [ -f "$recorded" ]
+  [ "$(cat "$recorded")" = "$(printf '%s\n%s' "$stdout" "$stderr")" ]
+
+  rm -f "$recorded"
+  text=$(cat "$FIXTURES/fire-lock-add-commit.txt")
+  payload=$(failure_payload "$text")
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  [ -f "$recorded" ]
+  [ "$(cat "$recorded")" = "$text" ]
+}
+
 # The real probe ends every held/orphan/unknown answer with a path= line, and
 # the path comes from the error text, so it may hold spaces, digits and the
 # characters a sed replacement or an eval would act on. The stubs carry one.
