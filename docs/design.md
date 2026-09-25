@@ -73,9 +73,9 @@ flag (FR-5) as its first argument, prints an outcome token on its first line and
 existence and holder (`git-lock`, `config-lock`) and path writability
 (`readonly-path`). Each probe is proved once against a live reproduction before
 it ships; the reproduction is recorded in `references/detectors.md`. Where ·
-pinned by: `lib/probes.sh` · `tests/probes.bats` over synthetic trees in
-`$BATS_TEST_TMPDIR`, including a character device at the lock path and no holder
-tool on `PATH`. Planned.
+pinned by: `lib/probes.sh` · `tests/probes*.bats` over synthetic trees, with a
+character device at the lock path and no holder tool on `PATH`. Partial (live
+proof: Item 3.1; hook call: Item 4.1; `readonly-path`: Item 4.3).
 
 **FR-5 — Sandbox-state awareness.** The payload's
 `tool_input.dangerouslyDisableSandbox` (absent means false) decides wording: a

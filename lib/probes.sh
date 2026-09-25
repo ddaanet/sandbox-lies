@@ -11,11 +11,35 @@
 set -u
 
 probe_git_lock() {
-    local flag="$1" text path pids holder_status=0 holder_pid mtime bytes=''
-    local now age outcome
+    local flag="$1" text path
     text=$(cat)
     path=$(printf '%s\n' "$text" | _probe_lock_path)
     path=$(_probe_resolve_path "$path" "${2-}")
+    _probe_lock_at "$flag" "$path"
+}
+
+probe_config_lock() {
+    local flag="$1" text path
+    text=$(cat)
+    path=$(printf '%s\n' "$text" | _probe_config_lock_path)
+    # Empty means no config-lock line in the text: leave it empty rather than
+    # naming "<base>/.lock", which _probe_resolve_path would treat as an
+    # ordinary relative path and resolve to a real, holdable directory entry.
+    if [ -n "$path" ]; then
+        path="$path.lock"
+    fi
+    path=$(_probe_resolve_path "$path" "${2-}")
+    _probe_lock_at "$flag" "$path"
+}
+
+# _probe_lock_at <flag> <path> — the A-3 contract once a probe has extracted
+# and resolved its own lock path: presence, character-device-ness, the
+# holder, size and mtime, then the outcome and its key=value lines. Shared by
+# probe_git_lock and probe_config_lock, which differ only in how <path> is
+# extracted from their own error shape.
+_probe_lock_at() {
+    local flag="$1" path="$2" pids holder_status=0 holder_pid mtime bytes=''
+    local now age outcome
 
     # Only the literal `true` reads as unsandboxed, as FR-5 reads an absent
     # flag as false. A wrong mask still ends in the right diagnosis (its
@@ -30,12 +54,12 @@ probe_git_lock() {
         return 0
     fi
 
-    # A character device is a sandbox mask (a /dev/null bind, which
-    # unsandboxed readers have seen while another session's sandbox was
-    # live), never a lock git wrote: mask under either flag. Tested before
-    # the holder tool, stat or wc touches the path: /dev/null is open in
-    # many processes and would read held. `[ -c ]` follows a symlink, so a
-    # link to a device masks too.
+    # A character device is a /dev/null sandbox mask, which unsandboxed
+    # readers have seen while another session's sandbox was live (design.md's
+    # "Why the hook can see" paragraph), never a lock git wrote: mask under
+    # either flag. Tested before the holder tool, stat or wc touches the
+    # path: /dev/null is open in many processes and would read held. `[ -c ]`
+    # follows a symlink, so a link to a device masks too.
     if [ -c "$path" ]; then
         printf '%s\n' mask "path=$path"
         return 0
@@ -118,10 +142,6 @@ probe_git_lock() {
     printf 'path=%s\n' "$path"
 }
 
-probe_config_lock() {
-    cat >/dev/null
-}
-
 # Prints the lock path from git's "Unable to create '<path>.lock': <reason>"
 # line on stdin, first such line only; empty when there is none. Git quotes
 # the path without escaping, so the capture runs to the last `.lock': ` on
@@ -135,17 +155,48 @@ _probe_lock_path() {
         | head -n 1
 }
 
-# Prints a relative <path> joined onto <base> with one `/` separator, <base>
-# used as given, not canonicalised. An absolute <path> prints unchanged, and
-# so does an empty one (text with no lock line): joined, it would name <base>
-# itself, a directory the holder check reads as held by whatever has it as
-# its cwd. The probe passes its own $2 (the payload cwd) as <base>, so
-# resolving against another directory is an edit to that argument alone.
+# Prints the config file named in git's "could not lock config file <file>:
+# File exists" line on stdin, first such line only; empty when there is
+# none. probe_config_lock appends ".lock" itself: git names the config file,
+# never the lock. Unlike the git-lock shape, the file is not quoted, so the
+# capture runs to the last ": File exists" on the line, mirroring the
+# git-lock extractor's own last-occurrence capture. LC_ALL=C for the same
+# byte-safety reason as _probe_lock_path.
+_probe_config_lock_path() {
+    LC_ALL=C sed -n 's/.*could not lock config file \(.*\): File exists.*/\1/p' \
+        | head -n 1
+}
+
+# Resolves <path> against a base directory: an absolute or empty <path>
+# prints unchanged. An empty one is not joined either, because joined it
+# would name the base itself, a directory the holder check would then read
+# as held by whatever sits in it. A relative <path> is joined onto the
+# nearest directory at or above the base that holds `.git` (`-e`, not `-d`:
+# a linked worktree's `.git` is a file), walking up in pure shell with no
+# git process, no canonicalisation and no tool call other than the walk
+# itself; with no such ancestor it joins onto the base unchanged. The base is
+# <cwd-arg> (the probe's own $2), or the probe's own working directory when
+# <cwd-arg> is missing or empty — never `/`.
 _probe_resolve_path() {
+    local base dir
     case "$1" in
-        /* | '') printf '%s\n' "$1" ;;
-        *) printf '%s/%s\n' "$2" "$1" ;;
+        /* | '')
+            printf '%s\n' "$1"
+            return
+            ;;
     esac
+    dir="${2:-$PWD}"
+    base="$dir"
+    while :; do
+        if [ -e "$dir/.git" ]; then
+            base="$dir"
+            break
+        fi
+        [ "$dir" = / ] && break
+        dir="${dir%/*}"
+        [ -n "$dir" ] || dir=/
+    done
+    printf '%s/%s\n' "$base" "$1"
 }
 
 # Prints the pids holding <path> open as the holder tool prints them (lsof -t

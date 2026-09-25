@@ -1,6 +1,6 @@
-# Shared helpers for tests/probes.bats, tests/probes-edges.bats and
-# tests/probes-tools.bats: the error builder and the `run` wrapper their
-# probe_git_lock cases use.
+# Shared helpers for tests/probes.bats, tests/probes-edges.bats,
+# tests/probes-tools.bats and tests/probes-config.bats: the error builders
+# and the `run` wrapper their probe cases use.
 
 # Self-quiet (FR-11): git's lock error is built from two fragments at run
 # time, as lib/matchers.sh match_git_lock builds its follow-on, so no test
@@ -10,6 +10,19 @@ git_lock_error() {
   local path="$1" text
   text="fatal: Unable to create '"
   text="${text}${path}': File exists."
+  printf '%s\n' "$text"
+}
+
+# config_lock_error <path> — git's config-lock error line, built from two
+# fragments at run time (self-quiet, FR-11), the same split
+# tests/matchers.bats "detect sees past a NUL" uses for match_config_lock's
+# own pattern, so no source line here reads "error: could not lock config
+# file ...: File exists" whole. <path> names the config file, not the lock:
+# the probe appends ".lock" itself.
+config_lock_error() {
+  local path="$1" text
+  text="error: could not lock config file $path: File"
+  text="${text} exists"
   printf '%s\n' "$text"
 }
 
