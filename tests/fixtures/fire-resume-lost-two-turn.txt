@@ -1,0 +1,6 @@
+=== A: no --setting-sources (benchmark shape) ===
+sid=37b5f8f7-cd46-44d7-8416-946cf6729b30
+No conversation found with session ID: 37b5f8f7-cd46-44d7-8416-946cf6729b30
+=== B: with --setting-sources project ===
+sid2=7ded81f3-920a-40b7-bf8b-5f08e913c333
+No conversation found with session ID: 7ded81f3-920a-40b7-bf8b-5f08e913c333

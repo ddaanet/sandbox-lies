@@ -10,10 +10,12 @@ them) is ~21,000 process spawns and blows the 10-minute cap:
               pairs (same pairing as
               plans/2026-09-02-sandbox-detector-replay.py), apply an
               over-broad substring prefilter, write survivors to
-              individual files under a scratch dir plus a JSONL manifest.
+              individual files under a scratch dir plus a JSONL manifest
+              carrying each call's dangerouslyDisableSandbox flag.
   aggregate - given the verdicts a shell loop produced by running matchers.sh
               over each survivor file, join back to the manifest and print
-              per-verdict hit counts, top projects, and self-reference stats.
+              per-verdict hit counts, how many of them ran with the flag set,
+              top projects, and each hit's transcript line.
 
 Usage:
   python3 tests/corpus-eval.py extract --outdir DIR
@@ -43,12 +45,21 @@ MASKED = [
 ]
 
 # Deliberately over-broad: strictly broader than any matcher in matchers.sh,
-# so nothing a matcher would catch is dropped before it sees it.
+# and than the candidate detectors' discriminators in
+# docs/references/detectors.md, so nothing a matcher would catch is dropped
+# before it sees it. The candidates' strings follow the shipped ones.
 PREFILTER_SUBSTRINGS = [
     "File exists",
     "could not lock config file",
     "can only add regular files",
     "crw-",
+    "Read-only file system",
+    "Device or resource busy",
+    "Permission denied",
+    "No such file or directory",
+    "No conversation found",
+    "no active session",
+    "apply-seccomp",
 ] + MASKED
 
 
@@ -110,12 +121,15 @@ def cmd_extract(args):
         for path in files:
             project = path.relative_to(PROJECTS).parts[0]
             bash_cmds = {}
+            # tool_use_id -> the call's dangerouslyDisableSandbox, joined onto
+            # its result: a candidate's flag policy gates on it (FR-5).
+            bash_flags = {}
             try:
                 fh = path.open(encoding="utf-8", errors="replace")
             except OSError:
                 continue
             with fh:
-                for line in fh:
+                for lineno, line in enumerate(fh, 1):
                     try:
                         e = json.loads(line)
                     except Exception:
@@ -133,11 +147,14 @@ def cmd_extract(args):
                         if not isinstance(b, dict):
                             continue
                         if b.get("type") == "tool_use" and b.get("name") == "Bash":
-                            cmd = (b.get("input") or {}).get("command")
+                            inp = b.get("input") or {}
+                            cmd = inp.get("command")
                             if not isinstance(cmd, str):
                                 continue
                             bash_uses += 1
                             bash_cmds[b.get("id")] = cmd
+                            bash_flags[b.get("id")] = (
+                                inp.get("dangerouslyDisableSandbox") is True)
                         elif b.get("type") == "tool_result":
                             tid = b.get("tool_use_id")
                             if tid not in bash_cmds:
@@ -157,8 +174,10 @@ def cmd_extract(args):
                                 "session": sess,
                                 "ts": ts,
                                 "err": err,
+                                "flag": bash_flags.get(tid, False),
                                 "command": bash_cmds[tid][:800],
                                 "path": str(path.relative_to(PROJECTS)),
+                                "line": lineno,
                             }) + "\n")
 
     denom = {
@@ -205,20 +224,28 @@ def cmd_aggregate(args):
     print(f"survivor files with a verdict line: {len(file_verdicts)}")
     print()
 
+    # A manifest written before the flag join has no "flag": read it as
+    # unset, as the hook reads an absent flag.
+    print(f"{'verdict':<20} {'hits':>5} {'flag':>5}   top projects")
     for v in sorted(verdicts):
         fnames = verdicts[v]
+        flagged = sum(1 for f in fnames if manifest[f].get("flag"))
         per_project = collections.Counter(manifest[f]["project"] for f in fnames)
         top = per_project.most_common(3)
         top_s = ", ".join(f"{p.lstrip('-')}:{n}" for p, n in top)
-        print(f"{v:<20} {len(fnames):>5}   {top_s}")
+        print(f"{v:<20} {len(fnames):>5} {flagged:>5}   {top_s}")
 
     print()
-    print("Full per-hit detail (verdict, project, session, ts, command, file):")
+    print("Full per-hit detail (verdict, flag, project, ts, command, file, "
+          "transcript:line):")
     for v in sorted(verdicts):
         print(f"\n=== {v} ===")
         for f in verdicts[v]:
             rec = manifest[f]
-            print(f"  {rec['project']}  {rec['ts']}  {rec['command'][:120]!r}  -> {f}")
+            flag = "flag" if rec.get("flag") else "-"
+            print(f"  {flag:<4}  {rec['project']}  {rec['ts']}  "
+                  f"{rec['command'][:120]!r}  -> {f}  "
+                  f"{rec['path']}:{rec.get('line', '?')}")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,11 @@
+38:## `.git/index.lock`: one error string, three causes
+81:## Phantom dotfiles: the `/dev/null` masks
+146:## Harness-mounted config paths are busy/read-only
+190:## Sibling worktree writes
+202:## Leaving the sandbox: the two escapes and what they cost
+264:## `excludedCommands` unsandboxes the WHOLE call
+340:## `ps` cannot see harness background tasks
+360:## `--resume` dies because the transcript never persisted
+395:## zellij IPC socket is outside the sandbox
+414:## Sandboxed `claude -p` silently drops every `SessionStart` hook
+444:## Sandbox setup itself fails: `apply-seccomp: unshare(CLONE_NEWUSER): Invalid argument`

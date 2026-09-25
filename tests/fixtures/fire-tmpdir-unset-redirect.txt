@@ -1,0 +1,2 @@
+Exit code 1
+/bin/bash: line 8: /live.conf: Permission denied

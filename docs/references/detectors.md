@@ -218,6 +218,8 @@ once this repository's traffic stops entering the corpus.
 Each needs a layer-1 replay, a shape discriminator the replay selects (line
 start, the tool's own prefix, a follow-on), and its fixtures cut before it ships
 under D-15. A candidate with a probe builds it only once the detector ships.
+Measured 2026-09-25 by that replay, then `tests/corpus-eval.py` over 55,896 Bash
+pairs, a scratch shell matcher as arbiter; a hit is a match the flag lets fire.
 
 ### readonly-path
 
@@ -225,11 +227,14 @@ Replaces `Harness-mounted config paths are busy/read-only`,
 `Sibling worktree writes`, and cost 3 of `Leaving the sandbox` (a recipe's
 `inter-device move failed`).
 
-**Matcher.** The kernel's read-only-filesystem message (EROFS) or its
-busy-device message (EBUSY), in the tool's own prefixed form (`git`'s "unable to
-unlink", `mv`'s "inter-device move failed", a bare `touch` or `cp` refusal); the
-discriminator is selected at replay. Expected residual: a genuinely read-only
-mount.
+**Matcher.** A line that begins with a tool's own prefix — a run free of blanks,
+backticks, pipes and colons, then a colon and a space, as `cp`, `mv`, `rm`,
+`touch`, `/bin/bash` (then `line N`) and git's `error`, `fatal`, `warning` print
+it — and ends in a colon, a space and the kernel's read-only-filesystem (EROFS)
+or busy-device (EBUSY) message, trailing blanks allowed. Or Python's: a line
+beginning with an exception name ending in `Error`, errno 30 or 16 in brackets,
+the same message, a colon. The store quotes both mid-line. Expected residual: a
+genuinely read-only mount.
 
 **Flag policy.** Silent when the flag is true.
 
@@ -254,13 +259,28 @@ it, or on its parent when it does not exist.
   a sandbox effect. · `read-only — real`
 - `nopath` — the `writable` paragraph without the path.
 
+**Corpus.** 162 hits, 157 true — sandbox refusals under `/tmp`, `~/.cache`,
+`~/.claude`, sibling repositories, harness-mounted config and the masks, 11 of
+them this project's traffic. 97% on 2026-09-25 if these five are false, which
+are escalated to my human partner, unclassified:
+
+- three reads of a background task's output file holding bash's refusal of that
+  task's redirect (gitlore, 2026-07-23, 2026-09-07, 2026-09-10);
+- a read of a debug log holding a nested `claude -p` hook's refusal to lock the
+  user's git config (gitlore, 2026-09-19);
+- `mkdir` refused a path directly under `/`, left by an empty variable and not
+  writable outside the sandbox either (gitlore, 2026-09-14).
+
 ### tmpdir-unset
 
 Replaces cost 1 of `Leaving the sandbox`.
 
-**Matcher.** A permission or missing-file refusal naming a path directly under
-`/` (a single path component after the root), the shape an empty `$TMPDIR`
-expansion produces.
+**Matcher.** A line that begins with a tool's own prefix (as `readonly-path`),
+optionally bash's `line N` locator, naming a path of one component directly
+under `/` — bare, or in straight or GNU curly quotes after the tool's own words
+— and ends in a colon, a space and the permission-denied or missing-file
+message, trailing blanks allowed. That is the shape an empty `$TMPDIR` expansion
+produces; a refusal on a deeper path is the near-miss.
 
 **Flag policy.** Fires only when the flag is true; silent otherwise.
 
@@ -269,11 +289,19 @@ expansion produces.
 `mkdir -p`) in this and every unsandboxed or delegated command. ·
 `$TMPDIR — unset unsandboxed`
 
+**Corpus.** 13 hits, 13 true, each a `$TMPDIR` path collapsed to `/`. 100% on
+2026-09-25; no pilot traffic. The 182 matches without the flag are silent
+(sandboxed collapses, deliberately missing paths).
+
+**Decision: ships.**
+
 ### resume-lost
 
 Replaces `--resume dies because the transcript never persisted`.
 
-**Matcher.** `claude`'s resume refusal naming a session id it cannot find.
+**Matcher.** `claude`'s resume refusal from the start of its line — no prefix of
+its own — naming the session ID it cannot find, then the id (hex digits and
+hyphens) and nothing but trailing blanks. The store quotes it mid-line.
 
 **Flag policy.** Fires only when the flag is false; unsandboxed, the cause is
 elsewhere.
@@ -282,11 +310,18 @@ elsewhere.
 inside the sandbox. Run the entire multi-turn flow in one unsandboxed call. ·
 `--resume — transcript not persisted in sandbox`
 
+**Corpus.** 2 hits, 2 true, one gitlore session reproducing the loss on
+2026-07-17. 100% on 2026-09-25, a two-hit base; no pilot traffic. A third match,
+resuming an all-zero id on purpose, had the flag set: silent.
+
+**Decision: ships.**
+
 ### zellij-socket
 
 Replaces `zellij IPC socket is outside the sandbox`.
 
-**Matcher.** zellij's no-active-session refusal.
+**Matcher.** zellij's no-active-session refusal at a line start, measured for
+want of a live instance to select a shape.
 
 **Flag policy.** Fires only when the flag is false.
 
@@ -294,12 +329,18 @@ Replaces `zellij IPC socket is outside the sandbox`.
 Re-run the same command with `dangerouslyDisableSandbox: true`. ·
 `zellij — socket unreachable from sandbox`
 
+**Corpus.** 0 hits, zero true positives, 2026-09-25; unanchored and case-blind,
+67, all quoting the store.
+
+**Decision: stays a candidate.**
+
 ### seccomp-init
 
 Replaces `Sandbox setup itself fails`.
 
 **Matcher.** The seccomp apply failure naming the user-namespace `unshare` with
-an invalid-argument errno, alone on its line.
+an invalid-argument errno, alone on its line from its start (trailing blanks
+allowed): live, it is the whole result. The store quotes it mid-line.
 
 **Flag policy.** Cannot occur on an unsandboxed call; silent if the flag is
 true.
@@ -308,6 +349,11 @@ true.
 transient. Retry the identical command once; if it fails the same way, split it
 into smaller calls. Escape the sandbox only after both. ·
 `sandbox init failed — transient, retry`
+
+**Corpus.** 8 hits, 8 true, all on 2026-08-14 in edify, handoff and gitlore.
+100% on 2026-09-25; no pilot traffic.
+
+**Decision: ships.**
 
 ## Translation map
 

@@ -43,6 +43,16 @@ expected_for() {
     quiet-clean-ls)                : ;;
     quiet-heredoc-claude-p)        : ;;
     quiet-pilot-report-echo)       : ;;
+    # Candidates recorded `ships` in docs/references/detectors.md. No
+    # matcher exists yet, so every one expects no verdict; Item 4.2 flips
+    # each fire-* row to its detector as its red.
+    fire-tmpdir-unset-redirect)    : ;;
+    fire-tmpdir-unset-cp-stat)     : ;;
+    quiet-tmpdir-unset-deep-path)  : ;;
+    fire-resume-lost-two-turn)     : ;;
+    quiet-resume-lost-index-line)  : ;;
+    fire-seccomp-init-sed)         : ;;
+    quiet-seccomp-init-heading)    : ;;
     *) return 1 ;;
   esac
 }

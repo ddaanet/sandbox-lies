@@ -1,0 +1,2 @@
+ls: cannot access '/Users/david/code/micro/.git/index.lock': No such file or directory
+lock gone

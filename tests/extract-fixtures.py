@@ -10,7 +10,11 @@ Each SPEC entry names a project, a day, a substring of the Bash command, and a
 substring the recorded output must contain -- enough to identify one call
 uniquely without pinning a session id.
 
-Usage: python3 tests/extract-fixtures.py
+Usage: python3 tests/extract-fixtures.py [NAME...]
+
+With names, only those fixtures are cut. The corpus keeps growing, so an
+entry with no day, or with a size preference, can pick a different call on a
+later run; naming the new fixtures leaves the committed ones as recorded.
 """
 
 import json
@@ -74,6 +78,30 @@ SPEC = [
     # --- detector C's false-positive class, kept as evidence ---
     ("quiet-heredoc-claude-p", "-Users-david-code-prohibitions", "2026-08-27",
      "claude -p ping)", None, "long", 200, 4000),
+
+    # --- candidates shipping under D-15 (Item 3.2), each a fire and a
+    # near-miss the discriminator in docs/references/detectors.md rejects ---
+    ("fire-tmpdir-unset-redirect", "-Users-david-code-devddaanet", "2026-09-02",
+     '> "$TMPDIR/live.conf"', "/live.conf: Permission denied",
+     "short", 40, 4000),
+    ("fire-tmpdir-unset-cp-stat", "-Users-david-code-micro", "2026-07-04",
+     'cp "$TMPDIR/micro-build"', "/micro-build'", "short", 40, 4000),
+    # a missing-file refusal on a path deeper than one component, flag set
+    ("quiet-tmpdir-unset-deep-path", "-Users-david-code-micro", "2026-07-22",
+     "ls -la /Users/david/code/micro/.git/index.lock 2>&1 ||",
+     "No such file or directory", "short", 40, 4000),
+    ("fire-resume-lost-two-turn", "-Users-david-code-gitlore", "2026-07-17",
+     "mkdir -p restest", "No conversation found with session ID",
+     "short", 60, 4000),
+    # the memory index line naming the refusal mid-line
+    ("quiet-resume-lost-index-line", "-Users-david-code-handoff", "2026-09-20",
+     'echo "=== index line:"', "No conversation found", "short", 60, 4000),
+    ("fire-seccomp-init-sed", "-Users-david-code-edify", "2026-08-14",
+     "sed -n '543,590p' docs/design.md", "apply-seccomp", "short", 40, 4000),
+    # the memory file's section heading quoting the failure
+    ("quiet-seccomp-init-heading", "-Users-david-code-gitlore", "2026-09-01",
+     'grep -n "^## " memory/ddaanet/sandbox-effects.md', "apply-seccomp",
+     "short", 60, 4000),
 ]
 
 
@@ -142,8 +170,15 @@ def pick(project, day, cmd_sub, out_sub, negate_out, prefer, lo, hi):
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
+    wanted = set(sys.argv[1:])
+    unknown = wanted - {entry[0] for entry in SPEC}
+    if unknown:
+        print("NOT IN SPEC: " + ", ".join(sorted(unknown)), file=sys.stderr)
+        return 1
     missing = []
     for name, project, day, cmd_sub, out_sub, prefer, lo, hi in SPEC:
+        if wanted and name not in wanted:
+            continue
         # the "clean" fixtures must be free of every symptom
         negate = None
         if name.startswith("quiet-clean-"):
