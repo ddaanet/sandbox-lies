@@ -10,85 +10,6 @@
 # variable an error when a test sources this file directly.
 set -u
 
-# Prints the lock path from git's "Unable to create '<path>.lock': <reason>"
-# line on stdin, first such line only; empty when there is none. Git quotes
-# the path without escaping, so the capture runs to the last `.lock': ` on
-# the line rather than stopping at the first single quote: a path holding a
-# quote survives, one holding `.lock': ` itself would not. The leading U is
-# case-insensitive, as in lib/matchers.sh match_git_lock. LC_ALL=C: under a
-# UTF-8 locale GNU sed's `.` does not match an invalid byte and BSD sed exits
-# with "illegal byte sequence", so either loses a path a byte-wise match keeps.
-_probe_lock_path() {
-    LC_ALL=C sed -n "s/.*[Uu]nable to create '\(.*\.lock\)': .*/\1/p" \
-        | head -n 1
-}
-
-# Prints the pids holding <path> open as the holder tool prints them (lsof -t
-# one per line, fuser space-padded on one line); nothing when it finds no
-# holder. The first of lsof and fuser found on PATH decides; the other is
-# never tried. Either tool exits 1 with no pid when nothing holds the file, so
-# the tool's exit is ignored and only the pids decide. Returns 2, printing
-# nothing, when neither tool is on PATH, or when the tool ran but its stderr
-# was unexpected (passed through first): the empty output alone cannot tell
-# either apart from a check that found no holder.
-#
-# The tool's stdout goes straight out through fd 3 while its stderr is held
-# in a variable: the probe writes no file (NFR-4, the hook runs with $TMPDIR
-# unset). That stderr is passed on unless it is one of two expected shapes:
-# - fuser's "<path>:" line, then only access-code letters (psmisc c/e/r/m;
-#   other builds use their own): normal operation, not a diagnostic. POSIX
-#   has fuser print it on every call; psmisc only when it finds a holder.
-# - anything, once nothing the tool can stat is at the path: either git
-#   removed the lock after the presence test (a holder that exited) and the
-#   stat below reads the vanish as gone, or the lock is a dangling symlink,
-#   which no process can hold open.
-# lsof runs with -w: its warnings are about other mounts it cannot stat
-# (/proc, FUSE), printed on every call on hosts that have such mounts; an
-# error about <path> itself is not a warning and still arrives. Residual:
-# the lsof branch runs in the suite only on hosts that have lsof.
-_probe_holder_pids() {
-    local path="$1" err rest
-    if command -v lsof >/dev/null; then
-        { err=$(lsof -w -t "$path" 2>&1 >&3 3>&-); } 3>&1
-    elif command -v fuser >/dev/null; then
-        { err=$(fuser "$path" 2>&1 >&3 3>&-); } 3>&1
-    else
-        return 2
-    fi
-    [ -n "$err" ] || return 0
-    rest=${err#"$path:"}
-    if [ "$rest" != "$err" ] && [ -z "${rest//[[:alpha:]]/}" ]; then
-        return 0
-    fi
-    if [ ! -e "$path" ]; then
-        return 0
-    fi
-    printf '%s\n' "$err" >&2
-    return 2
-}
-
-# Prints a relative <path> joined onto <base> with one `/` separator, <base>
-# used as given, not canonicalised. An absolute <path> prints unchanged, and
-# so does an empty one (text with no lock line): joined, it would name <base>
-# itself, a directory the holder check reads as held by whatever has it as
-# its cwd. The probe passes its own $2 (the payload cwd) as <base>, so
-# resolving against another directory is an edit to that argument alone.
-_probe_resolve_path() {
-    case "$1" in
-        /* | '') printf '%s\n' "$1" ;;
-        *) printf '%s/%s\n' "$2" "$1" ;;
-    esac
-}
-
-# True when <value> is whole seconds since the epoch as stat prints an
-# mtime: digits, after one leading minus for a pre-1970 mtime. Anything
-# else must stay out of $(( )), which evaluates a variable's text as an
-# expression.
-_probe_is_seconds() {
-    local digits="${1#-}"
-    [ -n "$digits" ] && [ -z "${digits//[0-9]/}" ]
-}
-
 probe_git_lock() {
     local flag="$1" text path pids holder_status=0 holder_pid mtime bytes=''
     local now age outcome
@@ -199,4 +120,87 @@ probe_git_lock() {
 
 probe_config_lock() {
     cat >/dev/null
+}
+
+# Prints the lock path from git's "Unable to create '<path>.lock': <reason>"
+# line on stdin, first such line only; empty when there is none. Git quotes
+# the path without escaping, so the capture runs to the last `.lock': ` on
+# the line rather than stopping at the first single quote: a path holding a
+# quote survives, one holding `.lock': ` itself would not. The leading U is
+# case-insensitive, as in lib/matchers.sh match_git_lock. LC_ALL=C: under a
+# UTF-8 locale GNU sed's `.` does not match an invalid byte and BSD sed exits
+# with "illegal byte sequence", so either loses a path a byte-wise match keeps.
+_probe_lock_path() {
+    LC_ALL=C sed -n "s/.*[Uu]nable to create '\(.*\.lock\)': .*/\1/p" \
+        | head -n 1
+}
+
+# Prints a relative <path> joined onto <base> with one `/` separator, <base>
+# used as given, not canonicalised. An absolute <path> prints unchanged, and
+# so does an empty one (text with no lock line): joined, it would name <base>
+# itself, a directory the holder check reads as held by whatever has it as
+# its cwd. The probe passes its own $2 (the payload cwd) as <base>, so
+# resolving against another directory is an edit to that argument alone.
+_probe_resolve_path() {
+    case "$1" in
+        /* | '') printf '%s\n' "$1" ;;
+        *) printf '%s/%s\n' "$2" "$1" ;;
+    esac
+}
+
+# Prints the pids holding <path> open as the holder tool prints them (lsof -t
+# one per line, fuser space-padded on one line); nothing when it finds no
+# holder. The first of lsof and fuser found on PATH decides; the other is
+# never tried. Either tool exits 1 with no pid when nothing holds the file, so
+# the tool's exit is ignored: its pids and its stderr decide. Returns 2 when
+# neither tool is on PATH, printing nothing, and when the tool's stderr was
+# unexpected, an exec failure's included: that stderr is passed on, and any
+# pids the tool printed have already gone out, so a holder it named still
+# reads held. An empty output alone cannot tell either case from a check that
+# found no holder.
+#
+# The tool's stdout goes straight out through fd 3 while its stderr is held
+# in a variable: the probe writes no file (NFR-4, the hook runs with $TMPDIR
+# unset). That stderr is passed on unless it is one of two expected shapes:
+# - fuser's "<path>:" line, then only access-code letters (psmisc c/e/r/m;
+#   other builds use their own): normal operation, not a diagnostic
+#   (no-stderr-suppression exception 2 of 2). POSIX has fuser print it on
+#   every call; psmisc only when it finds a holder.
+# - anything, once nothing the tool can stat is at the path: either git
+#   removed the lock after the presence test (a holder that exited) and the
+#   probe's stat reads the vanish as gone, or the lock is a dangling symlink,
+#   which no process can hold open.
+# lsof runs with -w: its warnings are about other mounts it cannot stat
+# (/proc, FUSE), printed on every call on hosts that have such mounts; an
+# error about <path> itself is not a warning and still arrives. Residual:
+# the suite runs the lsof branch against a stub; the real lsof, and so what
+# -w keeps out, only on hosts that have it.
+_probe_holder_pids() {
+    local path="$1" err rest
+    if command -v lsof >/dev/null; then
+        { err=$(lsof -w -t "$path" 2>&1 >&3 3>&-); } 3>&1
+    elif command -v fuser >/dev/null; then
+        { err=$(fuser "$path" 2>&1 >&3 3>&-); } 3>&1
+    else
+        return 2
+    fi
+    [ -n "$err" ] || return 0
+    rest=${err#"$path:"}
+    if [ "$rest" != "$err" ] && [ -z "${rest//[[:alpha:]]/}" ]; then
+        return 0
+    fi
+    if [ ! -e "$path" ]; then
+        return 0
+    fi
+    printf '%s\n' "$err" >&2
+    return 2
+}
+
+# True when <value> is whole seconds since the epoch as stat prints an
+# mtime: digits, after one leading minus for a pre-1970 mtime. Anything
+# else must stay out of $(( )), which evaluates a variable's text as an
+# expression.
+_probe_is_seconds() {
+    local digits="${1#-}"
+    [ -n "$digits" ] && [ -z "${digits//[0-9]/}" ]
 }
