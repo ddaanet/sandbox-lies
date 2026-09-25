@@ -463,7 +463,11 @@ Cross-cutting, bounded:
   `tests/helpers/bsd-stubs.bash` — `probe_git_lock` and `probe_config_lock`
   to the A-3 contract, not yet called by the hook (Item 4.1 wires them).
   Path from the error text (for config-lock, the named config file plus
-  `.lock`); a relative path resolves against `$2`. Holder check: the first
+  `.lock`); a relative path resolves against the nearest ancestor of `$2`
+  (itself included) holding `.git`, falling back to `$2` — git prints the
+  config-lock path relative to the main worktree's top-level even from a
+  subdirectory — and a missing or empty `$2` falls back to the probe's own
+  working directory, never `/` (my human partner's call, 2026-09-25). Holder check: the first
   of `lsof -t`, `fuser` present on `PATH` decides; neither present →
   `unknown`. Size via `wc -c`, mtime via BSD `stat -f %m` when it succeeds,
   else GNU `stat -c %Y`. Add a `stat` stub to `bsd-stubs.bash` that refuses
@@ -558,12 +562,17 @@ Cross-cutting, bounded:
      (slice 7's code review; proven by mutation) — text with no lock line,
      `$2` an existing directory that is also the probe's working directory,
      flag `false` and `true`: line 1 neither `held` nor `orphan`, no `pid=`,
-     empty stderr (the pathless outcome itself stays open). Open before this
-     slice starts, escalated: the base a relative lock path resolves
-     against — git prints the config-lock path relative to the main
-     worktree's top-level even from a subdirectory (verified, git 2.47.3;
-     absolute from a linked worktree) — and the outcome for a missing or
-     empty `$2`.
+     empty stderr (the pathless outcome itself stays open). Resolved at
+     the gate (item text): `config-lock from a subdirectory` — config-lock
+     text naming `.git/config`, `$2` = `<repo>/sub`, the lock present at
+     `<repo>/.git/config.lock`: `orphan`, `path=<repo>/.git/config.lock`;
+     `no .git above cwd keeps cwd` — relative git-lock text, `$2` a
+     directory under `$BATS_TEST_TMPDIR` with no `.git` in it or in any
+     ancestor (the test asserts that first), lock absent, flag `false`:
+     `mask`, `path=$2/.git/index.lock`; `missing or empty cwd uses the working
+     directory` — relative text, `$2` absent and then `""`, the probe run
+     from a repo dir holding a present lock: `orphan`, `path=` under that
+     directory, never `/.git/…`.
   9. `BSD stat` — slice 3 with `make_bsd_stubs stat` on `PATH`: `orphan`,
      `bytes=7`, an `age=` integer ≥ 0, within a minute of now minus the
      backdated mtime (slice 3's code review). `bsd-stubs.bash` also gains a
