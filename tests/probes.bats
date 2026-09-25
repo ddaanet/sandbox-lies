@@ -274,3 +274,22 @@ hold_lock() {
   [ "${output%%$'\n'*}" = mask ]
   printf '%s\n' "$output" | grep -qxF "path=$lock"
 }
+
+# PATH set to a directory holding only the tools probe_git_lock itself calls,
+# built from this host's own binaries: neither lsof nor fuser is there, so
+# the case never depends on which of the two (if either) the host provides.
+@test "no holder tool is unknown" {
+  local repo="$BATS_TEST_TMPDIR/r" cwd="$BATS_TEST_TMPDIR/elsewhere" lock
+  local toolsdir="$BATS_TEST_TMPDIR/tools-only"
+  mkdir -p "$repo/.git" "$cwd"
+  lock="$repo/.git/index.lock"
+  printf '1234567' >"$lock"
+  tools_only_path "$toolsdir"
+
+  PATH="$toolsdir" run_probe probe_git_lock false "$cwd" "$(git_lock_error "$lock")"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = unknown ]
+  printf '%s\n' "$output" | grep -qxF "bytes=7"
+}

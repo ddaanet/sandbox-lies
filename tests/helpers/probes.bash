@@ -20,3 +20,18 @@ git_lock_error() {
 run_probe() {
   run --separate-stderr "$1" "$2" "$3" <<<"$4"
 }
+
+# tools_only_path <dir> — symlinks into <dir> every external tool
+# probe_git_lock calls other than the holder tools (lsof, fuser), plus
+# mktemp for bats' own `run --separate-stderr` (test_functions.bash), taken
+# from this host's own `command -v` so the case runs on any box. A PATH set
+# to exactly <dir> can then never see lsof or fuser unless a test writes one
+# there itself. The tool list lives here once, so a new probe call site
+# updates one place.
+tools_only_path() {
+  local dir="$1" tool
+  mkdir -p "$dir"
+  for tool in cat sed head stat wc tr date mktemp; do
+    ln -s "$(command -v "$tool")" "$dir/$tool"
+  done
+}

@@ -27,7 +27,11 @@ _probe_lock_path() {
 # one per line, fuser space-padded on one line); nothing when neither tool is
 # on PATH or the present one finds no holder. The first of lsof and fuser
 # found on PATH decides; the other is never tried. Either tool exits 1 with
-# no pid when nothing holds the file, so only the pids decide, not the exit.
+# no pid when nothing holds the file, so only the pids decide, not the exit —
+# except the neither-tool case, which this function reports through its own
+# exit status (2) since its stdout is empty either way: the caller tells
+# "checked, no holder" (orphan) from "no tool to check with" (unknown) by
+# that status, not by the (identical, empty) output.
 #
 # The tool's stdout goes straight out through fd 3 while its stderr is held
 # in a variable: the probe writes no file (NFR-4, the hook runs with $TMPDIR
@@ -50,7 +54,7 @@ _probe_holder_pids() {
     elif command -v fuser >/dev/null; then
         { err=$(fuser "$path" 2>&1 >&3 3>&-); } 3>&1
     else
-        return 0
+        return 2
     fi
     [ -n "$err" ] || return 0
     rest=${err#"$path:"}
@@ -64,7 +68,8 @@ _probe_holder_pids() {
 }
 
 probe_git_lock() {
-    local flag="$1" text path pids holder_pid mtime bytes='' now age
+    local flag="$1" text path pids holder_status holder_pid mtime bytes=''
+    local now age outcome
     text=$(cat)
     path=$(printf '%s\n' "$text" | _probe_lock_path)
 
@@ -100,6 +105,7 @@ probe_git_lock() {
     # state reads unheld. A holder exiting just after the tool saw it
     # reads held.
     pids=$(_probe_holder_pids "$path")
+    holder_status=$?
     # First pid only (pid= is singular), parsed without word splitting
     # or globbing: drop what precedes the first digit, keep that run.
     pids=${pids#"${pids%%[0-9]*}"}
@@ -131,7 +137,14 @@ probe_git_lock() {
         # BSD wc left-pads its count with spaces; strip before printing.
         bytes=$(wc -c <"$path" | tr -d '[:space:]')
     fi
-    printf 'orphan\n'
+    # holder_status 2 is _probe_holder_pids' "no tool to check with"; any
+    # other status got here by actually checking and finding no holder.
+    if [ "$holder_status" -eq 2 ]; then
+        outcome=unknown
+    else
+        outcome=orphan
+    fi
+    printf '%s\n' "$outcome"
     if [ -n "$bytes" ]; then
         printf 'bytes=%s\n' "$bytes"
     fi
