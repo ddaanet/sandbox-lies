@@ -122,6 +122,20 @@ Architecture-map line?
 rewrite lines in place, and the split decision comes up at the first edit
 that cannot fit.
 
+## Resume
+
+Nothing is in flight and the tracked tree is clean (`verify-step.sh`:
+CLEAN). Last commit: "Phase 2 build report and resume block". Item 2.4 slice 8
+is fully done: RED, test review, GREEN, code review and list revision, plus
+slice 11, the follow-up it added. The Phase 2 boundary corrector has also run
+and been committed, carrying everything on its list; its final text is in
+`phase-2-corrector.md`. The lock-path decisions are in force and in the
+runbook, design.md and detectors.md: B, walk up from `$2` to the nearest
+`.git` directory; a missing or empty `$2` falls back to the probe's own
+working directory. A fresh delegate starts Phase 3 from the resume block
+above. The Finish run-summary deviations are under "For the run summary at
+Finish" and "Deviations".
+
 ## Phase 2 boundary resume block
 
 ```
