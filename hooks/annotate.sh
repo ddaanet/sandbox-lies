@@ -12,10 +12,11 @@
 # array, which jq cannot index without a fatal error; only a string field is
 # read as text. The output is the event, the sandbox flag, the payload cwd,
 # then each text part, each ending in a newline, which is the join. The
-# event is printed only when it equals one of the two literal names, so the
-# first three newlines are always the split points for event/flag/cwd. NUL
-# bytes are dropped in jq: bash drops them from a `$(...)` too, but warns on
-# stderr.
+# event is printed only when it equals one of the two literal names, the flag
+# is `true` or `false`, and the cwd has each backslash doubled and each
+# newline written `\n` (undone by `printf %b`), so the first three newlines
+# are always the split points for event/flag/cwd. NUL bytes are dropped in
+# jq: bash drops them from a `$(...)` too, but warns on stderr.
 #
 # Writes nothing (NFR-4): no here-document, which bash before 5.1 spools
 # through a temp file.
@@ -34,15 +35,16 @@ nl='
 '
 
 # FR-5: dangerouslyDisableSandbox reads as "true" only when literally true;
-# absent or any other shape reads as "false". `?` guards .tool_input being
-# something jq cannot index (a scalar), which select(type == "object") above
-# does not rule out for a nested field.
+# absent, any other value, or a tool_input that is not an object reads as
+# "false". `objects` keeps jq from indexing a scalar, and `// false` turns the
+# empty it leaves into false rather than dropping the whole payload.
 parsed=$(jq -Rrs '
     fromjson? | select(type == "object") |
     .hook_event_name as $event |
-    (if (.tool_input.dangerouslyDisableSandbox? == true)
+    (if ((.tool_input | objects | .dangerouslyDisableSandbox) // false) == true
      then "true" else "false" end) as $flag |
-    ((.cwd | strings) // "") as $cwd |
+    ((.cwd | strings) // "" |
+     split("\\") | join("\\\\") | split("\n") | join("\\n")) as $cwd |
     if $event == "PostToolUseFailure" then
       $event, $flag, $cwd, (.error | strings)
     elif $event == "PostToolUse" then
@@ -59,7 +61,7 @@ case "$parsed" in
     rest=${parsed#*"$nl"}
     flag=${rest%%"$nl"*}
     rest=${rest#*"$nl"}
-    cwd=${rest%%"$nl"*}
+    printf -v cwd '%b' "${rest%%"$nl"*}"
     text=${rest#*"$nl"}
     ;;
 esac
@@ -106,6 +108,9 @@ while IFS= read -r name; do
   else
     out=$("$fn" </dev/null) || exit 0
   fi
+  # An outcome the verdict has no text for, an empty one included, prints
+  # nothing and contributes nothing: no empty paragraph or human line.
+  [ -n "$out" ] || continue
   para=${out%%"$nl"*}
   line=${out#*"$nl"}
   line=${line%%"$nl"*}
