@@ -59,3 +59,21 @@ probe, against NFR-3's 100 ms bound), 54 ms on a quiet 25,000-character
 `tool_response.stdout`. A first pass gave 61, 61 and 52 ms, with one
 `fire-masks-porcelain` run at 169 ms: the bound holds for the mean, not for
 every run on a loaded box. Nothing gates these figures.
+
+## 2026-09-25 — the gates and the lock probes
+
+Items 2.1 and 2.2 put `scripts/check-line-limits.sh` and
+`scripts/check-links.sh` into `just precommit`, closing NFR-5; the link check
+covers inline links only, reference-style definitions staying unchecked. Item
+2.4 built `probe_git_lock` and `probe_config_lock`, tested but not yet
+live-proved or called by the hook. Two rules changed while building them. A
+relative lock path now resolves from the nearest ancestor of the payload `cwd`
+holding a `.git` directory, not from the `cwd` itself: git prints the
+config-lock path relative to the main worktree's top-level even from a
+subdirectory (checked on git 2.47.3), so a join onto the `cwd` named a lock that
+was never there; a missing `cwd` falls back to the probe's working directory,
+never `/`. A holder check that errored reads `unknown`, as a missing holder tool
+does (D-14): it has not shown the lock unheld. The phantom verdicts' claim that
+unsandboxed `ls -a` and `git status` show the real tree now holds only with no
+sandboxed command running in the background, since the masks are visible from
+any process while one runs.

@@ -17,16 +17,8 @@ setup() {
   _probe_holder_pid=
 }
 
-# Kills the lock-holding background job the two "held" tests start. Guarded:
-# every other test leaves _probe_holder_pid at setup's empty default, so
-# there is nothing to kill for them.
 teardown() {
-  if [ -n "${_probe_holder_pid:-}" ]; then
-    # A killed job's wait returns 143, and a failing teardown fails the
-    # test; kill finds no process when the holder died on its own.
-    kill "$_probe_holder_pid" 2>/dev/null || :
-    wait "$_probe_holder_pid" 2>/dev/null || :
-  fi
+  kill_holder
 }
 
 # $2 names an unrelated directory, so the path= line can only come from the

@@ -101,6 +101,26 @@ setup() {
   [ "$(printf '%s\n' "$output" | grep -cxF "path=$index")" -eq 0 ]
 }
 
+# match_config_lock fires only on the error at line start, so the probe reads
+# that line too: a quoted copy behind "> " comes first, naming a decoy repo
+# whose lock is present, and the line-start error names one whose lock is
+# absent. An unanchored extractor takes the quote and answers orphan.
+@test "config-lock reads the line-start error, not a quoted one" {
+  local repo="$BATS_TEST_TMPDIR/r5" decoy="$BATS_TEST_TMPDIR/decoy"
+  local cwd="$BATS_TEST_TMPDIR/elsewhere"
+  mkdir -p "$repo/.git" "$decoy/.git" "$cwd"
+  printf '1234567' >"$decoy/.git/config.lock"
+
+  run_probe probe_config_lock false "$cwd" \
+    "$(printf '> %s\n' "$(config_lock_error "$decoy/.git/config")"
+      config_lock_error "$repo/.git/config")"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = mask ]
+  printf '%s\n' "$output" | grep -qxF "path=$repo/.git/config.lock"
+}
+
 # Text with no lock line at all: $2 is an existing directory that is also the
 # probe's own process cwd (the "cd" below, not just the argument), so a
 # resolver that joined the empty extracted path onto $2 or onto the process
@@ -182,16 +202,10 @@ setup() {
 # probe runs: the walk-up then finds nothing and falls back to $2 itself, the
 # same result the plain (pre-walk-up) join onto $2 already gave.
 @test "no .git above cwd keeps cwd" {
-  local cwd="$BATS_TEST_TMPDIR/nogit/deep" lock ancestor
+  local cwd="$BATS_TEST_TMPDIR/nogit/deep" lock
   mkdir -p "$cwd"
   lock="$cwd/.git/index.lock"
-
-  ancestor="$cwd"
-  while [ "$ancestor" != / ]; do
-    [ ! -e "$ancestor/.git" ]
-    ancestor=$(dirname "$ancestor")
-  done
-  [ ! -e "/.git" ]
+  assert_no_git_above "$cwd"
 
   run_probe probe_git_lock false "$cwd" "$(git_lock_error .git/index.lock)"
 
@@ -232,22 +246,16 @@ setup() {
 
 # A relative $2 is anchored on the probe's own working directory, so each
 # step of the walk shrinks an absolute path and it always reaches /. Run
-# from a directory with no .git above it (checked first, as "no .git above
-# cwd keeps cwd" does), so a regression that drops the anchoring loops
+# from a directory with no .git above it (checked first, by
+# assert_no_git_above), so a regression that drops the anchoring loops
 # forever instead of falling back. `rel` has no slash for the walk to strip,
 # `rel/x` one. Bounded by run_probe_bounded (helpers/probes.bash), so the
 # regression fails the test instead of hanging the suite.
 @test "relative cwd terminates at the working directory" {
-  local w="$BATS_TEST_TMPDIR/w" ancestor
+  local w="$BATS_TEST_TMPDIR/w"
   mkdir -p "$w"
   cd "$w"
-
-  ancestor="$w"
-  while [ "$ancestor" != / ]; do
-    [ ! -e "$ancestor/.git" ]
-    ancestor=$(dirname "$ancestor")
-  done
-  [ ! -e "/.git" ]
+  assert_no_git_above "$w"
 
   run_probe_bounded probe_git_lock false rel "$(git_lock_error .git/index.lock)"
 

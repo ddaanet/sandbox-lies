@@ -18,15 +18,15 @@ directory; no recorded call changed directory, so where a `cd` inside the call
 leaves `cwd` is unrecorded. A sandboxed write refused by the allowlist carried
 no harness sandbox-violation annotation in the payload or in the model's tool
 result (L-5). A **probe** runs in the hook process, outside the sandbox, reads
-the same text on stdin with the flag as its first argument, and prints an
-outcome token on its first line followed by `key=value` lines. The **flag** is
-`tool_input.dangerouslyDisableSandbox` from the payload, absent from
-`tool_input` when unset (read as false) and `true` when set (recorded
-2026-09-23); every detector states its **flag policy** — what happens when the
-call ran unsandboxed. Verdict text is given as the agent paragraph, then the
-human line. No entry here quotes a diagnostic together with its follow-on
-sentence, and candidate strings are described rather than quoted, so that this
-file stays quiet under the detectors it specifies.
+the same text on stdin with the flag as its first argument and the payload `cwd`
+as its second, and prints an outcome token on its first line followed by
+`key=value` lines. The **flag** is `tool_input.dangerouslyDisableSandbox` from
+the payload, absent from `tool_input` when unset (read as false) and `true` when
+set (recorded 2026-09-23); every detector states its **flag policy** — what
+happens when the call ran unsandboxed. Verdict text is given as the agent
+paragraph, then the human line. No entry here quotes a diagnostic together with
+its follow-on sentence, and candidate strings are described rather than quoted,
+so that this file stays quiet under the detectors it specifies.
 
 Corpus: 21,453 Bash tool-use/result pairs, 1,682 JSONL files, 35 projects,
 measured 2026-09-03 with the shell matchers as arbiter
@@ -49,9 +49,11 @@ with progress on the same line. Exit status is not consulted: two corpus
 failures were piped through `tail` and report 0.
 
 **Probe.** `stat` the lock path named in the error — git prints it absolute; a
-relative one resolves against the payload `cwd` — then a holder check:
-`lsof -t`, else `fuser`. Size and age come from a portable `stat` form (BSD and
-GNU differ).
+relative one resolves against the nearest ancestor of the payload `cwd` (itself
+included) holding a `.git` directory, else against the `cwd`, and a missing or
+empty `cwd` falls back to the probe's own working directory, never `/` — then a
+holder check: `lsof -t`, else `fuser`. Size and age come from a portable `stat`
+form (BSD and GNU differ).
 
 | outcome | condition |
 |---|---|
@@ -59,7 +61,7 @@ GNU differ).
 | `gone` | flag true, path absent |
 | `held` | path present, a process holds it (`pid=`) |
 | `orphan` | path present, holder check ran, no holder (`bytes=`, `age=`) |
-| `unknown` | path present, no holder tool on `PATH` (`bytes=`, `age=`) |
+| `unknown` | path present, no holder tool on `PATH`, or the holder check errored (`bytes=`, `age=`) |
 
 **Flag policy.** Fires either way; the flag selects `mask` versus `gone` when
 the path is absent.
@@ -101,9 +103,12 @@ Replaces the `.git/config.lock` paragraph of the same section and the
 and ends in `File exists`. The line anchor is the discriminator: the pilot's own
 report echoes the same text behind a `> ` marker.
 
-**Probe.** As `git-lock`, on `.git/config.lock`. Note `.git/config.lock` is
-itself in the masked set, so the sandboxed write fails on a bind-mount, not on a
-file.
+**Probe.** As `git-lock`, on the config file the line-start error names, plus
+`.lock`. Git prints that path relative to the main worktree's top-level even
+from a subdirectory, and absolute from a linked worktree or a submodule, which
+is why a relative path resolves from the nearest `.git` directory rather than
+from the `cwd`. Note `.git/config.lock` is itself in the masked set, so the
+sandboxed write fails on a bind-mount, not on a file.
 
 **Verdicts.** As `git-lock`, naming `config.lock`; the `mask` paragraph adds:
 run the `git config` or `git remote` write unsandboxed, or through the
@@ -127,9 +132,9 @@ match; none exists in the corpus.
 **Probe.** None.
 
 **Verdict.** The character-device entries in this listing are sandbox masks over
-dotfiles in the project root, not files in the repository; outside the sandbox
-they do not exist. Leave them out of every add, delete and report. `ls -a` and
-`git status` run unsandboxed show the real tree. ·
+dotfiles in the project root, not files in the repository. Leave them out of
+every add, delete and report. With no sandboxed command running in the
+background, `ls -a` and `git status` run unsandboxed show the real tree. ·
 `phantom dotfiles — sandbox masks in listing`
 
 **Flag policy.** Fires either way with the same verdict: masks have been seen

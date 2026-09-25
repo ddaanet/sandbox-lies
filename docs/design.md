@@ -1,7 +1,7 @@
 # sandbox-lies — design
 
-**Status:** Partial. The hook and the three `phantom-*` verdicts are built and
-tested, not yet dogfooded; probes and candidates are not built.
+**Status:** Partial. Built and tested: the hook, the `phantom-*` verdicts, the
+lock probes (not live-proved or hook-called). Nothing dogfooded; no candidates.
 **Verified against:** `52e6dd82b831a1cc2b7b516d4c248df6fb1ebc8c` (2026-09-22).
 
 Changelog: [changelog.md](changelog.md). Per-detector mechanism:
@@ -149,8 +149,8 @@ date and how much pilot traffic the corpus had absorbed, because the corpus is
 self-polluting. Where · pinned by: `references/detectors.md` per detector · the
 replay harness under `tests/`. Partial (harness promoted).
 
-**NFR-2 — Portability.** bash 3.2, BSD `grep`/`sed`/`mktemp`, `jq`. The suite
-re-runs itself with BSD-strict stubs on `PATH`. Where · pinned by:
+**NFR-2 — Portability.** bash 3.2, BSD `grep`/`sed`/`mktemp`/`stat`/`wc`, `jq`.
+The suite re-runs itself with BSD-strict stubs on `PATH`. Where · pinned by:
 `tests/helpers/bsd-stubs.bash` · every bats file loads it. Done.
 
 **NFR-3 — Cost.** No verdict, no output: the hook exits 0 silently, and that
@@ -161,9 +161,9 @@ pinned by: `hooks/hooks.json` timeout · `tests/hook.bats` asserts empty stdout
 on quiet fixtures. Done (100 ms bound measured, not gated).
 
 **NFR-5 — Size and links.** Every document and script is at most 400 lines (a
-`SKILL.md` at most 200), and every relative markdown link resolves. Where ·
-pinned by: `scripts/check-line-limits.sh`, `scripts/check-links.sh` · both run
-in `just precommit`. Done.
+`SKILL.md` at most 200), and every inline relative link resolves (reference
+style unchecked). Where · pinned by: `scripts/check-line-limits.sh`,
+`scripts/check-links.sh` · both run in `just precommit`. Done.
 
 **NFR-4 — Hermetic.** The hook writes nothing (it runs outside the sandbox with
 `$TMPDIR` unset) and reads only the repository the call ran in. Where · pinned
@@ -200,11 +200,12 @@ perform. Reopen-if: a hook is ever found sandboxed. A probe that finds a
 character device treats it as a mask, never as a file — unsandboxed readers have
 seen masks while another session's sandbox was live.
 
-**Paths.** A lock probe takes its path from the error text; git prints it
-absolute, and a relative one resolves against the payload's `cwd` (what it holds
-after a `cd` inside the call is unrecorded). Phantom masks sit in the session's
-project root only, and the `phantom-*` detectors read text and run no probe;
-their verdict says where the masks are.
+**Paths.** A lock probe takes its path from the error text; a relative one (git
+prints it from the main worktree's top-level) resolves from the nearest ancestor
+of the payload's `cwd`, itself included, holding a `.git` directory, else from
+the `cwd`, and with no `cwd` from the probe's working directory, never `/`.
+Phantom masks sit in the session's project root only, and the `phantom-*`
+detectors read text and run no probe; their verdict says where the masks are.
 
 The detector-by-detector mechanism — matcher shape, discriminator, probe,
 verdict outcomes, corpus figure — is in
@@ -320,9 +321,9 @@ shape the fixtures were cut from.
 
 **D-14 — A lock with no holder check is `unknown`, not `orphan`.** The holder
 check is `lsof -t`, then `fuser`; the Linux dev box has only the latter. With
-neither, the verdict reports the lock's presence and carries no removal
-instruction: a held lock also fails an identical retry, so degrading to `orphan`
-would hand it the exact instruction the plugin exists to withhold.
+neither, or a failed check, the verdict reports the lock's presence and carries
+no removal instruction: a held lock also fails an identical retry, so degrading
+to `orphan` would hand it the instruction the plugin exists to withhold.
 
 **D-15 — Candidate ship rule.** A candidate ships when the replay finds at least
 one true positive and every false positive is classified as self-reference

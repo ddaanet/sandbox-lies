@@ -156,15 +156,17 @@ _probe_lock_path() {
         | head -n 1
 }
 
-# Prints the config file named in git's "could not lock config file <file>:
-# File exists" line on stdin, first such line only; empty when there is
-# none. probe_config_lock appends ".lock" itself: git names the config file,
-# never the lock. Unlike the git-lock shape, the file is not quoted, so the
-# capture runs to the last ": File exists" on the line, mirroring the
-# git-lock extractor's own last-occurrence capture. LC_ALL=C for the same
-# byte-safety reason as _probe_lock_path.
+# Prints the config file named in git's "error: could not lock config file
+# <file>: File exists" line on stdin, first such line only; empty when there
+# is none. Anchored at line start as lib/matchers.sh match_config_lock is, so
+# a quoted copy of the error earlier in the text is not the line read.
+# probe_config_lock appends ".lock" itself: git names the config file, never
+# the lock. Unlike the git-lock shape, the file is not quoted, so the capture
+# runs to the last ": File exists" on the line, mirroring the git-lock
+# extractor's own last-occurrence capture. LC_ALL=C for the same byte-safety
+# reason as _probe_lock_path.
 _probe_config_lock_path() {
-    LC_ALL=C sed -n 's/.*could not lock config file \(.*\): File exists.*/\1/p' \
+    LC_ALL=C sed -n 's/^error: could not lock config file \(.*\): File exists.*/\1/p' \
         | head -n 1
 }
 

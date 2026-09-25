@@ -88,7 +88,7 @@ $text"
   # addition, not that sentence transcribed literally.
   local chardev_para addition line1 line2
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  chardev_para='The character-device entries in this listing are sandbox masks over dotfiles in the project root, not files in the repository; outside the sandbox they do not exist. Leave them out of every add, delete and report. `ls -a` and `git status` run unsandboxed show the real tree.'
+  chardev_para='The character-device entries in this listing are sandbox masks over dotfiles in the project root, not files in the repository. Leave them out of every add, delete and report. With no sandboxed command running in the background, `ls -a` and `git status` run unsandboxed show the real tree.'
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   addition='A cleanliness check that reads these `??` lines as dirty is reading the sandbox, not the tree.'
 

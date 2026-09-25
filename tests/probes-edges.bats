@@ -1,8 +1,9 @@
 #!/usr/bin/env bats
-# lib/probes.sh: edge cases Item 2.4 slice 3's code review already fixed in
-# probe_git_lock, opened as a separate file because tests/probes.bats stood
-# at 256 lines. Each case here is pinned by mutation, not by a red against
-# unimplemented behaviour — the fix landed with the review, ahead of a test.
+# lib/probes.sh: probe_git_lock edge cases whose fixes landed in code
+# reviews ahead of a test — a lock vanishing mid-probe, non-regular and
+# dangling-symlink locks, clock skew, holder-tool stubs — and NFR-4's
+# writes-nothing check. Each case is pinned by mutation, not by a red against
+# unimplemented behaviour.
 
 ROOT="${BATS_TEST_DIRNAME}/.."
 
@@ -17,16 +18,8 @@ setup() {
   _probe_holder_pid=
 }
 
-# Kills the lock-holding background job "probe writes nothing" starts.
-# Guarded: every other test in this file leaves _probe_holder_pid at setup's
-# empty default, so there is nothing to kill for them.
 teardown() {
-  if [ -n "${_probe_holder_pid:-}" ]; then
-    # A killed job's wait returns 143, and a failing teardown fails the
-    # test; kill finds no process when the holder died on its own.
-    kill "$_probe_holder_pid" 2>/dev/null || :
-    wait "$_probe_holder_pid" 2>/dev/null || :
-  fi
+  kill_holder
 }
 
 # A stat stub on PATH removes its path operand, then runs the real stat: the

@@ -1,6 +1,7 @@
 # Shared helpers for tests/probes.bats, tests/probes-edges.bats,
-# tests/probes-tools.bats and tests/probes-config.bats: the error builders
-# and the `run` wrapper their probe cases use.
+# tests/probes-tools.bats and tests/probes-config.bats: the error builders,
+# the `run` wrappers, the tools-only PATH, the lock holder and the no-.git
+# precondition their probe cases use.
 
 # Self-quiet (FR-11): git's lock error is built from two fragments at run
 # time, as lib/matchers.sh match_git_lock builds its follow-on, so no test
@@ -35,8 +36,8 @@ run_probe() {
   run --separate-stderr "$1" "$2" "$3" <<<"$4"
 }
 
-# tools_only_path <dir> — symlinks into <dir> every external tool
-# probe_git_lock calls other than the holder tools (lsof, fuser), plus
+# tools_only_path <dir> — symlinks into <dir> every external tool the
+# lock probes call other than the holder tools (lsof, fuser), plus
 # mktemp for bats' own `run --separate-stderr` (test_functions.bash), taken
 # from this host's own `command -v` so the case runs on any box. A PATH set
 # to exactly <dir> can then never see lsof or fuser unless a test writes one
@@ -65,7 +66,7 @@ tools_only_path() {
 # probe printing its own $! cannot pass for one naming the holder.
 #
 # Shared by tests/probes.bats and tests/probes-edges.bats: each file's own
-# setup() resets _probe_holder_pid and its own teardown() kills it.
+# setup() resets _probe_holder_pid and its own teardown() calls kill_holder.
 hold_lock() {
   local ready="$BATS_TEST_TMPDIR/holder-ready" tries=0
   (
@@ -81,6 +82,29 @@ hold_lock() {
   done
   : &
   wait "$!"
+}
+
+# kill_holder — kills the job hold_lock started, if a test started one: every
+# other test leaves _probe_holder_pid at setup's empty default. A killed
+# job's wait returns 143 and a failing teardown fails the test, and kill
+# finds no process when the holder died on its own, so both are tolerated.
+kill_holder() {
+  if [ -n "${_probe_holder_pid:-}" ]; then
+    kill "$_probe_holder_pid" 2>/dev/null || :
+    wait "$_probe_holder_pid" 2>/dev/null || :
+  fi
+}
+
+# assert_no_git_above <dir> — fails unless neither <dir> nor any ancestor up
+# to / holds a .git entry, so a case relying on the walk-up finding nothing
+# cannot pass because the box's own tree supplied one.
+assert_no_git_above() {
+  local ancestor="$1"
+  while [ "$ancestor" != / ]; do
+    [ ! -e "$ancestor/.git" ]
+    ancestor=$(dirname "$ancestor")
+  done
+  [ ! -e "/.git" ]
 }
 
 # run_probe_bounded <probe> <flag> <cwd> <text> — as run_probe, but the probe

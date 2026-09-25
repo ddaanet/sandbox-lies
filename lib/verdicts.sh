@@ -8,13 +8,13 @@ set -u
 
 verdict_phantom_chardev() {
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  printf '%s\n' 'The character-device entries in this listing are sandbox masks over dotfiles in the project root, not files in the repository; outside the sandbox they do not exist. Leave them out of every add, delete and report. `ls -a` and `git status` run unsandboxed show the real tree.'
+  printf '%s\n' 'The character-device entries in this listing are sandbox masks over dotfiles in the project root, not files in the repository. Leave them out of every add, delete and report. With no sandboxed command running in the background, `ls -a` and `git status` run unsandboxed show the real tree.'
   printf '%s\n' 'phantom dotfiles — sandbox masks in listing'
 }
 
 verdict_phantom_untracked() {
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  printf '%s\n' 'The character-device entries in this listing are sandbox masks over dotfiles in the project root, not files in the repository; outside the sandbox they do not exist. Leave them out of every add, delete and report. `ls -a` and `git status` run unsandboxed show the real tree. A cleanliness check that reads these `??` lines as dirty is reading the sandbox, not the tree.'
+  printf '%s\n' 'The character-device entries in this listing are sandbox masks over dotfiles in the project root, not files in the repository. Leave them out of every add, delete and report. With no sandboxed command running in the background, `ls -a` and `git status` run unsandboxed show the real tree. A cleanliness check that reads these `??` lines as dirty is reading the sandbox, not the tree.'
   printf '%s\n' 'phantom dotfiles — masks listed as untracked'
 }
 

@@ -237,9 +237,11 @@ Cross-cutting, bounded:
   executed `scripts/lib/tracked.sh` (a refactor),
   `scripts/lib/strip-code.awk` (the fence pass),
   `tests/check-links-edges.bats` and `tests/helpers/fixture-root.bash` (a
-  suite split under the 400-line cap) — every relative markdown link in
-  the same tracked markdown scope as Item 2.1 resolves to an existing
-  path, relative to the linking file. Wired into
+  suite split under the 400-line cap) — every relative inline markdown
+  link (`[x](target)`) in the same tracked markdown scope as Item 2.1
+  resolves to an existing path, relative to the linking file;
+  reference-style `[x][r]` definitions are unchecked (none in scope).
+  Wired into
   `precommit` after the line-limit check. Requirements: NFR-2, NFR-5.
   Depends on: Item 1.2
   Interfaces:
@@ -625,7 +627,13 @@ Cross-cutting, bounded:
       link's lexical parents; a base inside a gitdir resolves against an
       enclosing worktree.
   Order as executed: slice 8 waited on the escalated path-base question,
-  so slices 9 and 10 ran before it; slice 11 closes the item.
+  so slices 9 and 10 ran before it; slice 11 closes the item. The Phase 2
+  checkpoint anchored the config-lock extractor at line start, as
+  `match_config_lock` is, pinned by `config-lock reads the line-start
+  error, not a quoted one` (`tests/probes-config.bats`, red before the
+  anchor): a `> `-quoted copy naming a present decoy lock ahead of the
+  line-start error naming an absent one reads `mask` with the line-start
+  path.
 
 ## Phase 3: Evidence (type: general)
 
