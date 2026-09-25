@@ -28,8 +28,9 @@ _probe_lock_path() {
 # holder. The first of lsof and fuser found on PATH decides; the other is
 # never tried. Either tool exits 1 with no pid when nothing holds the file, so
 # the tool's exit is ignored and only the pids decide. Returns 2, printing
-# nothing, when neither tool is on PATH: the empty output alone cannot tell
-# that from a check that found no holder.
+# nothing, when neither tool is on PATH, or when the tool ran but its stderr
+# was unexpected (passed through first): the empty output alone cannot tell
+# either apart from a check that found no holder.
 #
 # The tool's stdout goes straight out through fd 3 while its stderr is held
 # in a variable: the probe writes no file (NFR-4, the hook runs with $TMPDIR
@@ -63,6 +64,7 @@ _probe_holder_pids() {
         return 0
     fi
     printf '%s\n' "$err" >&2
+    return 2
 }
 
 # Prints a relative <path> joined onto <base> with one `/` separator, <base>
@@ -172,9 +174,9 @@ probe_git_lock() {
         # BSD wc left-pads its count with spaces; strip before printing.
         bytes=$(wc -c <"$path" | tr -d '[:space:]')
     fi
-    # Status 2: no holder tool on PATH. Otherwise a tool ran and named no
-    # holder.
-    if [ "$holder_status" -eq 2 ]; then
+    # Nonzero: no holder tool on PATH, or the holder check errored. Zero: a
+    # tool ran and named no holder.
+    if [ "$holder_status" -ne 0 ]; then
         outcome=unknown
     else
         outcome=orphan

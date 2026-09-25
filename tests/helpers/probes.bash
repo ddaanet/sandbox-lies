@@ -1,5 +1,6 @@
-# Shared helpers for tests/probes.bats and tests/probes-edges.bats: the error
-# builder and the `run` wrapper both files' probe_git_lock cases use.
+# Shared helpers for tests/probes.bats, tests/probes-edges.bats and
+# tests/probes-tools.bats: the error builder and the `run` wrapper their
+# probe_git_lock cases use.
 
 # Self-quiet (FR-11): git's lock error is built from two fragments at run
 # time, as lib/matchers.sh match_git_lock builds its follow-on, so no test
