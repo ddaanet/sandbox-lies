@@ -27,6 +27,9 @@ config_lock gone
 config_lock held
 config_lock orphan
 config_lock unknown
+tmpdir_unset -
+resume_lost -
+seccomp_init -
 ROWS
 }
 
@@ -117,6 +120,30 @@ $text"
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   [ "$line1" = '`git add` aborted on a sandbox mask, not a file. Stage explicit paths, or re-run the same command unsandboxed.' ]
   [ "$line2" = 'git add — refused a sandbox mask' ]
+}
+
+@test "candidate verdict text matches detectors.md" {
+  # Transcribed from docs/references/detectors.md's tmpdir-unset, resume-lost
+  # and seccomp-init Verdict paragraphs, not copied from lib/verdicts.sh.
+  local line1 line2
+
+  line1=$(verdict_text tmpdir_unset - | sed -n '1p')
+  line2=$(verdict_text tmpdir_unset - | sed -n '2p')
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  [ "$line1" = '`$TMPDIR` is unset outside the sandbox, so the path collapsed to `/`. Use the literal scratch path `/tmp/claude/<job>` (create it with `mkdir -p`) in this and every unsandboxed or delegated command.' ]
+  # shellcheck disable=SC2016 # $TMPDIR is literal prose, not expansion
+  [ "$line2" = '$TMPDIR — unset unsandboxed' ]
+
+  line1=$(verdict_text resume_lost - | sed -n '1p')
+  line2=$(verdict_text resume_lost - | sed -n '2p')
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  [ "$line1" = 'The transcript was never written: `~/.claude/projects` is read-only inside the sandbox. Run the entire multi-turn flow in one unsandboxed call.' ]
+  [ "$line2" = '--resume — transcript not persisted in sandbox' ]
+
+  line1=$(verdict_text seccomp_init - | sed -n '1p')
+  line2=$(verdict_text seccomp_init - | sed -n '2p')
+  [ "$line1" = 'The sandbox failed to initialise before the command ran; this is transient. Retry the identical command once; if it fails the same way, split it into smaller calls. Escape the sandbox only after both.' ]
+  [ "$line2" = 'sandbox init failed — transient, retry' ]
 }
 
 @test "lock verdict text matches lock-detectors.md" {

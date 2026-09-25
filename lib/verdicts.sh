@@ -93,3 +93,24 @@ _verdict_lock_present() {
       ;;
   esac
 }
+
+# Item 4.2 candidates. Each takes no outcome, as the phantom verdicts do; text
+# from docs/references/detectors.md's Verdict paragraphs, transcribed
+# verbatim.
+verdict_tmpdir_unset() {
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  printf '%s\n' '`$TMPDIR` is unset outside the sandbox, so the path collapsed to `/`. Use the literal scratch path `/tmp/claude/<job>` (create it with `mkdir -p`) in this and every unsandboxed or delegated command.'
+  # shellcheck disable=SC2016 # $TMPDIR is literal prose, not expansion
+  printf '%s\n' '$TMPDIR — unset unsandboxed'
+}
+
+verdict_resume_lost() {
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  printf '%s\n' 'The transcript was never written: `~/.claude/projects` is read-only inside the sandbox. Run the entire multi-turn flow in one unsandboxed call.'
+  printf '%s\n' '--resume — transcript not persisted in sandbox'
+}
+
+verdict_seccomp_init() {
+  printf '%s\n' 'The sandbox failed to initialise before the command ran; this is transient. Retry the identical command once; if it fails the same way, split it into smaller calls. Escape the sandbox only after both.'
+  printf '%s\n' 'sandbox init failed — transient, retry'
+}

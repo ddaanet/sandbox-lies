@@ -43,15 +43,14 @@ expected_for() {
     quiet-clean-ls)                : ;;
     quiet-heredoc-claude-p)        : ;;
     quiet-pilot-report-echo)       : ;;
-    # Candidates recorded `ships` in docs/references/detectors.md. No
-    # matcher exists yet, so every one expects no verdict; Item 4.2 flips
-    # each fire-* row to its detector as its red.
-    fire-tmpdir-unset-redirect)    : ;;
-    fire-tmpdir-unset-cp-stat)     : ;;
+    # Candidates recorded `ships` in docs/references/detectors.md, built by
+    # Item 4.2 (zellij-socket stays a candidate and has no fixture).
+    fire-tmpdir-unset-redirect)    printf 'tmpdir-unset\n' ;;
+    fire-tmpdir-unset-cp-stat)     printf 'tmpdir-unset\n' ;;
     quiet-tmpdir-unset-deep-path)  : ;;
-    fire-resume-lost-two-turn)     : ;;
+    fire-resume-lost-two-turn)     printf 'resume-lost\n' ;;
     quiet-resume-lost-index-line)  : ;;
-    fire-seccomp-init-sed)         : ;;
+    fire-seccomp-init-sed)         printf 'seccomp-init\n' ;;
     quiet-seccomp-init-heading)    : ;;
     # readonly-path: Item 4.3 builds its matcher and flips these fire-* rows.
     fire-readonly-path-cp-tmp)       : ;;
@@ -174,6 +173,47 @@ assert_fixture() {
   assert_fixture fire-masks-gitadd-refused
   run ! grep -qE '^[[:space:]]*c[rwx-]{9}' \
     "$FIXTURES/fire-masks-gitadd-refused.txt"
+}
+
+# ------------------------------------------- detector D: shipped candidates
+
+@test "tmpdir-unset fires on a bash redirect collapsed under root" {
+  assert_fixture fire-tmpdir-unset-redirect
+}
+
+@test "tmpdir-unset fires on a cp stat of a path collapsed under root" {
+  assert_fixture fire-tmpdir-unset-cp-stat
+}
+
+@test "resume-lost fires on a lost transcript refusal" {
+  assert_fixture fire-resume-lost-two-turn
+}
+
+@test "seccomp-init fires on a sandbox init failure" {
+  assert_fixture fire-seccomp-init-sed
+}
+
+# Each quiet fixture carries its detector's phrase, never where the matcher
+# anchors it: without the pin a hollowed fixture would stay quiet vacuously.
+
+@test "tmpdir-unset stays quiet on a refusal naming a deeper path" {
+  local f="$FIXTURES/quiet-tmpdir-unset-deep-path.txt"
+  assert_fixture quiet-tmpdir-unset-deep-path
+  grep -qE "^ls: cannot access '/[^/']+/[^']+': No such file" "$f"
+}
+
+@test "resume-lost stays quiet on the index line quoting the refusal" {
+  local f="$FIXTURES/quiet-resume-lost-index-line.txt"
+  assert_fixture quiet-resume-lost-index-line
+  grep -qF 'No conversation found' "$f"
+  run ! grep -q '^No conversation found' "$f"
+}
+
+@test "seccomp-init stays quiet on a heading quoting the failure" {
+  local f="$FIXTURES/quiet-seccomp-init-heading.txt"
+  assert_fixture quiet-seccomp-init-heading
+  grep -qF 'unshare(CLONE_NEWUSER)' "$f"
+  run ! grep -q '^apply-seccomp' "$f"
 }
 
 # --------------------------------------------------- the store's own strings

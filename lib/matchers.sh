@@ -36,6 +36,9 @@ detect() {
     match_phantom_chardev < <(printf '%s\n' "$text") && { printf 'phantom-chardev\n'; status=0; }
     match_phantom_untracked < <(printf '%s\n' "$text") && { printf 'phantom-untracked\n'; status=0; }
     match_phantom_gitadd < <(printf '%s\n' "$text") && { printf 'phantom-gitadd\n'; status=0; }
+    match_tmpdir_unset < <(printf '%s\n' "$text") && { printf 'tmpdir-unset\n'; status=0; }
+    match_resume_lost < <(printf '%s\n' "$text") && { printf 'resume-lost\n'; status=0; }
+    match_seccomp_init < <(printf '%s\n' "$text") && { printf 'seccomp-init\n'; status=0; }
     return "$status"
 }
 
@@ -126,6 +129,40 @@ match_phantom_untracked() {
 # would match. No such call exists in the 21,272-call corpus.
 match_phantom_gitadd() {
     grep -qE '^error: .*: can only add regular files, symbolic links or git-directories'
+}
+
+# The shape an empty $TMPDIR expansion produces: a tool's own prefix (as
+# readonly-path -- a run free of blanks, backticks, pipes and colons, then
+# ": "), optionally bash's own "line N: " locator, then -- after whatever
+# words the tool prints in between -- a path of exactly one component
+# directly under root, bare or quoted (straight or GNU curly), ending in
+# ": " and the permission-denied or missing-file message. A refusal naming a
+# deeper path (more than one component under root) is the near-miss and does
+# not match: quoted-path alternatives require the closing quote immediately
+# after the one component, and the bare alternative requires both a
+# colon-space to follow it directly AND a blank immediately before its
+# leading slash -- without that second requirement the bare alternative
+# would accept the last segment of any longer path (a relative path, or one
+# nested many levels deep) wherever it happens to be the last slash before a
+# colon-space, since nothing then pins that slash to root.
+match_tmpdir_unset() {
+    grep -qE "^[^\`|:[:space:]]+: (line [0-9]+: )?.*([[:space:]]/[^/'\"[:space:]]+|'/[^/']+'|\"/[^/\"]+\"|‘/[^/’]+’): (Permission denied|No such file or directory)[[:space:]]*\$"
+}
+
+# `claude`'s resume refusal, printed with no prefix of its own, then the
+# session id (hex digits and hyphens) and nothing but trailing blanks. The
+# store's index line quotes the refusal mid-line and truncates the id with
+# an ellipsis, so anchoring to the line start is what separates a live
+# refusal from the quotation.
+match_resume_lost() {
+    grep -qE '^No conversation found with session ID: [0-9a-fA-F-]+[[:space:]]*$'
+}
+
+# Live, the seccomp apply failure is the whole result: alone on its line from
+# its start. The store's index line and section heading both quote it after a
+# line-number prefix or a heading marker, never at the line start.
+match_seccomp_init() {
+    grep -qE '^apply-seccomp: unshare\(CLONE_NEWUSER\): Invalid argument[[:space:]]*$'
 }
 
 # Running the file directly reads stdin and reports the verdict.

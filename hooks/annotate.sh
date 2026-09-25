@@ -81,6 +81,12 @@ while IFS= read -r name; do
   if [ "$name" = "phantom-chardev" ]; then
     case "$nl$names$nl" in *"${nl}phantom-untracked$nl"*) continue ;; esac
   fi
+  # detectors.md's Item 4.2 flag policies (FR-5): gating lives here, never in
+  # the matcher. tmpdir-unset fires only when the flag is true; resume-lost
+  # and seccomp-init are silent when it is.
+  case "$name:$flag" in
+    tmpdir-unset:false | resume-lost:true | seccomp-init:true) continue ;;
+  esac
   # A detected name with no verdict function contributes nothing and the
   # other names still emit theirs; the `|| exit 0` below is for a verdict
   # that exists and fails.
