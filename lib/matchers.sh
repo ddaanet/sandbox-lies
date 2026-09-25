@@ -131,22 +131,19 @@ match_phantom_gitadd() {
     grep -qE '^error: .*: can only add regular files, symbolic links or git-directories'
 }
 
-# The shape an empty $TMPDIR expansion produces: a tool's own prefix (as
-# readonly-path -- a run free of blanks, backticks, pipes and colons, then
-# ": "), optionally bash's own "line N: " locator, then -- after whatever
-# words the tool prints in between -- a path of exactly one component
-# directly under root, bare or quoted (straight or GNU curly), ending in
-# ": " and the permission-denied or missing-file message. A refusal naming a
-# deeper path (more than one component under root) is the near-miss and does
-# not match: quoted-path alternatives require the closing quote immediately
-# after the one component, and the bare alternative requires both a
-# colon-space to follow it directly AND a blank immediately before its
-# leading slash -- without that second requirement the bare alternative
-# would accept the last segment of any longer path (a relative path, or one
-# nested many levels deep) wherever it happens to be the last slash before a
-# colon-space, since nothing then pins that slash to root.
+# The shape an empty $TMPDIR expansion produces, as the replay selected it: a
+# tool's own prefix (as readonly-path: a run free of blanks, backticks, pipes
+# and colons, then ": "), then a path of exactly one component under root,
+# ending in ": " and the permission-denied or missing-file message. The path
+# is either bare, directly after the prefix or bash's "line N: " locator
+# (BSD `cat`, bash's redirect), or single-quoted, straight or GNU curly,
+# after the tool's own words (GNU `cp`, `ls`); those words hold no straight
+# quote, so prose that single-quotes a command ahead of a refusal stays
+# quiet. A deeper or relative path is the near-miss: the bare path must open
+# with its root slash right after the prefix or locator, and no slash may sit
+# inside the quotes.
 match_tmpdir_unset() {
-    grep -qE "^[^\`|:[:space:]]+: (line [0-9]+: )?.*([[:space:]]/[^/'\"[:space:]]+|'/[^/']+'|\"/[^/\"]+\"|‘/[^/’]+’): (Permission denied|No such file or directory)[[:space:]]*\$"
+    grep -qE "^[^\`|:[:space:]]+: ((line [0-9]+: )?/[^/:[:space:]]+|[^']*('|‘)/[^/']+('|’)[^']*): (Permission denied|No such file or directory)[[:space:]]*\$"
 }
 
 # `claude`'s resume refusal, printed with no prefix of its own, then the

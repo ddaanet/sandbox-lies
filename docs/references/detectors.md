@@ -194,12 +194,9 @@ produces; a refusal on a deeper path is the near-miss.
 `mkdir -p`) in this and every unsandboxed or delegated command. ·
 `$TMPDIR — unset unsandboxed`
 
-**Corpus.** 16 hits, 16 true, each a `$TMPDIR` path collapsed to `/` (Emploi ×2,
-devddaanet ×5, gitlore ×2, handoff ×3, micro ×2, prohibitions, pytest-md). 100%
-on 2026-09-25, re-measured with the shipped matcher (Item 4.2); the count moved
-from the Item 3.2 scratch-arbiter figure because that arbiter's regex differed
-slightly, not because the corpus changed. The 186 matches without the flag are
-silent (sandboxed collapses, deliberately missing paths).
+**Corpus.** 13 hits, 13 true, each a `$TMPDIR` path collapsed to `/`. 100% on
+2026-09-25; no pilot traffic. The 182 matches without the flag are silent
+(sandboxed collapses, deliberately missing paths).
 
 **Decision: ships.**
 

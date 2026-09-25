@@ -94,8 +94,8 @@ _verdict_lock_present() {
   esac
 }
 
-# Item 4.2 candidates. Each takes no outcome, as the phantom verdicts do; text
-# from docs/references/detectors.md's Verdict paragraphs, transcribed
+# The shipped candidates. Each takes no outcome, as the phantom verdicts do;
+# text from docs/references/detectors.md's Verdict paragraphs, transcribed
 # verbatim.
 verdict_tmpdir_unset() {
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
