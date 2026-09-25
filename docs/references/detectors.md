@@ -89,10 +89,22 @@ the path is absent.
 probe, this project's replay). 64% on 2026-09-03 after pilot traffic; 82% on
 2026-09-02 before it.
 
-**Live reproduction owed.** One sandboxed `git add <file> && git commit` in a
-repo whose pre-commit hook stages, nested under `sh -c` so the `git:*` exclusion
-does not lift it, to prove `mask`; one lock created by hand, to prove `orphan`,
-then held open by a background process, to prove `held`.
+**Live reproduction (2026-09-25): `orphan`.** Scratch repo under `/tmp/claude/`
+whose pre-commit hook stages a file; git 2.47.3, holder tool `fuser`. With an
+empty `index.lock` made by hand, an unsandboxed `git add f` raised the lock
+error; `probe_git_lock true <repo>` on that text printed `orphan`, `bytes=0`,
+`age=0`, `path=<repo>/.git/index.lock`.
+
+**Live reproduction (2026-09-25): `held`.** The same lock held open by a
+background `sleep 30 9>>.git/index.lock`; the same probe call on the same text
+printed `held`, `pid=<the sleep's pid>`, and the same `path=`.
+
+**Live reproduction owed: `mask`.** On 2026-09-25 a sandboxed
+`sh -c 'git add f && git commit -m x'` in that scratch repo — nested so the
+`git:*` exclusion does not lift it — committed cleanly, its hook's staging
+included, as a 2026-09-23 attempt had: that session's sandbox masked
+`.git/config.lock` in the project root but no `index.lock` there or in the
+scratch repo, so the error never arose and the probe had no text to read.
 
 ### config-lock
 
@@ -114,8 +126,14 @@ sandboxed write fails on a bind-mount, not on a file.
 run the `git config` or `git remote` write unsandboxed, or through the
 `update-config` skill when the target is `.claude/settings.json`.
 
-**Flag policy.** As `git-lock`. **Live reproduction owed:** a sandboxed
-`git config` write nested under `sh -c`, to prove `mask`.
+**Flag policy.** As `git-lock`.
+
+**Live reproduction (2026-09-25): `mask`.** In this project's root, where a
+sandboxed `ls` showed `.git/config.lock` as a character device and an
+unsandboxed one showed no such file, a sandboxed
+`sh -c 'git config sandboxlies.probe 1'` raised the config-lock error naming
+`.git/config` relative; `probe_config_lock false <root>` run unsandboxed on that
+text printed `mask`, `path=<root>/.git/config.lock`. The key was not written.
 
 **Corpus.** 4 hits, 4 true. 100%, 2026-09-03.
 
