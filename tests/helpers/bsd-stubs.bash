@@ -16,6 +16,8 @@ make_bsd_stubs() {
       sed)    _bsd_stub_sed "$dir/sed" "$real" ;;
       mktemp) _bsd_stub_mktemp "$dir/mktemp" "$real" ;;
       grep)   _bsd_stub_grep "$dir/grep" "$real" ;;
+      stat)   _bsd_stub_stat "$dir/stat" "$real" ;;
+      wc)     _bsd_stub_wc "$dir/wc" "$real" ;;
       *)      echo "make_bsd_stubs: no stub for $tool" >&2; return 1 ;;
     esac
     chmod 755 "$dir/$tool"
@@ -79,5 +81,76 @@ else
   (set -C; : > "\$tmpl") 2>/dev/null || { echo "mktemp: mkstemp failed on \$tmpl: File exists" >&2; exit 1; }
 fi
 printf '%s\n' "\$tmpl"
+STUB
+}
+
+# BSD stat has no -c (macOS and FreeBSD alike) and no long options; its
+# mtime read is -f %m, the same seconds-since-epoch field GNU's -c %Y prints.
+# The stub parses the macOS option set with getopts, so a GNU-only option —
+# -c, --format, --printf, anywhere in the argument list or bundled — gets
+# BSD's "illegal option" line, usage line and exit 1. It serves -f %m
+# (attached or not, with or without -L, several operands, no operand meaning
+# stdin) from the real `stat -c %Y`: on Linux the real `stat -f` reports
+# filesystem info, not file info, so without this the BSD path would be
+# untestable here. Every other BSD option or -f format exits 2 naming itself
+# as not emulated, rather than handing it to GNU stat, whose -f/-t/-x mean
+# different things. Residual: a missing file's message is GNU's wording, not
+# BSD's `stat: <file>: stat: No such file or directory`; the exit status (1)
+# matches.
+_bsd_stub_stat() {
+  # unquoted EOF: $2 (the real stat) expands now; \$ forms stay for run time
+  cat > "$1" <<STUB
+#!/bin/sh
+link= fmt= other=
+while getopts ':FLlnqrsxf:t:' o; do
+  case "\$o" in
+    L) link=1 ;;
+    f) fmt=\$OPTARG ;;
+    :|'?')
+      if [ "\$o" = : ]; then
+        echo "stat: option requires an argument -- \$OPTARG" >&2
+      else
+        echo "stat: illegal option -- \$OPTARG" >&2
+      fi
+      echo "usage: stat [-FLnq] [-f format | -l | -r | -s | -x] [-t timefmt] [file|handle ...]" >&2
+      exit 1 ;;
+    *) other=\$o ;;
+  esac
+done
+shift \$((OPTIND - 1))
+if [ -n "\$other" ] || { [ -n "\$fmt" ] && [ "\$fmt" != %m ]; }; then
+  echo "make_bsd_stubs stat: only -f %m is emulated (got -\${other:-f \$fmt})" >&2
+  exit 2
+fi
+if [ -z "\$fmt" ]; then
+  if [ -n "\$link" ]; then
+    exec "$2" -L -- "\$@"
+  fi
+  exec "$2" -- "\$@"
+fi
+[ "\$#" -gt 0 ] || set -- -
+if [ -n "\$link" ]; then
+  exec "$2" -L -c %Y -- "\$@"
+fi
+exec "$2" -c %Y -- "\$@"
+STUB
+}
+
+# BSD wc prints each count as " %7ju" — a space, then the count right-aligned
+# in 7 — so `wc -c <file` reads "       7" where GNU prints the bare "7". The
+# stub reproduces that for the exact form the probe uses (`-c` alone, stdin)
+# by re-printing the real wc's count, and passes a failure of the real wc
+# through. Anything else execs the real tool. Residual: that is more lenient
+# than BSD for every other form — `wc -c <file-operand>`, `wc -l` — which BSD
+# pads too; a probe moving to one of those is not checked by this stub.
+_bsd_stub_wc() {
+  cat > "$1" <<STUB
+#!/bin/sh
+if [ "\$#" -eq 1 ] && [ "\$1" = -c ]; then
+  n=\$("$2" -c) || exit
+  printf ' %7s\n' "\$n"
+  exit 0
+fi
+exec "$2" "\$@"
 STUB
 }

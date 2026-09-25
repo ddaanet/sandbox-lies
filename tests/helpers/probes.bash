@@ -35,3 +35,36 @@ tools_only_path() {
     ln -s "$(command -v "$tool")" "$dir/$tool"
   done
 }
+
+# hold_lock <lock> — backgrounds a holder opening <lock> read-only on fd 4
+# (any fd but 3), its pid in _probe_holder_pid for the caller's teardown to
+# kill, and returns only once the open has happened: the ready file is
+# written after it, so the probe never runs ahead of the holder. A holder
+# that cannot open the lock never writes the file, and the bounded wait
+# fails the test.
+#
+# fd 3 is closed on the holder: bats duplicates its TAP stream onto fd 3, and
+# a background job holding it open keeps the run from returning until the
+# 30s sleep exits (seen on this box). The subshell execs sleep, so its pid is
+# $! throughout. A finished decoy job runs last, so $! in the test — and in
+# the probe's subshell, which inherits it — no longer names the holder: a
+# probe printing its own $! cannot pass for one naming the holder.
+#
+# Shared by tests/probes.bats and tests/probes-edges.bats: each file's own
+# setup() resets _probe_holder_pid and its own teardown() kills it.
+hold_lock() {
+  local ready="$BATS_TEST_TMPDIR/holder-ready" tries=0
+  (
+    exec 4<"$1"
+    : >"$ready"
+    exec sleep 30
+  ) 3>&- &
+  _probe_holder_pid=$!
+  until [ -e "$ready" ]; do
+    [ "$tries" -lt 50 ] || return 1
+    tries=$((tries + 1))
+    sleep 0.1
+  done
+  : &
+  wait "$!"
+}

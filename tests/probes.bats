@@ -160,34 +160,7 @@ teardown() {
   printf '%s\n' "$output" | grep -qE '^age=[0-9]+$'
 }
 
-# hold_lock <lock> — backgrounds a holder opening <lock> read-only on fd 4
-# (any fd but 3), its pid in _probe_holder_pid for teardown to kill, and
-# returns only once the open has happened: the ready file is written after
-# it, so the probe never runs ahead of the holder. A holder that cannot open
-# the lock never writes the file, and the bounded wait fails the test.
-#
-# fd 3 is closed on the holder: bats duplicates its TAP stream onto fd 3,
-# and a background job holding it open keeps the run from returning until
-# the 30s sleep exits (seen on this box). The subshell execs sleep, so its
-# pid is $! throughout. A finished decoy job runs last, so $! in the test —
-# and in the probe's subshell, which inherits it — no longer names the
-# holder: a probe printing its own $! cannot pass for one naming the holder.
-hold_lock() {
-  local ready="$BATS_TEST_TMPDIR/holder-ready" tries=0
-  (
-    exec 4<"$1"
-    : >"$ready"
-    exec sleep 30
-  ) 3>&- &
-  _probe_holder_pid=$!
-  until [ -e "$ready" ]; do
-    [ "$tries" -lt 50 ] || return 1
-    tries=$((tries + 1))
-    sleep 0.1
-  done
-  : &
-  wait "$!"
-}
+# hold_lock is defined in helpers/probes.bash, shared with probes-edges.bats.
 
 # Exactly one pid= line: a holder query wider than the lock (a whole mount,
 # the directory) would list the holder among other pids. The flag only
@@ -317,4 +290,36 @@ hold_lock() {
   [ "${output%%$'\n'*}" = orphan ]
   printf '%s\n' "$output" | grep -qxF "bytes=7"
   printf '%s\n' "$output" | grep -qxF "path=$link/.git/index.lock"
+}
+
+# Slice 3's present-unheld-lock case again, this time with the stat stub on
+# PATH that refuses -c as BSD does (the mtime read must use `stat -f %m`)
+# and the wc stub that left-pads its count as BSD does (pinning the strip
+# that removes the padding). real_mtime is read with the real stat before
+# the stub goes on PATH, so the age assertion is exact rather than a loose
+# lower bound. Only the mtime is backdated (touch -m): the atime and ctime
+# stay at the write, so an age read from either lands decades short of the
+# window rather than inside it.
+@test "BSD stat" {
+  local repo="$BATS_TEST_TMPDIR/r" cwd="$BATS_TEST_TMPDIR/elsewhere" lock
+  local stubdir="$BATS_TEST_TMPDIR/bsd-stubs" real_mtime now age
+  mkdir -p "$repo/.git" "$cwd"
+  lock="$repo/.git/index.lock"
+  printf '1234567' >"$lock"
+  touch -m -t 200001010000 "$lock"
+  real_mtime=$(stat -c %Y "$lock")
+  make_bsd_stubs "$stubdir" stat wc
+
+  PATH="$stubdir:$PATH" run_probe probe_git_lock false "$cwd" "$(git_lock_error "$lock")"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = orphan ]
+  printf '%s\n' "$output" | grep -qxF "bytes=7"
+  printf '%s\n' "$output" | grep -qE '^age=[0-9]+$'
+  age=$(printf '%s\n' "$output" | sed -n 's/^age=//p')
+  now=$(date +%s)
+  [ "$age" -ge $((now - real_mtime - 60)) ]
+  [ "$age" -le $((now - real_mtime + 60)) ]
+  printf '%s\n' "$output" | grep -qxF "path=$lock"
 }

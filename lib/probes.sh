@@ -127,12 +127,24 @@ probe_git_lock() {
         return 0
     fi
 
+    # BSD stat has no -c; its mtime field is -f %m, the same seconds-since-
+    # epoch value GNU's -c %Y prints. On GNU, -f means filesystem mode: it
+    # exits 1 but still prints a filesystem report on stdout with the %m
+    # error on stderr, so this stdout is used only on exit 0, and only once
+    # confirmed all-digits, before any arithmetic touches it. Provoking this
+    # refusal on GNU is exactly the selection mechanism, so its stderr is
+    # discarded here rather than surfaced (no-stderr-suppression exception 1
+    # of 2 — the probe's own tool calls otherwise never take 2>/dev/null).
+    #
     # Git removes a lock when its holder exits, so the lock can vanish
-    # after the presence test. stat's stderr is captured, not silenced: a
-    # failure with the lock now absent is that vanish, and reads as gone
-    # under either flag (a real lock existed and git cleaned it); any
-    # other failure goes on to stderr and the age line is left out.
-    if ! mtime=$(stat -c %Y "$path" 2>&1); then
+    # after the presence test. The GNU fallback's stderr is captured, not
+    # silenced: a failure with the lock now absent is that vanish, and
+    # reads as gone under either flag (a real lock existed and git cleaned
+    # it); any other failure goes on to stderr and the age line is left out.
+    if mtime=$(stat -f %m "$path" 2>/dev/null) && [ -n "$mtime" ] \
+        && [ -z "${mtime//[0-9]/}" ]; then
+        :
+    elif ! mtime=$(stat -c %Y "$path" 2>&1); then
         if [ ! -e "$path" ] && [ ! -L "$path" ]; then
             printf '%s\n' gone "path=$path"
             return 0

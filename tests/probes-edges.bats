@@ -10,9 +10,23 @@ bats_require_minimum_version 1.5.0
 
 load helpers/bsd-stubs
 load helpers/probes
+load helpers/spy
 
 setup() {
   source "$ROOT/lib/probes.sh"
+  _probe_holder_pid=
+}
+
+# Kills the lock-holding background job "probe writes nothing" starts.
+# Guarded: every other test in this file leaves _probe_holder_pid at setup's
+# empty default, so there is nothing to kill for them.
+teardown() {
+  if [ -n "${_probe_holder_pid:-}" ]; then
+    # A killed job's wait returns 143, and a failing teardown fails the
+    # test; kill finds no process when the holder died on its own.
+    kill "$_probe_holder_pid" 2>/dev/null || :
+    wait "$_probe_holder_pid" 2>/dev/null || :
+  fi
 }
 
 # run_probe_bounded <probe> <flag> <cwd> <text> — as run_probe, but the probe
@@ -281,4 +295,64 @@ STUB
   [ "$(printf '%s\n' "$output" | grep -c '^bytes=')" -eq 0 ]
   printf '%s\n' "$output" | grep -qE '^age=[0-9]+$'
   printf '%s\n' "$output" | grep -qxF "path=$lock"
+}
+
+# NFR-4 / A-8 (slice 4's code review): the probe writes no file, checked with
+# a mktemp spy on PATH and TMPDIR naming a missing directory, as
+# tests/hook.bats "hook needs no temp dir" checks for the hook. Each call
+# runs in its own bash -c subprocess, sourcing lib/probes.sh fresh, so the
+# env override reaches only that call and not bats' own `run
+# --separate-stderr` plumbing (which uses mktemp itself). Absent,
+# unheld-present and held locks are each checked, so every branch that reads
+# the holder tool is covered. The probe also runs from inside the payload cwd,
+# and the repo and cwd trees are listed before and after each call: a file
+# written beside the lock or into the working directory, without mktemp or
+# $TMPDIR, changes the listing. Proven by mutation, not by a red: the probe's
+# mktemp-free path already passes every branch here.
+@test "probe writes nothing" {
+  local repo="$BATS_TEST_TMPDIR/r" cwd="$BATS_TEST_TMPDIR/elsewhere" lock
+  local spy="$BATS_TEST_TMPDIR/spy" calls="$BATS_TEST_TMPDIR/spy-calls"
+  local nonexistent="$BATS_TEST_TMPDIR/does-not-exist" before
+  mkdir -p "$repo/.git" "$cwd"
+  lock="$repo/.git/index.lock"
+  make_spy "$spy" "$calls" mktemp
+  cd "$cwd"
+
+  before=$(find "$repo" "$cwd" | LC_ALL=C sort)
+  # shellcheck disable=SC2016 # $1/$2 are the inner bash -c's own args, expanded there
+  run --separate-stderr env PATH="$spy:$PATH" TMPDIR="$nonexistent" \
+    bash -c 'source "$1"; probe_git_lock false "$2"' _ "$ROOT/lib/probes.sh" "$cwd" \
+    <<<"$(git_lock_error "$lock")"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = mask ]
+  [ ! -e "$calls" ]
+  [ "$(find "$repo" "$cwd" | LC_ALL=C sort)" = "$before" ]
+
+  printf '1234567' >"$lock"
+  before=$(find "$repo" "$cwd" | LC_ALL=C sort)
+  # shellcheck disable=SC2016 # $1/$2 are the inner bash -c's own args, expanded there
+  run --separate-stderr env PATH="$spy:$PATH" TMPDIR="$nonexistent" \
+    bash -c 'source "$1"; probe_git_lock false "$2"' _ "$ROOT/lib/probes.sh" "$cwd" \
+    <<<"$(git_lock_error "$lock")"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = orphan ]
+  [ ! -e "$calls" ]
+  [ "$(find "$repo" "$cwd" | LC_ALL=C sort)" = "$before" ]
+
+  hold_lock "$lock"
+  before=$(find "$repo" "$cwd" | LC_ALL=C sort)
+  # shellcheck disable=SC2016 # $1/$2 are the inner bash -c's own args, expanded there
+  run --separate-stderr env PATH="$spy:$PATH" TMPDIR="$nonexistent" \
+    bash -c 'source "$1"; probe_git_lock false "$2"' _ "$ROOT/lib/probes.sh" "$cwd" \
+    <<<"$(git_lock_error "$lock")"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = held ]
+  [ ! -e "$calls" ]
+  [ "$(find "$repo" "$cwd" | LC_ALL=C sort)" = "$before" ]
 }
