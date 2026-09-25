@@ -29,46 +29,6 @@ teardown() {
   fi
 }
 
-# run_probe_bounded <probe> <flag> <cwd> <text> — as run_probe, but the probe
-# runs backgrounded with its streams captured to files and a bounded poll,
-# setting $status, $output and $stderr itself. A probe that hangs (as this
-# file's non-regular-lock case would before the [ -f ] guard) then fails the
-# test on $status instead of hanging the suite. No GNU timeout: this repo's
-# portability target excludes it.
-#
-# set -m gives the backgrounded job its own process group (pid == pgid), so
-# a timeout can kill -- "-$pid" the whole group at once. Killing $pid alone
-# leaves a blocked grandchild (the FIFO open a dropped guard would leave
-# hanging, several forks down through the command substitution that reads
-# it) running as an orphan — and bats' own plumbing holds pipe fds that
-# orphan inherits, which then keeps the whole run from returning, not just
-# this function.
-run_probe_bounded() {
-  local out="$BATS_TEST_TMPDIR/bounded-out" err="$BATS_TEST_TMPDIR/bounded-err"
-  local rc="$BATS_TEST_TMPDIR/bounded-status" pid tries=0
-  set -m
-  ("$1" "$2" "$3" <<<"$4" >"$out" 2>"$err"; echo "$?" >"$rc") &
-  pid=$!
-  while kill -0 "$pid" 2>/dev/null; do
-    if [ "$tries" -ge 30 ]; then
-      kill -- "-$pid" 2>/dev/null
-      wait "$pid" 2>/dev/null || :
-      set +m
-      status=124
-      output=$(cat "$out" 2>/dev/null || :)
-      stderr="TIMEOUT: probe did not return within the bound"
-      return
-    fi
-    tries=$((tries + 1))
-    sleep 0.1
-  done
-  wait "$pid" 2>/dev/null || :
-  set +m
-  status=$(cat "$rc")
-  output=$(cat "$out")
-  stderr=$(cat "$err")
-}
-
 # A stat stub on PATH removes its path operand, then runs the real stat: the
 # window git's own lock cleanup can land in, between the presence test and
 # the mtime read. Recreates the lock between the two flag runs so the second

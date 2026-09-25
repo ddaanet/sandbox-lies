@@ -82,3 +82,49 @@ hold_lock() {
   : &
   wait "$!"
 }
+
+# run_probe_bounded <probe> <flag> <cwd> <text> — as run_probe, but the probe
+# runs backgrounded with its streams captured to files and a bounded poll,
+# setting $status, $output and $stderr itself. A probe that hangs (a walk-up
+# regression, or tests/probes-edges.bats' non-regular-lock case before its
+# [ -f ] guard) then fails the test on $status instead of hanging the suite.
+# No GNU timeout: this repo's portability target excludes it.
+#
+# set -m gives the backgrounded job its own process group (pid == pgid), so
+# a timeout can kill -- "-$pid" the whole group at once. Killing $pid alone
+# leaves a blocked grandchild (a FIFO open several forks down through the
+# command substitution that reads it) running as an orphan — and bats' own
+# plumbing holds pipe fds that orphan inherits, which then keeps the whole
+# run from returning, not just this function. The kill tolerates a group
+# that exited since the poll, so errexit cannot end the test before $status
+# is set.
+#
+# Shared by tests/probes-edges.bats and tests/probes-config.bats.
+run_probe_bounded() {
+  local out="$BATS_TEST_TMPDIR/bounded-out" err="$BATS_TEST_TMPDIR/bounded-err"
+  local rc="$BATS_TEST_TMPDIR/bounded-status" pid tries=0
+  set -m
+  ("$1" "$2" "$3" <<<"$4" >"$out" 2>"$err"; echo "$?" >"$rc") &
+  pid=$!
+  while kill -0 "$pid" 2>/dev/null; do
+    if [ "$tries" -ge 30 ]; then
+      kill -- "-$pid" 2>/dev/null || :
+      wait "$pid" 2>/dev/null || :
+      set +m
+      status=124
+      output=$(cat "$out" 2>/dev/null || :)
+      stderr="TIMEOUT: probe did not return within the bound"
+      return
+    fi
+    tries=$((tries + 1))
+    sleep 0.1
+  done
+  wait "$pid" 2>/dev/null || :
+  set +m
+  # shellcheck disable=SC2034 # read by the calling test, not here
+  status=$(cat "$rc")
+  # shellcheck disable=SC2034 # read by the calling test, not here
+  output=$(cat "$out")
+  # shellcheck disable=SC2034 # read by the calling test, not here
+  stderr=$(cat "$err")
+}

@@ -226,3 +226,74 @@ setup() {
   [ "${output%%$'\n'*}" = orphan ]
   printf '%s\n' "$output" | grep -qxF "path=$repo/.git/index.lock"
 }
+
+# The three cases below pin behaviour that landed ahead of its tests; each
+# was proven by mutating lib/probes.sh.
+
+# A relative $2 is anchored on the probe's own working directory, so each
+# step of the walk shrinks an absolute path and it always reaches /. Run
+# from a directory with no .git above it (checked first, as "no .git above
+# cwd keeps cwd" does), so a regression that drops the anchoring loops
+# forever instead of falling back. `rel` has no slash for the walk to strip,
+# `rel/x` one. Bounded by run_probe_bounded (helpers/probes.bash), so the
+# regression fails the test instead of hanging the suite.
+@test "relative cwd terminates at the working directory" {
+  local w="$BATS_TEST_TMPDIR/w" ancestor
+  mkdir -p "$w"
+  cd "$w"
+
+  ancestor="$w"
+  while [ "$ancestor" != / ]; do
+    [ ! -e "$ancestor/.git" ]
+    ancestor=$(dirname "$ancestor")
+  done
+  [ ! -e "/.git" ]
+
+  run_probe_bounded probe_git_lock false rel "$(git_lock_error .git/index.lock)"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = mask ]
+  printf '%s\n' "$output" | grep -qxF "path=$w/rel/.git/index.lock"
+
+  run_probe_bounded probe_git_lock false rel/x "$(git_lock_error .git/index.lock)"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = mask ]
+  printf '%s\n' "$output" | grep -qxF "path=$w/rel/x/.git/index.lock"
+}
+
+# A submodule's or a linked worktree's .git is a file, and git never prints a
+# relative lock path from below one (only from a .git directory's top-level):
+# the walk-up from <r>/sm/d must pass over <r>/sm/.git (a file) to reach
+# <r>/.git (a directory).
+@test "a .git file is walked past" {
+  local r="$BATS_TEST_TMPDIR/r" lock
+  mkdir -p "$r/.git" "$r/sm/d"
+  printf 'gitdir: x' >"$r/sm/.git"
+  lock="$r/.git/config.lock"
+  printf '1234567' >"$lock"
+
+  run_probe probe_config_lock false "$r/sm/d" "$(config_lock_error .git/config)"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = orphan ]
+  printf '%s\n' "$output" | grep -qxF "path=$lock"
+}
+
+# A trailing slash on $2 must not survive into path=: the join strips it
+# before appending, so the printed path never holds a doubled slash.
+@test "trailing slash on cwd" {
+  local repo="$BATS_TEST_TMPDIR/repo" lock
+  mkdir -p "$repo/.git"
+  lock="$repo/.git/index.lock"
+
+  run_probe probe_git_lock false "$repo/" "$(git_lock_error .git/index.lock)"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = mask ]
+  printf '%s\n' "$output" | grep -qxF "path=$lock"
+}
