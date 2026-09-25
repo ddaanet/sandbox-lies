@@ -114,7 +114,9 @@ while IFS= read -r name; do
   para=${out%%"$nl"*}
   line=${out#*"$nl"}
   line=${line%%"$nl"*}
-  human="${human:+$human }$line"
+  # `; ` between human lines: each is a clause, and a bare space ran them
+  # together into one unreadable line.
+  human="${human:+$human; }$line"
 
   # FR-6: a paragraph that would take additionalContext past 2048 bytes,
   # joining newline included, is dropped; its human line is already kept.

@@ -4,12 +4,13 @@
 # dropped while its human line is kept on systemMessage regardless. Split
 # from hook.bats to keep that file under the 400-line cap (Item 2.3 slice 7).
 #
-# Every case runs the porcelain+gitadd failure text, whose two paragraphs
-# (phantom-untracked, then phantom-gitadd) are the only pair the phantom
-# verdicts can emit, with one of them stubbed to a sized paragraph. Each case
-# rules out a cap that the others let through: dropping by position, by
-# per-paragraph size, the largest paragraph, an off-by-one at the boundary,
-# a total that omits the joining newline, a count in characters.
+# Every two-paragraph case runs the porcelain+gitadd failure text, whose two
+# paragraphs (phantom-untracked, then phantom-gitadd) are the only pair the
+# phantom verdicts can emit, with one of them stubbed to a sized paragraph;
+# the three-paragraph case adds the lock verdicts. Each case rules out a cap
+# that the others let through: dropping by position, by per-paragraph size,
+# the largest paragraph, an off-by-one at the boundary, a total that omits
+# the joining newline, a count in characters, stopping at the first overflow.
 
 bats_require_minimum_version 1.5.0
 
@@ -62,10 +63,9 @@ verdict_line() {
 # hook on a failure payload whose text concatenates fire-masks-porcelain and
 # fire-masks-gitadd-refused. Both matchers are asserted to fire on that text
 # first, so no case can pass because a paragraph was never produced. Sets
-# $ctx and $sys to the two output strings exactly: -j adds no newline and the
-# `x` sentinel stops $(...) from stripping one the value itself ends with.
+# $ctx and $sys as cap_hook does.
 cap_run() {
-  local fn="$1" para="$2" human="$3" porcelain gitadd text payload
+  local fn="$1" para="$2" human="$3" porcelain gitadd text
   porcelain=$(cat "$FIXTURES/fire-masks-porcelain.txt")
   gitadd=$(cat "$FIXTURES/fire-masks-gitadd-refused.txt")
   text=$(printf '%s\n%s' "$porcelain" "$gitadd")
@@ -76,8 +76,16 @@ cap_run() {
     _ "$HOOK_COPY/lib/matchers.sh"
 
   stub_lib verdicts.sh "$fn() { printf '%s\n' '$para' '$human'; }"
-  payload=$(failure_payload "$text")
+  cap_hook "$text"
+}
 
+# cap_hook <text> — runs the copied hook on a failure payload carrying
+# <text>, asserts status 0, and sets $ctx and $sys to the two output strings
+# exactly: -j adds no newline and the `x` sentinel stops $(...) from
+# stripping one the value itself ends with.
+cap_hook() {
+  local payload
+  payload=$(failure_payload "$1")
   run bash -c 'printf "%s" "$1" | bash "$2"' \
     _ "$payload" "$HOOK_COPY/hooks/annotate.sh"
   [ "$status" -eq 0 ]
@@ -110,7 +118,7 @@ cap_run() {
       return 1 ;;
   esac
   # systemMessage keeps both human lines regardless of the drop.
-  [ "$sys" = "$untracked_human $stub_human" ]
+  [ "$sys" = "$untracked_human; $stub_human" ]
 }
 
 @test "a paragraph bringing the context to exactly 2 KB is kept" {
@@ -131,7 +139,7 @@ cap_run() {
 
   [ "$ctx" = "$untracked_para"$'\n'"$stub_para" ]
   [ "$(byte_count "$ctx")" -eq 2048 ]
-  [ "$sys" = "$untracked_human $stub_human" ]
+  [ "$sys" = "$untracked_human; $stub_human" ]
 }
 
 @test "the paragraph that crosses 2 KB is dropped, not the largest" {
@@ -152,7 +160,7 @@ cap_run() {
   cap_run verdict_phantom_untracked "$stub_para" "$stub_human"
 
   [ "$ctx" = "$stub_para" ]
-  [ "$sys" = "$stub_human $gitadd_human" ]
+  [ "$sys" = "$stub_human; $gitadd_human" ]
 }
 
 @test "the 2 KB cap counts bytes, not characters" {
@@ -178,7 +186,7 @@ cap_run() {
   LC_ALL="$loc" cap_run verdict_phantom_gitadd "$stub_para" "$stub_human"
 
   [ "$ctx" = "$untracked_para" ]
-  [ "$sys" = "$untracked_human $stub_human" ]
+  [ "$sys" = "$untracked_human; $stub_human" ]
 }
 
 @test "all paragraphs dropped keeps the human line" {
@@ -188,7 +196,7 @@ cap_run() {
   # phantom-gitadd fires and its stubbed 2100-byte paragraph alone crosses
   # 2048 bytes -- the degenerate case where $context ends up empty.
   local marker='STUBMARKER-GITADD-ALONE' stub_human='stub — big'
-  local text payload ctx sys
+  local text ctx sys
 
   text=$(cat "$FIXTURES/fire-masks-gitadd-refused.txt")
   printf '%s\n' "$text" | bash -c '. "$1"; match_phantom_gitadd' \
@@ -196,17 +204,55 @@ cap_run() {
 
   stub_lib verdicts.sh \
     "verdict_phantom_gitadd() { printf '%s\n' '$(stub_paragraph "$marker" 2100)' '$stub_human'; }"
-  payload=$(failure_payload "$text")
-
-  run bash -c 'printf "%s" "$1" | bash "$2"' \
-    _ "$payload" "$HOOK_COPY/hooks/annotate.sh"
-  [ "$status" -eq 0 ]
-  ctx=$(printf '%s' "$output" \
-    | jq -j '.hookSpecificOutput.additionalContext' && printf x)
-  ctx=${ctx%x}
-  sys=$(printf '%s' "$output" | jq -j '.systemMessage' && printf x)
-  sys=${sys%x}
+  cap_hook "$text"
 
   [ "$ctx" = "" ]
   [ "$sys" = "$stub_human" ]
+}
+
+@test "cap skips and continues" {
+  # Item 2.3 slice 7's test review, finding 8: telling skip-and-continue apart
+  # from stop-at-first-overflow needs three paragraphs, which Item 4.1's lock
+  # verdicts now supply. git-lock, config-lock and phantom-gitadd fire
+  # together, in catalogue order, on this concatenated text; the lock probes
+  # are stubbed so no fixture path reaches the host filesystem, and the
+  # stubbed verdicts ignore the probe outcome they are handed. Verdict 2's
+  # paragraph alone would cross 2 KB once verdict 1's is in context, so it is
+  # dropped; verdict 3's still fits after it and is kept -- a
+  # stop-at-first-overflow cap would drop it too. All three human lines are
+  # kept regardless, joined by "; ".
+  local human_a='stub — first' human_b='stub — second' human_c='stub — third'
+  local para_a para_b para_c text ctx sys
+  para_a=$(stub_paragraph 'SLICE9-A' 100)
+  para_b=$(stub_paragraph 'SLICE9-B' 2000)
+  para_c=$(stub_paragraph 'SLICE9-C' 100)
+
+  text=$(printf '%s\n%s\n%s' \
+    "$(cat "$FIXTURES/fire-lock-add-commit.txt")" \
+    "$(cat "$FIXTURES/fire-configlock-remote-add.txt")" \
+    "$(cat "$FIXTURES/fire-masks-gitadd-refused.txt")")
+  printf '%s\n' "$text" | bash -c '. "$1"; match_git_lock' \
+    _ "$HOOK_COPY/lib/matchers.sh"
+  printf '%s\n' "$text" | bash -c '. "$1"; match_config_lock' \
+    _ "$HOOK_COPY/lib/matchers.sh"
+  printf '%s\n' "$text" | bash -c '. "$1"; match_phantom_gitadd' \
+    _ "$HOOK_COPY/lib/matchers.sh"
+
+  # Each probe stub touches a sentinel: the verdict stubs ignore the outcome,
+  # so a stub the hook never reached would pass here while the real probe
+  # stats the fixture's host path.
+  local name
+  for name in git_lock config_lock; do
+    stub_lib probes.sh "probe_${name}() { cat >/dev/null; : >$(printf '%q' "$BATS_TEST_TMPDIR/probe-$name-called"); printf '%s\\n' mask; }"
+  done
+  stub_lib verdicts.sh "verdict_git_lock() { printf '%s\n' '$para_a' '$human_a'; }"
+  stub_lib verdicts.sh "verdict_config_lock() { printf '%s\n' '$para_b' '$human_b'; }"
+  stub_lib verdicts.sh "verdict_phantom_gitadd() { printf '%s\n' '$para_c' '$human_c'; }"
+
+  cap_hook "$text"
+  [ -f "$BATS_TEST_TMPDIR/probe-git_lock-called" ]
+  [ -f "$BATS_TEST_TMPDIR/probe-config_lock-called" ]
+
+  [ "$ctx" = "$para_a"$'\n'"$para_c" ]
+  [ "$sys" = "$human_a; $human_b; $human_c" ]
 }
