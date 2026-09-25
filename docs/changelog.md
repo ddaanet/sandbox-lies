@@ -77,3 +77,20 @@ does (D-14): it has not shown the lock unheld. The phantom verdicts' claim that
 unsandboxed `ls -a` and `git status` show the real tree now holds only with no
 sandboxed command running in the background, since the masks are visible from
 any process while one runs.
+
+## 2026-09-25 — lock detectors split out; `mask` wording flag-neutral
+
+`references/detectors.md` had reached its line cap with the lock verdicts still
+to be written out and four candidates about to ship, so `git-lock` and
+`config-lock` moved whole into `references/lock-detectors.md`, leaving a stub
+per detector in the catalogue. They are the one self-contained cluster: a shared
+probe, one outcome set, and verdicts that differ only in the lock they name. The
+`config-lock` verdicts are now written out in full in place of the `As git-lock`
+shorthand; they drop the `GIT_INDEX_FILE` leak clause, which concerns
+`index.lock` only and took the `mask` paragraph past FR-6's 400 characters. The
+probe reports `mask` for a character device under either flag, and under flag
+true the old `mask` wording was false: re-running unsandboxed was what had just
+failed, and a device did exist outside the sandbox. The `mask` paragraph now
+reads true under both flags — re-run unsandboxed, or, if the call already ran
+that way, once no sandboxed command is running — and its human line says the
+lock is not real rather than that no file exists.

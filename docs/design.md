@@ -72,18 +72,18 @@ flag (FR-5) as its first argument, prints an outcome token on its first line and
 `key=value` lines after it; the verdict function reads both. Three probes: lock
 existence and holder (`git-lock`, `config-lock`) and path writability
 (`readonly-path`). Each probe is proved once against a live reproduction before
-it ships; the reproduction is recorded in `references/detectors.md`. Where ·
-pinned by: `lib/probes.sh` · `tests/probes*.bats` over synthetic trees, with a
-character device at the lock path and no holder tool on `PATH`. Partial (lock
-probes proved live; hook call: Item 4.1; `readonly-path`: Item 4.3).
+it ships; the reproduction is recorded in `references/`. Where · pinned by:
+`lib/probes.sh` · `tests/probes*.bats` over synthetic trees, with a character
+device at the lock path and no holder tool on `PATH`. Partial (lock probes
+proved live; hook call: Item 4.1; `readonly-path`: Item 4.3).
 
 **FR-5 — Sandbox-state awareness.** The payload's
 `tool_input.dangerouslyDisableSandbox` (absent means false) decides wording: a
 symptom on a call that ran unsandboxed has a different cause, and the verdict
 says so or the detector stays silent. Every detector states its flag policy in
-`references/detectors.md`; the gating lives in the hook or the verdict, never in
-a matcher. Where · pinned by: `hooks/annotate.sh` · `tests/hook.bats` pairs each
-fixture with both flag values against that policy. Partial (lock, candidate,
+`references/`; the gating lives in the hook or the verdict, never in a matcher.
+Where · pinned by: `hooks/annotate.sh` · `tests/hook.bats` pairs each fixture
+with both flag values against that policy. Partial (lock, candidate,
 `readonly-path` policies: Items 4.1, 4.2, 6.1).
 
 **FR-6 — Verdict text.** Each verdict is a short paragraph of acts the agent
@@ -146,8 +146,8 @@ name: `tests/fixtures/`, and three dated pilot files that quote live diagnostics
 **NFR-1 — Precision.** A shipped detector holds the precision measured at its
 last replay, and every false positive is classified. Corpus figures carry their
 date and how much pilot traffic the corpus had absorbed, because the corpus is
-self-polluting. Where · pinned by: `references/detectors.md` per detector · the
-replay harness under `tests/`. Partial (harness promoted).
+self-polluting. Where · pinned by: `references/` per detector · the replay
+harness under `tests/`. Partial (harness promoted).
 
 **NFR-2 — Portability.** bash 3.2, BSD `grep`/`sed`/`mktemp`/`stat`/`wc`, `jq`.
 The suite re-runs itself with BSD-strict stubs on `PATH`. Where · pinned by:
