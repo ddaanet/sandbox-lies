@@ -566,6 +566,19 @@ Cross-cutting, bounded:
      their outcome, empty stderr, and no spy call. The BSD-first mtime read
      keeps stderr out of the value and checks it is all digits before the
      arithmetic (slice 5's code review).
+  10. `errored holder check is unknown` (slice 6's code review: `unknown`
+      withholds the retry `orphan` gives, and a check that errored has not
+      shown the lock unheld) — a 7-byte unheld lock, tools-only `PATH`: a
+      `fuser` stub printing a permission error on stderr, no pid, exit 1,
+      yields `unknown`, `bytes=7`, no `pid=`, that line on stderr; a
+      `fuser` whose shebang names a missing interpreter yields `unknown`
+      and non-empty stderr. `present unheld lock is orphan` and
+      `unexpected holder-tool stderr is passed through` stay the positives.
+      The phase-boundary corrector widens `detectors.md`'s `unknown` row to
+      "or the holder check errored".
+  Placement (slice 6's test review, against the 400-line cap): slices 7,
+  8 and 9's `BSD stat` in `tests/probes.bats`; slice 9's `probe writes
+  nothing` and slice 10 in `tests/probes-edges.bats`.
 
 ## Phase 3: Evidence (type: general)
 
