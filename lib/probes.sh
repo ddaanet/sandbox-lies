@@ -44,8 +44,8 @@ probe_config_lock() {
     _probe_lock_at "$flag" "$path"
 }
 
-# probe_readonly_path <flag> <cwd> — A-3 contract for the readonly-path
-# candidate (Item 4.3's Interfaces block; no verdict ships yet, Item 6.1).
+# probe_readonly_path <flag> <cwd> — A-3 contract for readonly-path: line 1
+# `writable`, `readonly` or `nopath`, then `path=` when a path was extracted.
 # <flag> is part of the interface but unread here: whether the hook calls
 # this probe at all is the candidate's flag policy
 # (docs/references/detectors.md), decided before the probe runs, not inside

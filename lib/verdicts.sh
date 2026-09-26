@@ -99,9 +99,9 @@ _verdict_lock_present() {
 # verbatim.
 verdict_tmpdir_unset() {
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  printf '%s\n' '`$TMPDIR` is unset outside the sandbox, so the path collapsed to `/`. Use the literal scratch path `/tmp/claude/<job>` (create it with `mkdir -p`) in this and every unsandboxed or delegated command.'
+  printf '%s\n' '`$TMPDIR` expanded empty in this unsandboxed call, so the path collapsed to `/`. Use the literal scratch path `/tmp/claude/<job>` (create it with `mkdir -p`) in this and every unsandboxed or delegated command.'
   # shellcheck disable=SC2016 # $TMPDIR is literal prose, not expansion
-  printf '%s\n' '$TMPDIR — unset unsandboxed'
+  printf '%s\n' '$TMPDIR — expanded empty, path collapsed to /'
 }
 
 verdict_resume_lost() {

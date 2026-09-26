@@ -10,11 +10,13 @@ per-detector mechanism is in [detectors.md](detectors.md) and
 **Flow.** The harness starts `annotate.sh` after every Bash call with the
 payload on stdin: `PostToolUseFailure` when the command exited non-zero,
 `PostToolUse` otherwise, never both (D-13). The script rebuilds the result text
-as the model saw it, pipes it through `detect`, and stops if nothing fires. For
-each verdict it calls `probe_<verdict>` if one exists, which prints an outcome
-token and its values; `verdict_<name>` prints the agent paragraph and the human
-line. The paragraphs concatenate into `additionalContext`, the human lines into
-`systemMessage`, and one JSON object goes to stdout with exit 0.
+as the model saw it, pipes it through `detect`, and stops if nothing fires. A
+name its flag policy silences on this call, or with no `verdict_<name>`, is
+skipped before any probe runs. For each remaining name it calls `probe_<name>`
+if one exists, which prints an outcome token and its values; `verdict_<name>`
+prints the agent paragraph and the human line. The paragraphs concatenate into
+`additionalContext`, the human lines into `systemMessage` joined by `; `, and
+one JSON object goes to stdout with exit 0.
 
 **Why the hook can see what the tool could not.** Hooks are run by the harness,
 not through the Bash tool, so they are outside the command sandbox; a stat from

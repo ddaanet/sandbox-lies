@@ -130,9 +130,9 @@ $text"
   line1=$(verdict_text tmpdir_unset - | sed -n '1p')
   line2=$(verdict_text tmpdir_unset - | sed -n '2p')
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  [ "$line1" = '`$TMPDIR` is unset outside the sandbox, so the path collapsed to `/`. Use the literal scratch path `/tmp/claude/<job>` (create it with `mkdir -p`) in this and every unsandboxed or delegated command.' ]
+  [ "$line1" = '`$TMPDIR` expanded empty in this unsandboxed call, so the path collapsed to `/`. Use the literal scratch path `/tmp/claude/<job>` (create it with `mkdir -p`) in this and every unsandboxed or delegated command.' ]
   # shellcheck disable=SC2016 # $TMPDIR is literal prose, not expansion
-  [ "$line2" = '$TMPDIR — unset unsandboxed' ]
+  [ "$line2" = '$TMPDIR — expanded empty, path collapsed to /' ]
 
   line1=$(verdict_text resume_lost - | sed -n '1p')
   line2=$(verdict_text resume_lost - | sed -n '2p')

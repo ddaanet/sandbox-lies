@@ -189,14 +189,19 @@ produces; a refusal on a deeper path is the near-miss.
 
 **Flag policy.** Fires only when the flag is true; silent otherwise.
 
-**Verdict.** `$TMPDIR` is unset outside the sandbox, so the path collapsed to
-`/`. Use the literal scratch path `/tmp/claude/<job>` (create it with
-`mkdir -p`) in this and every unsandboxed or delegated command. ·
-`$TMPDIR — unset unsandboxed`
+**Verdict.** `$TMPDIR` expanded empty in this unsandboxed call, so the path
+collapsed to `/`. Use the literal scratch path `/tmp/claude/<job>` (create it
+with `mkdir -p`) in this and every unsandboxed or delegated command. ·
+`$TMPDIR — expanded empty, path collapsed to /`
 
 **Corpus.** 13 hits, 13 true, each a `$TMPDIR` path collapsed to `/`. 100% on
 2026-09-25; no pilot traffic. The 182 matches without the flag are silent
 (sandboxed collapses, deliberately missing paths).
+
+**Caveat (2026-09-26).** On CC 2.1.283 an unsandboxed call's `$TMPDIR` read
+`/tmp`, not unset, so the collapse may not occur unsandboxed on current CC; the
+13 hits predate that observation. The verdict states only what the flagged call
+shows, never that the variable is always unset outside the sandbox.
 
 **Decision: ships.**
 
@@ -279,7 +284,7 @@ Phase 6 step.
 | harness-mounted config paths; merge recovery | `readonly-path`; recovery clause in its verdict and the skill |
 | sibling worktree writes | `readonly-path` |
 | leaving the sandbox: escapes, strict mode, read-only default | skill |
-| cost 1, `$TMPDIR` unset and unstable | `tmpdir-unset`; instability → skill; its top-level-classifier note moved to cost 3 |
+| cost 1, `$TMPDIR` collapse and instability | `tmpdir-unset`; instability → skill; its top-level-classifier note moved to cost 3 |
 | cost 2, classifier and compounds | skill |
 | cost 3, recipes entirely unsandboxed | `readonly-path`; skill |
 | `excludedCommands` whole-call semantics | skill |

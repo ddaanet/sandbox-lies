@@ -82,10 +82,12 @@ its hook's staging included, as a 2026-09-23 attempt had. A script run as
 paths and `git status` in the scratch repo and in the project root: no
 `index.lock` in either, only the project root's `.git/config.lock` as a
 character device. With no index lock masked, the error could not arise. Git did
-run sandboxed there: every shape of the config-lock write below, a bare
-`git -C <root> config` included, hit a mask that exists only inside the sandbox.
-A repeat of the scratch commit in one `sh -c` string, then a `test -c` of that
-mask in the same string, committed and reported the mask present.
+run sandboxed there, the `git:*` exclusion unhonoured on CC 2.1.283: in the main
+session on 2026-09-26, `git --version && touch /tmp/sbx-probe-git` failed with
+the read-only-filesystem error, and the same `touch` with the sandbox disabled
+succeeded. A write to `/tmp/<name>` fails that way only inside the sandbox. A
+mask proves nothing about the call that sees it, since masks are visible from
+every process while any sandboxed command runs.
 
 ## config-lock
 
@@ -135,8 +137,10 @@ text printed `mask`, `path=<root>/.git/config.lock`. The key was not written.
 The same write from a script run as `sh <script>`, with no `git` on the command
 line, gave the same error and the same probe output; a visible
 `cd <root> && git config` and a bare `git -C <root> config` gave the same error
-too, despite `git:*` in the user settings' `sandbox.excludedCommands`. These ran
-in a delegated agent's session; the bare form did the same, key unwritten, in
-the main session that dispatched it.
+too. These ran in a delegated agent's session; the bare form did the same, key
+unwritten, in the main session that dispatched it. That they ran sandboxed
+despite `git:*` in the user settings' `sandbox.excludedCommands` rests on the
+`/tmp` write test under `git-lock`'s owed `mask` reproduction, not on the mask
+they hit.
 
 **Corpus.** 4 hits, 4 true. 100%, 2026-09-03.

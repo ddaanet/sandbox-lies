@@ -1,7 +1,8 @@
 #!/usr/bin/env bats
-# Item 4.2's hook cases: the flag policy of the shipped candidate detectors
-# (tmpdir-unset, resume-lost, seccomp-init) through the hook. First file to
-# exist for candidate hook cases (runbook Phase 4 preamble), so it also
+# The candidate detectors through the hook: the flag policy of the shipped
+# verdict-only candidates (tmpdir-unset, resume-lost, seccomp-init, Item 4.2)
+# and readonly-path's silence while it has no verdict (Item 4.3). First file
+# to exist for candidate hook cases (runbook Phase 4 preamble), so it also
 # carries the one BSD-portability case any such file owes.
 
 bats_require_minimum_version 1.5.0
@@ -38,7 +39,7 @@ run_hook() {
   printf '%s' "$ctx" | grep -qF '/tmp/claude/'
   sys=$(printf '%s' "$output" | jq -r '.systemMessage')
   # shellcheck disable=SC2016 # $TMPDIR is literal prose, not expansion
-  [ "$sys" = '$TMPDIR — unset unsandboxed' ]
+  [ "$sys" = '$TMPDIR — expanded empty, path collapsed to /' ]
 
   payload=$(failure_payload "$text")
   run_hook "$payload"
@@ -97,12 +98,25 @@ run_hook() {
   local text payload
   text=$(cat "$FIXTURES/fire-readonly-path-cp-tmp.txt")
   payload=$(failure_payload "$text")
+  # detect names readonly-path on this text, alone: the silence below cannot
+  # come from nothing firing.
+  run bash -c 'printf "%s\n" "$1" | bash "$2"' \
+    _ "$text" "$HOOK_COPY/lib/matchers.sh"
+  [ "$status" -eq 0 ]
+  [ "$output" = readonly-path ]
 
   run_hook "$payload"
 
   [ "$status" -eq 0 ]
   [ -z "$output" ]
   [ ! -f "$PROBE_CALLED" ]
+
+  # The same payload with a stub verdict defined reaches the stub probe, so
+  # the absence above is the missing verdict's doing.
+  stub_lib verdicts.sh 'verdict_readonly_path() { cat >/dev/null; printf "stub paragraph\nstub line\n"; }'
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  [ -f "$PROBE_CALLED" ]
 }
 
 @test "tmpdir-unset flag policy survives BSD grep and sed" {
@@ -120,5 +134,5 @@ run_hook() {
   printf '%s' "$ctx" | grep -qF '/tmp/claude/'
   sys=$(printf '%s' "$output" | jq -r '.systemMessage')
   # shellcheck disable=SC2016 # $TMPDIR is literal prose, not expansion
-  [ "$sys" = '$TMPDIR — unset unsandboxed' ]
+  [ "$sys" = '$TMPDIR — expanded empty, path collapsed to /' ]
 }

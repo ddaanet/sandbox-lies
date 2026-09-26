@@ -23,7 +23,7 @@ setup() {
 # A chmod 555 case must leave its directory removable: restore before bats'
 # own tmpdir cleanup runs.
 teardown() {
-  [ -z "$RO_DIR" ] || { chmod 755 "$RO_DIR" 2>/dev/null || :; }
+  [ -z "$RO_DIR" ] || chmod 755 "$RO_DIR"
 }
 
 # ro_dir <dir> — creates <dir> if missing, chmod 555s it, records it in

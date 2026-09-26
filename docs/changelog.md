@@ -112,3 +112,18 @@ paragraphs moved verbatim into `references/hook.md`, the need-time cluster for
 changing `annotate.sh` or a probe's path handling; the hub keeps the component
 map, now with the `scripts/check-*.sh` gates again, and one paragraph of
 conclusions.
+
+## 2026-09-26 — `$TMPDIR` not unset unsandboxed; mask evidence replaced
+
+On CC 2.1.283 an unsandboxed call's `$TMPDIR` read `/tmp`, not unset, which
+falsified the `tmpdir-unset` verdict's claim that the variable is unset outside
+the sandbox; the collapse its 13 corpus hits record may not occur on current CC.
+The verdict now states only what the flagged call shows — the expansion came up
+empty and the path collapsed to `/` — and keeps the literal-scratch-path
+directive; the entry carries the observation as a dated caveat, and NFR-4 no
+longer asserts the hook's `$TMPDIR` is unset. The Item 3.1 notes in
+`references/lock-detectors.md` had argued from masks that every git call ran
+sandboxed, but a mask is visible from every process while any sandboxed command
+runs, so it proves nothing about the call that sees it. The conclusion stands on
+a mask-free test instead: a `touch` under `/tmp` chained after `git` failed
+read-only, and the same write with the sandbox disabled succeeded.

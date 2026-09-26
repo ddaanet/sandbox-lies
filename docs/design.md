@@ -176,10 +176,11 @@ on quiet fixtures. Done (100 ms bound measured, not gated).
 style unchecked). Where · pinned by: `scripts/check-line-limits.sh`,
 `scripts/check-links.sh` · both run in `just precommit`. Done.
 
-**NFR-4 — Hermetic.** The hook writes nothing (it runs outside the sandbox with
-`$TMPDIR` unset) and reads only the repository the call ran in. Where · pinned
-by: `tests/hook.bats` and `tests/matchers.bats` run the hook and `detect` with
-`TMPDIR` naming a missing directory. Done (read scope: review, not gated).
+**NFR-4 — Hermetic.** The hook writes nothing (it runs outside the sandbox,
+where `$TMPDIR` may be unset) and reads only the repository the call ran in.
+Where · pinned by: `tests/hook.bats` and `tests/matchers.bats` run the hook and
+`detect` with `TMPDIR` naming a missing directory. Done (read scope: review, not
+gated).
 
 ## Architecture
 

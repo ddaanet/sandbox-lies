@@ -53,7 +53,7 @@ expected_for() {
     quiet-resume-lost-index-line)  : ;;
     fire-seccomp-init-sed)         printf 'seccomp-init\n' ;;
     quiet-seccomp-init-heading)    : ;;
-    # readonly-path: Item 4.3 slice 1's matcher (this is its red).
+    # readonly-path, built by Item 4.3.
     fire-readonly-path-cp-tmp)       printf 'readonly-path\n' ;;
     fire-readonly-path-task-output)  printf 'readonly-path\n' ;;
     fire-readonly-path-python-errno) printf 'readonly-path\n' ;;
@@ -227,10 +227,8 @@ assert_fixture() {
 
 # --------------------------------------- detector E: readonly-path (matcher)
 #
-# Item 4.3 slice 1: match_readonly_path is stubbed inert in lib/matchers.sh,
-# so these fire-* fixtures red until the slice's GREEN builds the
-# discriminator; the quiet fixture already passes against the stub, and
-# tests/matchers-edges.bats pins the line-start anchor it cannot.
+# The quiet fixture is quieted by more than the line-start anchor;
+# tests/matchers-edges.bats pins that anchor alone.
 
 @test "readonly-path fires on a quoted cp refusal under /tmp" {
   assert_fixture fire-readonly-path-cp-tmp
