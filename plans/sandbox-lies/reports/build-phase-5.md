@@ -145,7 +145,7 @@ Precommit before the commit: bats 181 passed, same recap.
 
 ## Version stamp correction (carry item from the team lead)
 
-Every "CC 2.1.283" stamp in `docs/` was wrong. `claude --version` reports the
+Every CC stamp in `docs/` that named the installed binary's version was wrong. `claude --version` reports the
 installed binary, not the running session. Checked against the transcript
 `version` field: this delegate and its corrector ran 2.1.281. Replaced at
 `docs/references/detectors.md` (the Item 5.1 reproduction and the
