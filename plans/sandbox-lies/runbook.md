@@ -878,17 +878,49 @@ fire case under `make_bsd_stubs grep sed` (Portability).
   their skill-mapped remainders — the merge-recovery procedure and cost 3's
   recipe guidance stay for Item 7.1 (translation map). Requirements:
   FR-4, FR-5, FR-6, FR-7, FR-10. Depends on: Item 4.1, Item 5.1
+  List revision (my human partner, 2026-09-26): a new slice 1 widens
+  `probe_readonly_path`'s extraction before the verdict ships, so the
+  item also touches `lib/probes.sh`, `tests/probes-readonly.bats`,
+  `hooks/annotate.sh` (slice 4's flag policy) and
+  `docs/references/detectors.md`. The `writable` and `nopath` verdict
+  text in `detectors.md` now carries the command-output-read clause (Item
+  4.3's list revision), rewritten under FR-6's 400 characters with the
+  test strings below kept.
   Slices:
-  1. External contract: `writable outcome through the hook` — the fire
+  1. `path extraction widened` (`tests/probes-readonly.bats`) — real
+     messages collected sandboxed on 2026-09-26 (CC 2.1.281), `<EROFS>`
+     the kernel's read-only-filesystem message, each probe text naming a
+     path under `$BATS_TEST_TMPDIR` in place of the collected one:
+     | line shape | `path=` |
+     |---|---|
+     | `mkdir: cannot create directory ‘<p>’: <EROFS>` (UTF-8 curly quotes) | `<p>` |
+     | `/bin/bash: line 4: <p>: <EROFS>` | `<p>` |
+     | `sh: 1: cannot create <p>: <EROFS>` | `<p>` |
+     | `error: could not lock config file <p>: <EROFS>` | `<p>` |
+     | `fatal: cannot mkdir <p>: <EROFS>` | `<p>` |
+     | `mv: inter-device move failed: '<src>' to '<p>'; unable to remove target: <EROFS>` | `<p>`, the target, not `<src>` |
+     Unchanged, pinned as a regression row: `touch`/`cp`/`ln` straight-quoted
+     and Python's `OSError: [Errno 30] <EROFS>: '<p>'` keep their path. Any
+     other unquoted shape stays `nopath` (one near-miss row: an unquoted
+     path after words outside the four fixed forms). Byte safety as the
+     existing helpers (`LC_ALL=C`; the curly quotes are UTF-8 byte
+     sequences). Same commit: `detectors.md`'s `readonly-path` Probe
+     paragraph names the accepted forms and records the residual — an
+     unquoted path containing `: ` is misread.
+  2. External contract: `writable outcome through the hook` — the fire
      fixture, stub probe printing `writable` and `path=/r/x`: context
      contains `/r/x`, `is writable outside the sandbox` and `compare
      modified files against the target`; human line `read-only — sandbox
      allowlist, writable outside`. Verdict rows added for all three
-     outcomes.
-  2. `readonly and nopath` — stub `readonly`: context contains `not a
+     outcomes. Shipping `verdict_readonly_path` turns
+     `tests/hook-candidates.bats`'s `hook silent without a verdict` red: it
+     retires, since `tests/hook-locks.bats`'s `no probe without a verdict`
+     (a fake name) pins the same gate independently of any shipped
+     detector.
+  3. `readonly and nopath` — stub `readonly`: context contains `not a
      sandbox effect`; stub `nopath`: context contains `write allowlist` and
      `compare modified files against the target`.
-  3. `silent unsandboxed` — flag `true`: empty stdout, and the stub probe
+  4. `silent unsandboxed` — flag `true`: empty stdout, and the stub probe
      records no call.
 
 ## Phase 7: The skill and repository prose (type: general)
