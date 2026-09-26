@@ -144,8 +144,14 @@ Expected residual: a path not writable outside the sandbox either.
 
 **Flag policy.** Silent when the flag is true.
 
-**Probe.** Extract the first quoted path from the matching line; `test -w` on
-it, or on its parent when it does not exist.
+**Probe.** Extract the path from the matching line; `test -w` on it, or on its
+parent when it does not exist. The path is the first single-quoted segment,
+straight or curly as a UTF-8 locale prints it, except after `mv`'s `to`, which
+names the target. Unquoted, it is read in four fixed forms only: bash's
+`line N: <path>:`, dash's `cannot create <path>:`, git's
+`could not lock config file <path>:` and `cannot mkdir <path>:`. Any other
+unquoted shape is `nopath`. Residual: an unquoted path containing a colon and a
+space is misread.
 
 | outcome | condition |
 |---|---|

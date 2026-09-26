@@ -192,6 +192,142 @@ ro_dir() {
   run ! grep -q '^path=' <<<"$output"
 }
 
+# Item 6.1 slice 1: extraction widened past the first ASCII single-quoted
+# segment. Each line shape below is real, collected sandboxed 2026-09-26 (CC
+# 2.1.281; runbook Item 6.1 slice 1 table), its path swapped for one under
+# $BATS_TEST_TMPDIR; the kernel's message comes from erofs_message
+# (self-quiet, FR-11) rather than being quoted here. Every name holds a
+# blank: an unquoted form ends its path at the `: ` before the message, not
+# at a blank, and a quoted one keeps every byte between its quotes.
+
+# The em dash (U+2014) shares its first two bytes with both curly quotes, so
+# a capture excluding the closing quote's bytes one by one stops inside it.
+@test "curly-quoted mkdir path is extracted" {
+  local p="$BATS_TEST_TMPDIR/curly — target" text
+  text="mkdir: cannot create directory ‘$p’: $(erofs_message)"
+
+  run_probe probe_readonly_path false "$BATS_TEST_TMPDIR" "$text"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF "path=$p"
+}
+
+@test "bash line-N path is extracted" {
+  local p="$BATS_TEST_TMPDIR/bash target" text
+  text="/bin/bash: line 4: $p: $(erofs_message)"
+
+  run_probe probe_readonly_path false "$BATS_TEST_TMPDIR" "$text"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF "path=$p"
+}
+
+@test "dash redirect path is extracted" {
+  local p="$BATS_TEST_TMPDIR/dash target" text
+  text="sh: 1: cannot create $p: $(erofs_message)"
+
+  run_probe probe_readonly_path false "$BATS_TEST_TMPDIR" "$text"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF "path=$p"
+}
+
+@test "git config-lock path is extracted" {
+  local p="$BATS_TEST_TMPDIR/config target" text
+  text="error: could not lock config file $p: $(erofs_message)"
+
+  run_probe probe_readonly_path false "$BATS_TEST_TMPDIR" "$text"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF "path=$p"
+}
+
+@test "git mkdir path is extracted" {
+  local p="$BATS_TEST_TMPDIR/git mkdir target" text
+  text="fatal: cannot mkdir $p: $(erofs_message)"
+
+  run_probe probe_readonly_path false "$BATS_TEST_TMPDIR" "$text"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF "path=$p"
+}
+
+# The move's source is quoted first on the line; the removed target after it
+# is the path a readonly-path verdict is about, so a probe still taking the
+# first quoted segment names the wrong file.
+@test "mv target path is extracted, not the source" {
+  local src="$BATS_TEST_TMPDIR/mv source" p="$BATS_TEST_TMPDIR/mv target" text
+  text="mv: inter-device move failed: '$src' to '$p';"
+  text="$text unable to remove target: $(erofs_message)"
+
+  run_probe probe_readonly_path false "$BATS_TEST_TMPDIR" "$text"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF "path=$p"
+}
+
+# Regression: straight-quoted forms the extractor already handled before this
+# slice. cp (fire-readonly-path-cp-tmp) and Python's OSError
+# (fire-readonly-path-python-errno) are already pinned above ("writable
+# path" and its siblings, "relative path resolves against cwd"); touch and
+# ln are not, so they are the ones re-asserted here.
+@test "straight-quoted touch and ln keep their path" {
+  local p="$BATS_TEST_TMPDIR/touch target" text
+  text="touch: cannot touch '$p': $(erofs_message)"
+
+  run_probe probe_readonly_path false "$BATS_TEST_TMPDIR" "$text"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF "path=$p"
+
+  p="$BATS_TEST_TMPDIR/ln target"
+  text="ln: failed to create symbolic link '$p': $(erofs_message)"
+
+  run_probe probe_readonly_path false "$BATS_TEST_TMPDIR" "$text"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF "path=$p"
+}
+
+# Near-miss: an unquoted path outside the four fixed unquoted forms (bash's
+# `line N:` locator, dash's `cannot create`, git's `could not lock config
+# file` and `cannot mkdir`, each after its own prefix) — after other words
+# (rm), directly after the prefix (BSD touch's shape), and after dash's words
+# under another prefix. The matcher has no prefix allowlist and accepts each
+# line (asserted first), so nopath is the extractor's refusal, not the
+# matcher's.
+@test "unquoted path after an unlisted prefix stays nopath" {
+  local p="$BATS_TEST_TMPDIR/near miss" line text
+  for line in "rm: cannot remove $p" "touch: $p" \
+    "mkdir: cannot create directory $p"; do
+    text="$line: $(erofs_message)"
+    match_readonly_path <<<"$text"
+
+    run_probe probe_readonly_path false "$BATS_TEST_TMPDIR" "$text"
+
+    [ "$status" -eq 0 ]
+    [ -z "$stderr" ]
+    [ "${output%%$'\n'*}" = nopath ]
+    run ! grep -q '^path=' <<<"$output"
+  done
+}
+
 @test "writable path survives BSD grep and sed" {
   local target="$BATS_TEST_TMPDIR/a dir/target" text bsd
   mkdir -p "${target%/*}"
@@ -206,4 +342,30 @@ ro_dir() {
   [ -z "$stderr" ]
   [ "${output%%$'\n'*}" = writable ]
   printf '%s\n' "$output" | grep -qxF "path=$target"
+}
+
+# The widened extraction through BSD grep and sed (NFR-2): the curly-quoted
+# form and one unquoted form, the two new kinds of line the extractor reads.
+@test "curly and unquoted paths survive BSD grep and sed" {
+  local bsd="$BATS_TEST_TMPDIR/bsdtools" p text
+  make_bsd_stubs "$bsd" grep sed
+  p="$BATS_TEST_TMPDIR/curly — target"
+  text="mkdir: cannot create directory ‘$p’: $(erofs_message)"
+
+  PATH="$bsd:$PATH" run_probe probe_readonly_path false "$BATS_TEST_TMPDIR" "$text"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF "path=$p"
+
+  p="$BATS_TEST_TMPDIR/bash target"
+  text="/bin/bash: line 4: $p: $(erofs_message)"
+
+  PATH="$bsd:$PATH" run_probe probe_readonly_path false "$BATS_TEST_TMPDIR" "$text"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF "path=$p"
 }

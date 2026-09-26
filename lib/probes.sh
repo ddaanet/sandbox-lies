@@ -106,14 +106,41 @@ _probe_readonly_resolve() {
     printf '%s/%s\n' "${cwd%/}" "$path"
 }
 
-# Prints the first single-quoted segment on stdin (one line), nothing when
-# there is none. A path is quoted because it may hold a blank, so the
-# capture keeps every character but a quote between the pair. LC_ALL=C for
-# the same byte-safety reason as _probe_lock_path. Residual: a path holding
-# a single quote, which GNU coreutils prints double-quoted or as
-# `'it'\''s'`, yields nopath or its first quoted piece.
+# Prints the path extracted from stdin (one line), nothing when none of the
+# recognised shapes apply. The quote is ASCII `'...'` or UTF-8 curly
+# `'...'` (bytes e2 80 98 / e2 80 99), matched as literal byte sequences
+# rather than a bracket class, so a path holding one of those bytes (an em
+# dash shares two of them) does not stop the capture short -- except after
+# mv's "inter-device move failed: '<src>' to '<dst>'", which names <dst>,
+# tried first so the generic quote rule below it never sees the source.
+# Absent a quote, the path is read in four fixed forms only, each anchored
+# on the literal words the tool prints around it: bash's own "line N:"
+# locator, dash's digit locator immediately before "cannot create" (a bare
+# "cannot create" substring alone would also catch cp's or mkdir's own
+# quoted-form wording -- "cannot create regular file", "cannot create
+# directory" -- once its quotes are stripped), git's "error: could not lock
+# config file" and "fatal: cannot mkdir". Every capture runs to the last
+# ": " on the line rather than stopping at a blank, since the path may hold
+# one. LC_ALL=C for the same byte-safety reason as _probe_lock_path.
+# Residual: a path holding a single quote, which GNU coreutils prints
+# double-quoted or as `'it'\''s'`, yields nopath or its first quoted piece;
+# an unquoted path containing ": " is misread.
 _probe_readonly_path_from_line() {
-    LC_ALL=C sed -n "s/^[^']*'\([^']*\)'.*/\1/p"
+    LC_ALL=C sed -n \
+        -e "s/^.*inter-device move failed: '[^']*' to '\([^']*\)'.*/\1/p" \
+        -e "t end" \
+        -e "s/^[^']*'\([^']*\)'.*/\1/p" \
+        -e "t end" \
+        -e "s/^[^‘]*‘\(.*\)’: .*/\1/p" \
+        -e "t end" \
+        -e "s/^.*line [0-9][0-9]*: \(.*\): .*/\1/p" \
+        -e "t end" \
+        -e "s/^.*[0-9][0-9]*: cannot create \(.*\): .*/\1/p" \
+        -e "t end" \
+        -e "s/^.*error: could not lock config file \(.*\): .*/\1/p" \
+        -e "t end" \
+        -e "s/^.*fatal: cannot mkdir \(.*\): .*/\1/p" \
+        -e ":end"
 }
 
 # _probe_lock_at <flag> <path> — the A-3 contract once a probe has extracted

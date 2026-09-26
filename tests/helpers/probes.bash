@@ -28,6 +28,15 @@ config_lock_error() {
   printf '%s\n' "$text"
 }
 
+# erofs_message — the kernel's read-only-filesystem message, built from two
+# fragments (self-quiet, FR-11) as git_lock_error builds git's follow-on
+# above, so no probes-readonly test source line reads the phrase whole.
+erofs_message() {
+  local msg='Read-only'
+  msg="$msg file system"
+  printf '%s' "$msg"
+}
+
 # readonly_path_text <fixture> <replacement> — the cut fire-readonly-path-*
 # fixture (tests/fixtures/<fixture>.txt) with its first single-quoted path
 # replaced by <replacement>, built at run time as git_lock_error is, so this
