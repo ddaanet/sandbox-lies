@@ -161,64 +161,48 @@ tests).
 - Commit-msg hook: a raw emoji subject not in its map (✏️) is refused; use a
   conventional prefix.
 
-## Open gate — memory commit approval
+## Memory gate — closed
 
-The retirement change above is prepared and uncommitted. The gitlore gate blocks
-every parent commit while `memory` is dirty, this report's included, until my
-human partner approves a summary. The pending change was held against
-`gitlore:memory-writing`: each retired section now has an owner that prints the
-diagnosis when it fires (the plugin's verdicts, §1 Q2), so the reduction stands;
-the surviving sections and the rewritten index line keep their literals. The
-file stays over the 4 KB recall cap, as before; Item 8.2 deletes it. Draft, in
-the gate's format:
-
-> Retire the lock and candidate sections of sandbox-effects, now carried by
-> sandbox-lies
->
-> **Reduce ddaanet/sandbox-effects:** the file no longer carries the
-> `.git/index.lock` section with its `.git/config.lock` paragraph, cost 1 of
-> "Leaving the sandbox" (an unsandboxed `$TMPDIR` collapsing to `/`), the
-> `--resume` mechanism (a sandboxed turn's transcript never persists), or the
-> sandbox-setup section (`apply-seccomp` failing at namespace init). The
-> sandbox-lies plugin now diagnoses each when it fires: the `git-lock` and
-> `config-lock` verdicts probe the lock outside the sandbox and report a mask, a
-> cleared lock, a holder, an orphan or an unknown holder, replacing the hand-run
-> discriminator, and the `tmpdir-unset`, `resume-lost` and `seccomp-init`
-> verdicts cover the other three. What the plugin's skill will carry stays: the
-> `$TMPDIR` instability paragraph, and the eval-harness consequence under a new
-> heading, "Multi-turn `claude` flows must run unsandboxed". Cost 1's note that
-> the classifier judges an unsandboxed recipe by its top-level command moves
-> into cost 3. The zellij section stays, because its detector did not ship. The
-> description, the symptom table and both index lines drop the retired symptoms.
-
-Question: approve this summary as written? Default if the approval carries no
-edit: commit with it verbatim. Only a clear, un-negated affirmative counts as
-approval.
-
-Uncommitted while the gate is open: `docs/changelog.md`, `docs/design.md`,
-`docs/references/detectors.md`, `docs/references/hook.md` (new), `lib/probes.sh`
-(a comment pointing at the moved paragraph), `tests/matchers.bats`, `memory`
-(the tier: `MEMORY.md`, `ddaanet/MEMORY.md`, `ddaanet/sandbox-effects.md`),
-`plans/sandbox-lies/reports/phase-4-retirement.md`, and this report
-(`build-phase-4.md`), which the gate also refused to commit.
+Approved by my human partner with an extended summary (two further memory edits
+by the main session: the sandbox-effects exclusion baseline, and the
+cc-nested-subagent-spawning context-cap bullet). Committed as "Phase 4 — lock
+and candidate memory retired; statuses flipped; design.md split".
 
 ## Resume
 
-Resume at the Phase 4 retirement commit, then the Phase 4 boundary.
+Resume /build at the Phase 4 boundary of
+/Users/david/code/sandbox-lies/plans/sandbox-lies/runbook.md. Items 4.1-4.3 and
+the deferred retirement are committed; the tree is clean (masks aside). Last
+commit: "Phase 4 — lock and candidate memory retired; statuses flipped;
+design.md split". Build baseline: .git/build-baseline. verify-step:
+/Users/david/.claude/plugins/cache/ddaanet/edify/0.3.0/skills/build/scripts/verify-step.sh
+(run unsandboxed). Shared dispatch context: .git/phase4-dispatch.md.
 
-1. On approval: write the approved summary to
-   `/Users/david/code/sandbox-lies/.claude/gitlore-memory-message`, stage the
-   files listed above by name (plus `memory` and this report), `just precommit`,
-   commit
-   `docs: Phase 4 — lock and candidate memory retired; statuses flipped; design.md split`.
-   Then verify-step (unsandboxed).
-2. Phase 4 boundary: Read the build skill's `references/phase-boundary.md` and
-   follow it (phase-4-corrector, commit, resume block for Phase 5).
-3. Carry into Phase 5 and beyond: Item 6.1's `readonly-path` verdict carries the
-   command-output-read clause; `docs/references/lock-detectors.md` and
-   `docs/references/hook.md` are new nodes; `tests/hook-locks.bats` is at ~382
-   lines; the shared dispatch context lives at `.git/phase4-dispatch.md`
-   (untracked, reusable).
+Next: Read the build skill's `references/phase-boundary.md` and follow it —
+dispatch `phase-4-corrector` over the Phase 4 diff, commit its report and fixes,
+then write the Phase 5 resume block into this report and commit. The corrector
+carries two extra items, both approved by my human partner:
+
+1. `docs/references/detectors.md`'s Item 3.1 notes argue from masks that every
+   git call ran sandboxed (delegate session and main session). Mask evidence is
+   one-directional: masks are visible from every process while any sandboxed
+   command runs, so a mask proves nothing about the call that saw it. Keep the
+   conclusion; replace the evidence with the mask-free test: in the main session
+   on 2026-09-26, `git --version && touch /tmp/sbx-probe-git` failed with the
+   read-only error while the same touch with `dangerouslyDisableSandbox`
+   succeeded (CC 2.1.283).
+2. `tmpdir-unset` caveat: on CC 2.1.283 an unsandboxed call's `$TMPDIR` is
+   `/tmp`, not unset (observed 2026-09-26), so the collapsed-to-root failure may
+   not occur on current CC; its corpus hits predate that. Record it in the
+   `tmpdir-unset` entry, and make sure the Item 4.2 verdict (lib/verdicts.sh,
+   its transcription in tests/verdicts.bats, and detectors.md) does not claim
+   the variable is always unset outside the sandbox.
+
+Carry into Phase 5 and beyond: Item 6.1's `readonly-path` verdict carries the
+command-output-read clause (runbook Item 4.3 list revision);
+`docs/references/lock-detectors.md` and `docs/references/hook.md` are new nodes;
+`tests/hook-locks.bats` is at ~382 lines. Deviations for the Finish run summary
+are listed above.
 
 ## Context usage
 
