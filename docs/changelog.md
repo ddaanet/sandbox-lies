@@ -165,3 +165,26 @@ status lists names and not modes. `README.md`, an MIT `LICENSE` and a
 `CLAUDE.md` body for agents working in the repository shipped in the same phase;
 the README installs by `--plugin-dir`, since a marketplace install aborts on the
 memory submodule's placeholder url.
+
+## 2026-09-26 — the script decides a verdict's conditions
+
+My human partner ruled that text a hook emits for the agent carries no
+conditional the script could evaluate itself; that is now D-17. The verdicts had
+kept such branches to stay one fixed paragraph per outcome — "if it already ran
+that way", "if a merge or checkout died", "once they match the target", "if it
+only read a command-output file", "for `.claude/settings.json`" — each a check
+the agent was left to run on facts the hook already had or could probe. The
+verdict functions now take the flag as a second argument and the lock verdicts
+word their re-run by it, `orphan` and `unknown` included, whose "retry
+unsandboxed" was false under flag true. The `readonly-path` probe takes the
+command as a third argument and reports what the acts depend on: a git
+merge-style command or git's own partial-checkout error, its target, the
+modified files already at that target, and a read of a command-output file; the
+verdict states only the acts those facts select. The update-config act replaces
+the re-run when the path or the config file is `.claude/settings.json`. With the
+branches gone the budget no longer forces "unsandboxed", so the re-runs name
+`dangerouslyDisableSandbox: true` again. The two conditions a stateless hook
+cannot see — a repeat failure — stay in the text. D-17 took `docs/design.md`
+past its cap, so the arguments for D-6 and D-13 moved verbatim into
+`references/hook.md` and D-14's into `references/lock-detectors.md`, each
+leaving its conclusion in the hub.

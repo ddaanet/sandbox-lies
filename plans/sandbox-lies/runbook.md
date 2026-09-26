@@ -967,6 +967,72 @@ fire case under `make_bsd_stubs grep sed` (Portability).
 
 ## Phase 8: Dogfood and final deletion (type: general)
 
+- Item 8.0: `lib/verdicts.sh`, `lib/probes-readonly.sh`,
+  `hooks/annotate.sh`, `tests/verdicts.bats`, `tests/hook-locks.bats`,
+  `tests/hook-candidates.bats`, `tests/probes-readonly.bats` — added at
+  Phase 8 by my human partner's ruling (D-17): a verdict carries no
+  conditional the script could evaluate. The spec is already committed:
+  `docs/references/detectors.md` (readonly-path probe facts table and the
+  tail/merge-clause composition), `docs/references/lock-detectors.md`
+  (*Re-run*/*Retry* flag table, config-lock settings act),
+  `docs/references/hook.md` (Flow), `docs/design.md` FR-4, FR-6, D-17.
+  Tests transcribe verdict text from those docs, never parse them.
+  Out of scope: git-lock's repeat-failure leak clause and seccomp-init's
+  split clause stay as they are; the phantom verdicts; matchers.
+  Requirements: FR-4, FR-5, FR-6, D-17. Depends on: Item 6.1
+  Slices:
+  1. `lock verdicts word the re-run by the flag` (`tests/verdicts.bats`,
+     `tests/hook-locks.bats`) — `verdict_git_lock` and
+     `verdict_config_lock` take the flag as `$2` (absent reads `false`).
+     `mask`, `orphan`, `unknown` under flag false contain the
+     `dangerouslyDisableSandbox: true` wording and not "once no sandboxed";
+     under flag true the reverse; neither contains "if it already ran".
+     `config_lock mask` with stdin `path=<r>/.claude/settings.json.lock`
+     contains the update-config act and no "Re-run"; with
+     `path=<r>/.git/config.lock` no "update-config" (either flag). The
+     transcription test covers both flag values; the 400-character and
+     quiet tests cover every flag variant. Through the hook: the mask
+     fixture under flag true and false yields the two wordings (replaces
+     "mask paragraph is flag-neutral under flag true"), so
+     `hooks/annotate.sh` passes `"$flag"` as every probed verdict's `$2`.
+  2. `readonly-path states only the acts its facts select`
+     (`tests/verdicts.bats`, `tests/hook-locks.bats` or
+     `tests/hook-candidates.bats`) — the hook parses `tool_input.command`
+     (a non-string reads empty), escaped as the cwd is, and passes it as
+     every probe's third argument, byte-exact through a newline, a
+     backslash and a leading `-`. `verdict_readonly_path` composes the
+     `writable`/`nopath` tail from stdin keys per `detectors.md`: no facts →
+     the act alone, "Re-run the whole call with
+     `dangerouslyDisableSandbox: true`."; `readfile=` → "Re-run the command
+     that wrote `<f>`." and no `dangerouslyDisableSandbox`; `path=` a
+     `.claude/settings.json` → the update-config act (writable only; a
+     `readfile=` still wins); `merge=1` + `target=` + `match=` lines →
+     "restore `a`, `b` from HEAD — they match `<t>` —, then <act>";
+     `merge=1` alone → "restore them from HEAD, then <act>"; `merge=1` +
+     `target=` without `match=` → no merge clause; seven `match=` lines →
+     five names then "and 2 more". No composition contains "If a merge",
+     "once they match" or "if it only read". `readonly` ignores the facts.
+     Length (each composition, one-character values, under 400) and quiet
+     tests cover the compositions.
+  3. `the probe reports the facts` (`tests/probes-readonly.bats`) —
+     `probe_readonly_path <flag> <cwd> <command>` prints, after `path=`,
+     under `writable` and `nopath` only: `readfile=` for a reader pipeline
+     or list of a command-output file (`cat /w/build.log`;
+     `tail -n 50 "/w/a b.output" | grep -i error` → `/w/a b.output`;
+     negatives each paired with a positive: `cat notes.md`,
+     `sed -i s/a/b/ build.log`, `cat build.log > copy.txt`,
+     `make 2>&1 | tee build.log`, `npm test && cat build.log`);
+     `merge=1` for a git merge-style segment (`git merge --ff-only feat`,
+     `git -C <repo> checkout feat`, `git pull`) or git's partial-checkout
+     error in the text under any command, not for `git log --merges` or
+     `echo git merge feat`; `target=` and `match=` over a scratch repo
+     (HEAD at `main`, branch `feat` changing `a`, `b`, `c`; working tree
+     holding `a` staged and `b` unstaged at feat's content, `c` edited
+     otherwise): `match=a`, `match=b`, never `c`; an unresolvable ref gives
+     `merge=1` and no `target=`. The repository is the path's nearest
+     existing directory's, else the cwd's. The probe leaves `.git/index`
+     byte- and mtime-identical and no `index.lock`.
+
 - Item 8.1: `.bin/claude`, `.envrc` — the D-16 shim: prepends
   `--plugin-dir <this checkout>` and execs the next `claude` on `PATH` with
   `.bin` stripped from `PATH`; `.envrc` adds `PATH_add .bin` last.

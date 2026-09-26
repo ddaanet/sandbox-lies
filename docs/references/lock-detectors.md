@@ -2,11 +2,12 @@
 
 `git-lock` and `config-lock`, the two detectors whose verdict depends on a probe
 of a lock path: matcher, probe and outcomes, flag policy, verdict text per
-outcome, corpus figure and live reproductions. The catalogue entry for each is a
-stub in [detectors.md](detectors.md), whose conventions — what a matcher, probe
-and flag are, the verdict-text format, the corpus the figures come from — apply
-here unchanged. No entry here quotes a diagnostic together with its follow-on
-sentence, so that this file stays quiet under the detectors it specifies.
+outcome, corpus figure and live reproductions, and the argument for D-14. The
+catalogue entry for each is a stub in [detectors.md](detectors.md), whose
+conventions — what a matcher, probe and flag are, the verdict-text format, the
+corpus the figures come from — apply here unchanged. No entry here quotes a
+diagnostic together with its follow-on sentence, so that this file stays quiet
+under the detectors it specifies.
 
 ## git-lock
 
@@ -35,19 +36,28 @@ form (BSD and GNU differ).
 | `orphan` | path present, holder check ran, no holder (`bytes=`, `age=`) |
 | `unknown` | path present, no holder tool on `PATH`, or the holder check errored (`bytes=`, `age=`) |
 
+**A lock with no holder check is `unknown`, not `orphan` (D-14).** The holder
+check is `lsof -t`, then `fuser`; the Linux dev box has only the latter. With
+neither, or a failed check, the verdict reports the lock's presence and carries
+no removal instruction: a held lock also fails an identical retry, so degrading
+to `orphan` would hand it the instruction the plugin exists to withhold.
+
 **Flag policy.** Fires either way; the flag selects `mask` versus `gone` when
 the path is absent. Under flag true, `mask` is the character-device case: a mask
 visible outside the sandbox while a sandboxed command runs, where re-running
-unsandboxed at once changes nothing. The `mask` wording holds under both flags
-rather than taking the flag as an argument.
+unsandboxed at once changes nothing. The verdict takes the flag as its second
+argument and words the re-run of `mask`, `orphan` and `unknown` by it.
 
-**Verdicts.**
+**Verdicts.** *Re-run* and *Retry* stand for the flag's wording:
+
+| flag | *Re-run* | *Retry* |
+|---|---|---|
+| false | Re-run the same command with `dangerouslyDisableSandbox: true` | Retry the command with `dangerouslyDisableSandbox: true` |
+| true | Re-run the same command once no sandboxed command is running | Retry the command once |
 
 - `mask` — The lock in this error is a sandbox artefact and the repository is
-  healthy. Re-run the same command with `dangerouslyDisableSandbox: true`; if it
-  already ran that way, re-run it once no sandboxed command is running. A repeat
-  failure on a commit whose hook stages files is that hook leaking
-  `GIT_INDEX_FILE`, not the sandbox. ·
+  healthy. *Re-run*. A repeat failure on a commit whose hook stages files is
+  that hook leaking `GIT_INDEX_FILE`, not the sandbox. ·
   `index.lock — sandbox mask, not a real lock`
 - `gone` — No lock exists now; git cleaned it after the failure. Retry once. A
   repeat failure on a commit whose hook stages files is that hook leaking
@@ -55,11 +65,10 @@ rather than taking the flag as an argument.
 - `held` — A process (pid N) holds the lock. Wait for it, then retry. ·
   `index.lock — held by pid N`
 - `orphan` — The lock exists outside the sandbox (N bytes, age Ns) and no
-  process holds it. Retry the command unsandboxed; a second identical failure
-  means the lock predates this session. · `index.lock — present, no holder`
+  process holds it. *Retry*; a second identical failure means the lock predates
+  this session. · `index.lock — present, no holder`
 - `unknown` — The lock exists outside the sandbox (N bytes, age Ns); no holder
-  check is available here. Retry the command unsandboxed. ·
-  `index.lock — present, holder unknown`
+  check is available here. *Retry*. · `index.lock — present, holder unknown`
 
 **Corpus.** 14 hits, 9 true, 5 self-reference (fixture reads, a fault-injection
 probe, this project's replay). 64% on 2026-09-03 after pilot traffic; 82% on
@@ -107,25 +116,23 @@ from the `cwd`. Note `.git/config.lock` is itself in the masked set, so the
 sandboxed write fails on a bind-mount, not on a file.
 
 **Verdicts.** `git-lock`'s, naming `config.lock`, without the `GIT_INDEX_FILE`
-leak clause, which concerns `index.lock` only; the `mask` paragraph adds the
-config write.
+leak clause, which concerns `index.lock` only. In `mask`, when the probe's
+`path=` is a `.claude/settings.json.lock`, the act "Write
+`.claude/settings.json` through the `update-config` skill" takes the place of
+*Re-run*, under either flag.
 
 - `mask` — The `config.lock` behind this error is a sandbox artefact and the
-  repository is healthy. Re-run the same command with
-  `dangerouslyDisableSandbox: true`; if it already ran that way, re-run it once
-  no sandboxed command is running. Run the `git config` or `git remote` write
-  unsandboxed, or through the `update-config` skill when the target is
-  `.claude/settings.json`. · `config.lock — sandbox mask, not a real lock`
+  repository is healthy. *Re-run*. ·
+  `config.lock — sandbox mask, not a real lock`
 - `gone` — No lock exists now; git cleaned it after the failure. Retry once. ·
   `config.lock — cleared after failure`
 - `held` — A process (pid N) holds the lock. Wait for it, then retry. ·
   `config.lock — held by pid N`
 - `orphan` — The lock exists outside the sandbox (N bytes, age Ns) and no
-  process holds it. Retry the command unsandboxed; a second identical failure
-  means the lock predates this session. · `config.lock — present, no holder`
+  process holds it. *Retry*; a second identical failure means the lock predates
+  this session. · `config.lock — present, no holder`
 - `unknown` — The lock exists outside the sandbox (N bytes, age Ns); no holder
-  check is available here. Retry the command unsandboxed. ·
-  `config.lock — present, holder unknown`
+  check is available here. *Retry*. · `config.lock — present, holder unknown`
 
 **Flag policy.** As `git-lock`.
 

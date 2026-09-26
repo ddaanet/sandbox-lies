@@ -74,14 +74,16 @@ the probe call. Done.
 **FR-4 — Probes.** For each verdict whose correct action depends on state the
 tool could not see, the hook runs a discriminator outside the sandbox and the
 verdict names the outcome. A probe reads the result text on stdin, takes the
-flag (FR-5) as its first argument, prints an outcome token on its first line and
-`key=value` lines after it; the verdict function reads both. Three probes: lock
-existence and holder (`git-lock`, `config-lock`) and path writability
-(`readonly-path`). Each probe is proved once against a live reproduction before
-it ships; the reproduction is recorded in `references/`. Where · pinned by:
-`lib/probes.sh`, `lib/probes-readonly.sh` · `tests/probes*.bats` over synthetic
-trees, with a character device at the lock path and no holder tool on `PATH`,
-and `tests/probes-readonly.bats` over each path-extraction form;
+flag (FR-5), the payload `cwd` and `tool_input.command` as its arguments, prints
+an outcome token on its first line and `key=value` lines after it; the verdict
+function reads both, and the flag. Three probes: lock existence and holder
+(`git-lock`, `config-lock`) and path writability (`readonly-path`), which also
+reports the command facts and the partial-merge files its acts depend on (D-17).
+Each probe is proved once against a live reproduction before it ships; the
+reproduction is recorded in `references/`. Where · pinned by: `lib/probes.sh`,
+`lib/probes-readonly.sh` · `tests/probes*.bats` over synthetic trees, with a
+character device at the lock path and no holder tool on `PATH`, and
+`tests/probes-readonly.bats` over each path-extraction form;
 `tests/hook-locks.bats` and `tests/hook-candidates.bats` over the hook's calls.
 Done.
 
@@ -96,15 +98,15 @@ both flag values against that policy. Done.
 
 **FR-6 — Verdict text.** Each verdict is a short paragraph of acts the agent
 performs, under 400 characters before a probe value (a path, a pid) is
-interpolated, and no verdict instructs removing anything (D-7). Verdicts compose
-in catalogue order; the two `phantom-*` listing verdicts share one paragraph
-when both fire, and a paragraph that would push `additionalContext` past 2 KB is
-dropped while its human line is kept. The human line on `systemMessage` is one
-lowercase clause. No verdict quotes a diagnostic together with its follow-on
-sentence. Where · pinned by: `lib/verdicts.sh` · `tests/verdicts.bats` asserts
-length with no probe lines on stdin and runs `detect` over every verdict text
-expecting silence; `tests/hook-cap.bats` asserts the 2 KB cap with stub
-paragraphs. Done.
+interpolated, stating only the acts the script found apply (D-17), and no
+verdict instructs removing anything (D-7). Verdicts compose in catalogue order;
+the two `phantom-*` listing verdicts share one paragraph when both fire, and a
+paragraph that would push `additionalContext` past 2 KB is dropped while its
+human line is kept. The human line on `systemMessage` is one lowercase clause.
+No verdict quotes a diagnostic together with its follow-on sentence. Where ·
+pinned by: `lib/verdicts.sh` · `tests/verdicts.bats` asserts length with no
+probe lines on stdin and runs `detect` over every verdict text expecting
+silence; `tests/hook-cap.bats` asserts the 2 KB cap with stub paragraphs. Done.
 
 **FR-7 — Detector catalogue.** Ten detectors, in
 [references/detectors.md](references/detectors.md): five measured and shipped
@@ -247,12 +249,9 @@ a `git status` line give 57 with one false positive. `config-lock` and
 `phantom-gitadd` anchor at line start for the same reason: the pilot's own
 reports echo the strings behind a `> ` marker.
 
-**D-6 — Probes run in the hook and inject the verdict, not the test.** The
-memory's longest section taught a three-way test for the lock error whose first
-step was an unsandboxed `ls`. The hook performs it. A probe that has never
-returned what the memory claims is an assertion, not evidence, so each is proved
-once live. Accepted tradeoff: a holder check costs a few hundred milliseconds on
-a hook that otherwise costs nothing.
+**D-6 — Probes run in the hook and inject the verdict, not the test.** Each
+probe is proved once live before it ships. Argued in
+[references/hook.md](references/hook.md).
 
 **D-7 — Verdict wording follows the directive rules.** `additionalContext` is a
 directive channel, so imperative acts are correct there: "re-run the same
@@ -304,23 +303,13 @@ fact before it gains the hook, until the plugin is released and installed there.
 **D-12 — `jq` is a dependency.** Parsing the payload by hand in bash 3.2 is
 where hooks go wrong; the release toolkit's version guard already requires it.
 
-**D-13 — Failures arrive on `PostToolUseFailure`.** In the CC 2.1.280 bundle the
-Bash tool raises on a non-zero exit, and the tool-failure path dispatches
-`PostToolUseFailure` with the result text in an `error` string — the exit code
-line, then the command's output. `PostToolUse` carries `tool_response` and fires
-only on success. The Bash tool merges stderr into stdout in emission order, so
-`tool_response.stderr` arrives empty; recorded live 2026-09-23, sandboxed and
-unsandboxed, both payloads byte-identical to the tool result the model sees.
-Nearly every symptom here is a failing command, so a `PostToolUse`-only hook
-would see just the piped cases. Both events accept `additionalContext`.
-Reopen-if: a recorded live payload of either event does not reproduce the text
-shape the fixtures were cut from.
+**D-13 — Failures arrive on `PostToolUseFailure`.** A non-zero exit fires
+`PostToolUseFailure` with the text in `error`, a success `PostToolUse`; the hook
+takes both. Argued in [references/hook.md](references/hook.md).
 
-**D-14 — A lock with no holder check is `unknown`, not `orphan`.** The holder
-check is `lsof -t`, then `fuser`; the Linux dev box has only the latter. With
-neither, or a failed check, the verdict reports the lock's presence and carries
-no removal instruction: a held lock also fails an identical retry, so degrading
-to `orphan` would hand it the instruction the plugin exists to withhold.
+**D-14 — A lock with no holder check is `unknown`, not `orphan`.** It reports
+presence with no removal instruction. Argued in
+[references/lock-detectors.md](references/lock-detectors.md).
 
 **D-15 — Candidate ship rule.** A candidate ships when the replay finds at least
 one true positive and every false positive is classified as self-reference
@@ -335,6 +324,17 @@ what actually fired.
 its own directory stripped, and `.envrc` adds `.bin` last so it sits ahead of
 the gitlore launcher. The marketplace route clones with submodules and aborts on
 the memory submodule's relative url, and the flag typed by hand is forgotten.
+
+**D-17 — The script decides conditions.** Text a hook emits for the agent
+carries no conditional the script could evaluate itself. The probe or the
+verdict decides which acts apply — from the flag, the command, the path and
+probed state — and the paragraph states only those, probed values filled in: a
+lock mask names the re-run its flag calls for, a partial merge names the files
+that match its target. A condition the stateless hook cannot see stays in the
+text: a repeat failure, which only a second call reveals. The command shapes
+wording only; detection never reads it (D-1). Accepted tradeoff: the wording
+depends on parsing a shell command, whose residuals `references/` names beside
+each fact.
 
 ## Rejected alternatives
 

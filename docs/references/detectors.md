@@ -164,6 +164,24 @@ unquoted path holding two straight quotes is read as what lies between them.
 | `readonly` | not writable outside either |
 | `nopath` | no path extracted |
 
+The probe also takes the payload's `tool_input.command` as its third argument
+and, under `writable` and `nopath`, prints the facts the verdict's acts depend
+on. The command shapes the wording only; detection never reads it (D-1).
+
+| key | printed when |
+|---|---|
+| `merge=1` | a git segment of the command runs `merge`, `pull`, `checkout`, `switch`, `rebase` or `cherry-pick`, after any global options; or the text holds git's `unable to unlink old` or `unable to create file` error |
+| `target=<ref>` | with `merge=1`: the first word after a `merge`, `checkout` or `switch` subcommand, before any `--`, that resolves to a commit |
+| `match=<file>` | with `target=`: one line per file modified against HEAD, staged or not, whose working-tree content equals the target's |
+| `readfile=<path>` | every command in the call's pipelines and lists is a reader — `cat`, `head`, `tail`, `grep`, `sed` without in-place editing, `awk`, `cut`, `sort`, `uniq`, `wc`, `tr`, `less` — with no output redirection, and an argument has a command-output name: `*.log`, `*.output`, `*.out`, `*.err` |
+
+The repository for `target=` and `match=` is the one holding the path's nearest
+existing directory, else the payload `cwd`'s. Git reads run with optional locks
+off, so the probe writes nothing (NFR-4). Word splitting is safe for `target=`,
+since a ref name holds no blank; `readfile=` honours single and double quotes.
+Residuals: a file whose name holds a newline is never a `match=`; a reader
+behind a `cd` or a variable assignment is not recognised.
+
 **Live reproduction (2026-09-26): `writable`.** Scratch repo under
 `/tmp/claude/` with a linked worktree directly under `/tmp/`, outside the
 sandbox's write allowlist, both made unsandboxed; CC 2.1.281, `/bin/sh` dash. A
@@ -177,24 +195,36 @@ worktree was removed unsandboxed.
 **Verdicts.**
 
 - `writable` — `<path>` is writable outside the sandbox, whose allowlist refused
-  it. If a merge or checkout died, files it wrote sit at the target, HEAD
-  unmoved, blocking a re-run: restore them from HEAD once they match the target.
-  Then re-run the whole call unsandboxed or, if it only read a command-output
-  file (a `*.log`), the command that wrote it. For `.claude/settings.json`, use
-  the `update-config` skill. · `read-only — sandbox allowlist, writable outside`
+  it. Then the tail below. · `read-only — sandbox allowlist, writable outside`
 - `readonly` — `<path>` is not writable outside the sandbox either; this is not
   a sandbox effect. Unsandboxing will not help: write somewhere writable, or ask
   before changing its permissions. · `read-only — real`
-- `nopath` — The sandbox's write allowlist most likely refused this write, then
-  the `writable` paragraph from `If a merge` on. ·
-  `read-only — probably the sandbox, path not checked`
+- `nopath` — The sandbox's write allowlist most likely refused this write. Then
+  the tail below. · `read-only — probably the sandbox, path not checked`
 
-The read clause covers the corpus's command-output reads below: the refusal in
-such a file came from the call that wrote it, so re-running the read changes
-nothing. The merge clause states the tree's state and the order of acts and
-removes nothing: a fast-forward re-run over files already at the target is
-refused (`tests/verdict-premises.bats`), and the untracked files the target
-added are left to the skill's recovery procedure.
+The tail is one act, the first of these whose fact the probe printed:
+
+- `readfile=` — re-run the command that wrote `<readfile>`
+- `path=` names a `.claude/settings.json` (`writable` only) — write
+  `.claude/settings.json` through the `update-config` skill
+- otherwise — re-run the whole call with `dangerouslyDisableSandbox: true`
+
+Without `merge=1` the act stands alone as its own sentence, capitalised. With
+it, a merge clause leads into the act, lowercase, by the probe's facts:
+
+- `match=` lines — The merge or checkout left files at the target with HEAD
+  unmoved, blocking a re-run: restore `<a>`, `<b>` from HEAD — they match
+  `<target>` —, then *act*. Five names at most, then `and N more`.
+- no `target=` — The merge or checkout left the files it wrote with HEAD
+  unmoved, blocking a re-run: restore them from HEAD, then *act*.
+- `target=` and no `match=` — no clause: nothing sits at the target to restore.
+
+The read act covers the corpus's command-output reads below: the refusal in such
+a file came from the call that wrote it, so re-running the read changes nothing.
+The merge clause states the tree's state and the order of acts and removes
+nothing: a fast-forward re-run over files already at the target is refused
+(`tests/verdict-premises.bats`), and the untracked files the target added are
+left to the skill's recovery procedure.
 
 **Corpus.** 162 hits, 161 true, 1 the residual (`mkdir` of a path directly under
 `/`, left by an empty variable). 99% on 2026-09-25; 11 hits this project's
@@ -299,8 +329,8 @@ into smaller calls. Escape the sandbox only after both. ·
 ## Translation map
 
 Where each section of `memory/ddaanet/sandbox-effects.md` lands. Every paragraph
-must map before the file is deleted (FR-10); the audit that confirms it is a
-Phase 6 step.
+must map before the file is deleted (FR-10); the audit that confirms it is Item
+8.2 of the build runbook.
 
 | memory section | lands in |
 |---|---|
