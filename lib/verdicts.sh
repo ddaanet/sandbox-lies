@@ -15,7 +15,7 @@ verdict_phantom_chardev() {
 
 verdict_phantom_untracked() {
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  printf '%s\n' 'The character-device entries in this listing are sandbox masks over dotfiles in the project root, not files in the repository. Leave them out of every add, delete and report. With no sandboxed command running in the background, `ls -a` and `git status` run unsandboxed show the real tree. A cleanliness check that reads these `??` lines as dirty is reading the sandbox, not the tree.'
+  printf '%s\n' 'The dotfile entries in this listing are sandbox masks over dotfiles in the project root, not files in the repository. Leave them out of every add, delete and report. With no sandboxed command running in the background, `ls -a` and `git status` run unsandboxed show the real tree. A cleanliness check that reads these `??` lines as dirty is reading the sandbox, not the tree.'
   printf '%s\n' 'phantom dotfiles — masks listed as untracked'
 }
 
@@ -101,7 +101,7 @@ _verdict_lock_present() {
 # `\1` or a leading `-` pass through byte-exact; a backtick in it closes the
 # code span early, bytes intact. nopath has no path= line under the contract
 # and opens with its own sentence. detectors.md defines nopath's rest as the
-# writable paragraph from "A merge" on, hence the one `tail` literal. An
+# writable paragraph from "If a merge" on, hence the one `tail` literal. An
 # outcome with no text here prints nothing, as an unmatched lock outcome does.
 verdict_readonly_path() {
   local outcome="$1" line path='' subject tail
@@ -116,10 +116,10 @@ verdict_readonly_path() {
     subject='The path'
   fi
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  tail=' A merge or checkout that died here may be partial: compare modified files against the target, then re-run the whole call with `dangerouslyDisableSandbox: true` or, if it only read a command-output file such as a `*.log`, the command that wrote that file. For `.claude/settings.json`, use the `update-config` skill.'
+  tail=' If a merge or checkout died, files it wrote sit at the target, HEAD unmoved, blocking a re-run: restore them from HEAD once they match the target. Then re-run the whole call unsandboxed or, if it only read a command-output file (a `*.log`), the command that wrote it. For `.claude/settings.json`, use the `update-config` skill.'
   case "$outcome" in
     writable)
-      printf '%s\n' "$subject is writable outside the sandbox, whose allowlist refused the write.$tail"
+      printf '%s\n' "$subject is writable outside the sandbox, whose allowlist refused it.$tail"
       printf '%s\n' 'read-only — sandbox allowlist, writable outside'
       ;;
     readonly)
@@ -128,7 +128,7 @@ verdict_readonly_path() {
       ;;
     nopath)
       printf '%s\n' "The sandbox's write allowlist most likely refused this write.$tail"
-      printf '%s\n' 'read-only — sandbox allowlist'
+      printf '%s\n' 'read-only — probably the sandbox, path not checked'
       ;;
   esac
 }

@@ -91,9 +91,10 @@ with only two names.
 
 **Probe.** None.
 
-**Verdict.** As `phantom-chardev`, with: a cleanliness check that reads these
-`??` lines as dirty is reading the sandbox, not the tree. ·
-`phantom dotfiles — masks listed as untracked`
+**Verdict.** As `phantom-chardev`, opening "The dotfile entries" in place of
+"The character-device entries", since a status lists names and not modes, with:
+a cleanliness check that reads these `??` lines as dirty is reading the sandbox,
+not the tree. · `phantom dotfiles — masks listed as untracked`
 
 **Flag policy.** As `phantom-chardev`.
 
@@ -176,21 +177,24 @@ worktree was removed unsandboxed.
 **Verdicts.**
 
 - `writable` — `<path>` is writable outside the sandbox, whose allowlist refused
-  the write. A merge or checkout that died here may be partial: compare modified
-  files against the target, then re-run the whole call with
-  `dangerouslyDisableSandbox: true` or, if it only read a command-output file
-  such as a `*.log`, the command that wrote that file. For
-  `.claude/settings.json`, use the `update-config` skill. ·
-  `read-only — sandbox allowlist, writable outside`
+  it. If a merge or checkout died, files it wrote sit at the target, HEAD
+  unmoved, blocking a re-run: restore them from HEAD once they match the target.
+  Then re-run the whole call unsandboxed or, if it only read a command-output
+  file (a `*.log`), the command that wrote it. For `.claude/settings.json`, use
+  the `update-config` skill. · `read-only — sandbox allowlist, writable outside`
 - `readonly` — `<path>` is not writable outside the sandbox either; this is not
   a sandbox effect. Unsandboxing will not help: write somewhere writable, or ask
   before changing its permissions. · `read-only — real`
 - `nopath` — The sandbox's write allowlist most likely refused this write, then
-  the `writable` paragraph from `A merge` on. · `read-only — sandbox allowlist`
+  the `writable` paragraph from `If a merge` on. ·
+  `read-only — probably the sandbox, path not checked`
 
 The read clause covers the corpus's command-output reads below: the refusal in
 such a file came from the call that wrote it, so re-running the read changes
-nothing.
+nothing. The merge clause states the tree's state and the order of acts and
+removes nothing: a fast-forward re-run over files already at the target is
+refused (`tests/verdict-premises.bats`), and the untracked files the target
+added are left to the skill's recovery procedure.
 
 **Corpus.** 162 hits, 161 true, 1 the residual (`mkdir` of a path directly under
 `/`, left by an empty variable). 99% on 2026-09-25; 11 hits this project's

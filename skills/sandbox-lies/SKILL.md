@@ -116,9 +116,10 @@ A sandboxed `git merge --ff-only` or `git checkout <branch>` that dies on a
 harness-mounted file — the session's live `hooks/hooks.json`, held read-only
 whatever the write allowlist says — updates every other file it processed to the
 target's content while HEAD stays at the pre-merge commit. Git does not roll
-them back. (A merge refused on a sibling worktree, outside the write allowlist
-altogether, was seen to abort cleanly, with no `MERGE_HEAD`.) Recover before
-retrying:
+them back, and a plain re-run refuses them, as it refuses the files the target
+adds once they exist untracked. (A merge refused on a sibling worktree, outside
+the write allowlist altogether, was seen to abort cleanly, with no
+`MERGE_HEAD`.) Recover before retrying:
 
 1. `git status`, and diff each modified file against the merge target
    (`git diff <target> -- <file>`).

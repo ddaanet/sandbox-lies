@@ -125,7 +125,7 @@ run_hook() {
   sys=$(printf '%s' "$output" | jq -r '.systemMessage')
   printf '%s' "$ctx" | grep -qF '/r/x'
   printf '%s' "$ctx" | grep -qF 'is writable outside the sandbox'
-  printf '%s' "$ctx" | grep -qF 'compare modified files against the target'
+  printf '%s' "$ctx" | grep -qF 'restore them from HEAD once they match the target'
   [ "$sys" = 'read-only — sandbox allowlist, writable outside' ]
 }
 
@@ -158,8 +158,8 @@ run_hook() {
   ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
   sys=$(printf '%s' "$output" | jq -r '.systemMessage')
   printf '%s' "$ctx" | grep -qF 'write allowlist'
-  printf '%s' "$ctx" | grep -qF 'compare modified files against the target'
-  [ "$sys" = 'read-only — sandbox allowlist' ]
+  printf '%s' "$ctx" | grep -qF 'restore them from HEAD once they match the target'
+  [ "$sys" = 'read-only — probably the sandbox, path not checked' ]
 }
 
 @test "tmpdir-unset flag policy survives BSD grep and sed" {

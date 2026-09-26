@@ -65,13 +65,13 @@ $text"
 }
 
 # readonly_path_tail — detectors.md's readonly-path `writable`
-# paragraph from "A merge" on, leading blank included: the writable
+# paragraph from "If a merge" on, leading blank included: the writable
 # paragraph's tail, and the rest of the nopath paragraph, which the doc
 # defines as its opening sentence "then the `writable` paragraph from
-# `A merge` on".
+# `If a merge` on".
 readonly_path_tail() {
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  printf '%s' ' A merge or checkout that died here may be partial: compare modified files against the target, then re-run the whole call with `dangerouslyDisableSandbox: true` or, if it only read a command-output file such as a `*.log`, the command that wrote that file. For `.claude/settings.json`, use the `update-config` skill.'
+  printf '%s' ' If a merge or checkout died, files it wrote sit at the target, HEAD unmoved, blocking a re-run: restore them from HEAD once they match the target. Then re-run the whole call unsandboxed or, if it only read a command-output file (a `*.log`), the command that wrote it. For `.claude/settings.json`, use the `update-config` skill.'
 }
 
 @test "verdicts under 400 chars" {
@@ -110,9 +110,10 @@ readonly_path_tail() {
   # Transcribed from docs/references/detectors.md's Verdict paragraphs, not
   # copied from lib/verdicts.sh: a mismatch between the two must red here.
   # The phantom-untracked paragraph is documented there as "As
-  # `phantom-chardev`, with: <addition>" — the chardev paragraph plus the
-  # addition, not that sentence transcribed literally.
-  local chardev_para addition line1 line2
+  # `phantom-chardev`, opening "The dotfile entries", with: <addition>" —
+  # the chardev paragraph under that subject plus the addition, not that
+  # sentence transcribed literally.
+  local chardev_para untracked_para addition line1 line2
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   chardev_para='The character-device entries in this listing are sandbox masks over dotfiles in the project root, not files in the repository. Leave them out of every add, delete and report. With no sandboxed command running in the background, `ls -a` and `git status` run unsandboxed show the real tree.'
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
@@ -125,7 +126,9 @@ readonly_path_tail() {
 
   line1=$(verdict_text phantom_untracked - | sed -n '1p')
   line2=$(verdict_text phantom_untracked - | sed -n '2p')
-  [ "$line1" = "${chardev_para} ${addition}" ]
+  untracked_para=${chardev_para/#The character-device entries/The dotfile entries}
+  [ "$untracked_para" != "$chardev_para" ]
+  [ "$line1" = "${untracked_para} ${addition}" ]
   [ "$line2" = 'phantom dotfiles — masks listed as untracked' ]
 
   line1=$(verdict_text phantom_gitadd - | sed -n '1p')
@@ -167,7 +170,7 @@ readonly_path_tail() {
   # the placeholder; with no path= line it is "The path".
   local p rest text line1 line2
   p='/r/a b&c\1/x'
-  rest=" is writable outside the sandbox, whose allowlist refused the write.$(readonly_path_tail)"
+  rest=" is writable outside the sandbox, whose allowlist refused it.$(readonly_path_tail)"
   # shellcheck disable=SC1090 # $VERDICTS is lib/verdicts.sh, resolved above
   text=$(printf '%s\n' "path=$p" | ( . "$VERDICTS"; verdict_readonly_path writable ))
   line1=$(printf '%s\n' "$text" | sed -n '1p')
@@ -201,13 +204,13 @@ readonly_path_tail() {
 @test "readonly-path nopath verdict text matches detectors.md" {
   # Transcribed from docs/references/detectors.md's readonly-path Verdicts
   # list: nopath's opening sentence, then the writable paragraph from
-  # "A merge" on, as the doc defines it. No path= line: the probe contract
+  # "If a merge" on, as the doc defines it. No path= line: the probe contract
   # gives none for nopath.
   local line1 line2
   line1=$(verdict_text readonly_path nopath | sed -n '1p')
   line2=$(verdict_text readonly_path nopath | sed -n '2p')
   [ "$line1" = "The sandbox's write allowlist most likely refused this write.$(readonly_path_tail)" ]
-  [ "$line2" = 'read-only — sandbox allowlist' ]
+  [ "$line2" = 'read-only — probably the sandbox, path not checked' ]
 }
 
 @test "lock verdict text matches lock-detectors.md" {
