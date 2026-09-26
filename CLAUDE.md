@@ -5,10 +5,10 @@ sandbox distorts, and `skills/sandbox-lies/` carries what has no symptom in the
 output. Design and per-detector mechanism: `docs/design.md`, `docs/references/`.
 
 - **Run `just precommit` before every commit** and read its own exit status. It
-  runs shellcheck, `bash -n`, the rumdl wrap check, the line caps, the link
-  check and the bats suites. `just format-docs` re-wraps markdown. After an
-  `.envrc` edit, run it as `direnv exec . just precommit` until direnv is
-  re-allowed.
+  parses the two JSON manifests, then runs shellcheck, `bash -n`, the rumdl wrap
+  check, the line caps, the link check and the bats suites. `just format-docs`
+  re-wraps markdown. After an `.envrc` edit, run it as
+  `direnv exec . just precommit` until direnv is re-allowed.
 - **No live file may fire a detector.** `tests/docs.bats` runs the matchers over
   every tracked file outside `tests/fixtures/` and three dated pilot files under
   `plans/`. Describe a diagnostic instead of quoting it with its follow-on text;

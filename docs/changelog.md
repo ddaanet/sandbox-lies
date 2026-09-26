@@ -147,3 +147,21 @@ and sibling-worktree sections left `memory/ddaanet/sandbox-effects.md`; the
 merge-recovery procedure stays under its own heading for the skill, cost 3 keeps
 its recipe guidance without the quoted diagnostic, and the sibling section's
 classifier note moved into cost 2.
+
+## 2026-09-26 — the skill shipped; the memory file down to zellij
+
+`skills/sandbox-lies/` carries the symptom-less knowledge: `excludedCommands`
+semantics, the escapes and their costs, `$TMPDIR` scoping, cleanliness gates
+over the masks, the `!`-expansion path, merge recovery, `ps`, and `claude` under
+the sandbox. Every skill-mapped section left
+`memory/ddaanet/sandbox-effects.md`, which keeps its context paragraph and the
+zellij section, the detector-mapped part of a candidate that did not ship; Item
+8.2's deletion waits on it. The `readonly-path` partial-merge clause now states
+the tree's state and the order of acts — files already at the target, HEAD
+unmoved, a re-run refused, restore from HEAD then re-run — and removes nothing;
+`tests/verdict-premises.bats` pins git's refusal. `nopath`'s human line says the
+path went unchecked, and `phantom-untracked` opens on dotfile entries, since a
+status lists names and not modes. `README.md`, an MIT `LICENSE` and a
+`CLAUDE.md` body for agents working in the repository shipped in the same phase;
+the README installs by `--plugin-dir`, since a marketplace install aborts on the
+memory submodule's placeholder url.

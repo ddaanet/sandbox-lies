@@ -2,8 +2,8 @@
 
 **Status:** Partial. Built and tested: the hook, the `phantom-*` and lock
 verdicts, the hook's lock-probe call, the `tmpdir-unset`, `resume-lost` and
-`seccomp-init` verdicts, and the `readonly-path` verdicts with the hook's call
-to their probe. Nothing dogfooded. **Verified against:**
+`seccomp-init` verdicts, the `readonly-path` verdicts with the hook's call to
+their probe, and the skill. Nothing dogfooded. **Verified against:**
 `52e6dd82b831a1cc2b7b516d4c248df6fb1ebc8c` (2026-09-22).
 
 Changelog: [changelog.md](changelog.md). This document is a hub; `references/`
@@ -139,8 +139,8 @@ phantom-listing rule, folded into the existing phantom-dotfile bullet of
 `memory/ddaanet/shared-claude.md`. Where · pinned by: the tier's index ·
 `tests/docs.bats` fails if a live pointer (`hooks/`, `lib/`, `skills/`, `tests/`
 outside fixtures, `CLAUDE.md`, `README.md`) still names the retired path.
-Partial (phantom, `/tmp`, lock, `$TMPDIR`-unset, `--resume`, sandbox-setup,
-harness-mounted and sibling-worktree sections retired; rest: Items 7.1, 8.2).
+Partial (every section retired but zellij, whose detector stays a candidate;
+file deletion: Item 8.2).
 
 **FR-11 — Self-quiet.** No live file in this repository fires a detector when
 read back. Source files build each diagnostic literal from fragments so the

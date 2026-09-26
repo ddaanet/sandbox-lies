@@ -61,6 +61,7 @@ partly_applied() {
 
   [ "$status" -ne 0 ]
   [ "$(git -C "$REPO" rev-parse HEAD)" = "$BASE" ]
+  [ "$(cat "$REPO/a.txt")" = 'a base' ]
 }
 
 @test "restored from HEAD, the whole fast-forward re-runs cleanly" {
