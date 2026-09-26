@@ -141,14 +141,29 @@ _verdict_lock_present() {
 # plain expansion — never a printf format, sed or eval — so blanks, `&`, `%`,
 # `\1` or a leading `-` pass through byte-exact; a backtick in it closes the
 # code span early, bytes intact. nopath has no path= line under the contract
-# and opens with its own sentence. detectors.md defines nopath's rest as the
-# writable paragraph from "If a merge" on, hence the one `tail` literal. An
-# outcome with no text here prints nothing, as an unmatched lock outcome does.
+# and opens with its own sentence.
+#
+# writable and nopath then carry a composed tail (detectors.md's readonly-path
+# Verdicts tail and merge-clause composition), built from the probe's other
+# stdin facts: the act is the first of readfile= (re-run the writer), a
+# writable path= naming `.claude/settings.json` (the update-config skill), or
+# the plain whole-call re-run; a merge=1 fact leads a lowercase copy of that
+# act with a restore clause naming the target= and match= files (five names,
+# then "and N more"), or "restore them" with no target=, or nothing at all
+# with a target= and no match=, in which case the act stands alone,
+# capitalised, as it does with no merge=1. readonly ignores every fact but
+# path=. An outcome with no text here prints nothing, as an unmatched lock
+# outcome does.
 verdict_readonly_path() {
-  local outcome="$1" line path='' subject tail
+  local outcome="$1" line path='' readfile='' merge='' target=''
+  local matches=() subject act act_low rest
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in
       path=*) path=${line#path=} ;;
+      readfile=*) readfile=${line#readfile=} ;;
+      merge=*) merge=${line#merge=} ;;
+      target=*) target=${line#target=} ;;
+      match=*) matches+=("${line#match=}") ;;
     esac
   done
   if [ -n "$path" ]; then
@@ -156,11 +171,46 @@ verdict_readonly_path() {
   else
     subject='The path'
   fi
-  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  tail=' If a merge or checkout died, files it wrote sit at the target, HEAD unmoved, blocking a re-run: restore them from HEAD once they match the target. Then re-run the whole call unsandboxed or, if it only read a command-output file (a `*.log`), the command that wrote it. For `.claude/settings.json`, use the `update-config` skill.'
+
+  case "$outcome" in
+    writable | nopath)
+      if [ -n "$readfile" ]; then
+        # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+        act="Re-run the command that wrote \`$readfile\`."
+        # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+        act_low="re-run the command that wrote \`$readfile\`."
+      else
+        case "$outcome:$path" in
+          writable:*/.claude/settings.json)
+            # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+            act='Write `.claude/settings.json` through the `update-config` skill.'
+            # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+            act_low='write `.claude/settings.json` through the `update-config` skill.'
+            ;;
+          *)
+            # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+            act='Re-run the whole call with `dangerouslyDisableSandbox: true`.'
+            # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+            act_low='re-run the whole call with `dangerouslyDisableSandbox: true`.'
+            ;;
+        esac
+      fi
+      rest=" $act"
+      if [ -n "$merge" ]; then
+        if [ -n "$target" ]; then
+          if [ "${#matches[@]}" -gt 0 ]; then
+            rest=" The merge or checkout left files at the target with HEAD unmoved, blocking a re-run: restore $(_readonly_match_list "${matches[@]}") from HEAD — they match \`$target\` —, then $act_low"
+          fi
+        else
+          rest=" The merge or checkout left the files it wrote with HEAD unmoved, blocking a re-run: restore them from HEAD, then $act_low"
+        fi
+      fi
+      ;;
+  esac
+
   case "$outcome" in
     writable)
-      printf '%s\n' "$subject is writable outside the sandbox, whose allowlist refused it.$tail"
+      printf '%s\n' "$subject is writable outside the sandbox, whose allowlist refused it.$rest"
       printf '%s\n' 'read-only — sandbox allowlist, writable outside'
       ;;
     readonly)
@@ -168,10 +218,29 @@ verdict_readonly_path() {
       printf '%s\n' 'read-only — real'
       ;;
     nopath)
-      printf '%s\n' "The sandbox's write allowlist most likely refused this write.$tail"
+      printf '%s\n' "The sandbox's write allowlist most likely refused this write.$rest"
       printf '%s\n' 'read-only — probably the sandbox, path not checked'
       ;;
   esac
+}
+
+# _readonly_match_list <name...> — the restore clause's file list: each name
+# in backticks, comma-joined, capped at the first five with "and N more"
+# appended past that (detectors.md leaves the comma before "and" open).
+_readonly_match_list() {
+  local names='' extra=0 i=0 m
+  for m in "$@"; do
+    i=$((i + 1))
+    if [ "$i" -le 5 ]; then
+      names="${names:+$names, }\`$m\`"
+    else
+      extra=$((extra + 1))
+    fi
+  done
+  if [ "$extra" -gt 0 ]; then
+    names="$names and $extra more"
+  fi
+  printf '%s' "$names"
 }
 
 # The shipped candidates. Each takes no outcome, as the phantom verdicts do;

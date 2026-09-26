@@ -113,7 +113,9 @@ run_hook() {
 }
 
 @test "writable outcome through the hook" {
-  stub_probe_kv readonly_path writable 'path=/r/x'
+  # The probe's fact lines after the outcome reach the verdict's stdin: the
+  # merge=1 line selects the merge clause.
+  stub_probe_kv readonly_path writable 'path=/r/x' 'merge=1'
   local text payload ctx sys
   text=$(cat "$FIXTURES/fire-readonly-path-cp-tmp.txt")
   payload=$(failure_payload "$text")
@@ -125,7 +127,8 @@ run_hook() {
   sys=$(printf '%s' "$output" | jq -r '.systemMessage')
   printf '%s' "$ctx" | grep -qF '/r/x'
   printf '%s' "$ctx" | grep -qF 'is writable outside the sandbox'
-  printf '%s' "$ctx" | grep -qF 'restore them from HEAD once they match the target'
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  printf '%s' "$ctx" | grep -qF 'restore them from HEAD, then re-run the whole call with `dangerouslyDisableSandbox: true`.'
   [ "$sys" = 'read-only — sandbox allowlist, writable outside' ]
 }
 
@@ -157,9 +160,62 @@ run_hook() {
   [ -f "$PROBE_CALLED" ]
   ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
   sys=$(printf '%s' "$output" | jq -r '.systemMessage')
-  printf '%s' "$ctx" | grep -qF 'write allowlist'
-  printf '%s' "$ctx" | grep -qF 'restore them from HEAD once they match the target'
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  [ "$ctx" = "The sandbox's write allowlist most likely refused this write. Re-run the whole call with \`dangerouslyDisableSandbox: true\`." ]
   [ "$sys" = 'read-only — probably the sandbox, path not checked' ]
+}
+
+@test "every probe receives tool_input.command byte-exact" {
+  # A stub probe records its own $@: a dropped or garbled third argument
+  # records differently from the byte-exact command the hook must pass, and a
+  # non-string tool_input.command, none at all, or a tool_input that is not
+  # an object must read as empty rather than being dropped or silencing the
+  # hook. The command holds a leading `-`, a newline, and the backslash
+  # sequences `\n` and `\\` that `printf %b` would rewrite unless each
+  # backslash is doubled as the cwd's are.
+  local text recorded body cmd payload
+  recorded="$BATS_TEST_TMPDIR/probe-readonly_path-args"
+  # shellcheck disable=SC2016 # "$@" is literal, expanded when the stub runs
+  body='probe_readonly_path() { cat >/dev/null; printf "[%s]" "$@" >'"$(printf '%q' "$recorded")"'; printf "%s\n" writable; }'
+  stub_lib probes.sh "$body"
+  text=$(cat "$FIXTURES/fire-readonly-path-cp-tmp.txt")
+  cmd=$'-n a\\nb \\\\ c\nz'
+
+  payload=$(failure_payload "$text" | jq --arg c "$cmd" '.tool_input.command = $c')
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$recorded")" = "[false][/tmp/scratch][$cmd]" ]
+
+  rm -f "$recorded"
+  payload=$(failure_payload "$text" | jq '.tool_input.command = 42')
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$recorded")" = '[false][/tmp/scratch][]' ]
+
+  rm -f "$recorded"
+  payload=$(failure_payload "$text" | jq 'del(.tool_input.command)')
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$recorded")" = '[false][/tmp/scratch][]' ]
+
+  rm -f "$recorded"
+  payload=$(failure_payload "$text" | jq '.tool_input = "cp a /tmp/x"')
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  [ -n "$output" ]
+  [ "$(cat "$recorded")" = '[false][/tmp/scratch][]' ]
+
+  # A lock probe takes the same third argument: the hook passes it to every
+  # probe, not to readonly-path's alone.
+  recorded="$BATS_TEST_TMPDIR/probe-git_lock-args"
+  # shellcheck disable=SC2016 # "$@" is literal, expanded when the stub runs
+  body='probe_git_lock() { cat >/dev/null; printf "[%s]" "$@" >'"$(printf '%q' "$recorded")"'; printf "%s\n" mask; }'
+  stub_lib probes.sh "$body"
+  text=$(cat "$FIXTURES/fire-lock-add-commit.txt")
+  payload=$(failure_payload "$text" | jq --arg c "$cmd" '.tool_input.command = $c')
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$recorded")" = "[false][/tmp/scratch][$cmd]" ]
 }
 
 @test "tmpdir-unset flag policy survives BSD grep and sed" {

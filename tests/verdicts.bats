@@ -139,8 +139,8 @@ load helpers/verdicts
 
 @test "readonly-path nopath verdict text matches detectors.md" {
   # Transcribed from docs/references/detectors.md's readonly-path Verdicts
-  # list: nopath's opening sentence, then the writable paragraph from
-  # "If a merge" on, as the doc defines it. No path= line: the probe contract
+  # list: nopath's opening sentence, then the tail, which with no facts on
+  # stdin is the whole-call re-run alone. No path= line: the probe contract
   # gives none for nopath.
   local line1 line2
   line1=$(verdict_text readonly_path nopath | sed -n '1p')

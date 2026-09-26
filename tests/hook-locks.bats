@@ -163,10 +163,10 @@ assert_lacks() {
   assert_lacks "$ctx" 'age Ns'
 }
 
-@test "probe receives flag and cwd" {
+@test "probe receives flag, cwd and command" {
   # The stub brackets every argument it receives, so an extra argument, a
   # dropped one, or a cwd split on whitespace records differently from the
-  # two the interface names. The last cwd carries a run of spaces and a
+  # three the interface names. The last cwd carries a run of spaces and a
   # backslash, which the hook escapes through jq and undoes with printf %b:
   # `\c` left undecoded, or decoded twice, changes what the probe sees.
   local text recorded body
@@ -176,19 +176,19 @@ assert_lacks() {
   stub_lib probes.sh "$body"
   text=$(cat "$FIXTURES/fire-lock-add-commit.txt")
 
-  run_hook "$(failure_payload "$text" true | jq '.cwd = "/x"')"
+  run_hook "$(failure_payload "$text" true | jq '.cwd = "/x" | .tool_input.command = "c"')"
   [ "$status" -eq 0 ]
-  [ "$(cat "$recorded")" = '[true][/x]' ]
+  [ "$(cat "$recorded")" = '[true][/x][c]' ]
 
   rm -f "$recorded"
-  run_hook "$(failure_payload "$text" | jq '.cwd = "/x"')"
+  run_hook "$(failure_payload "$text" | jq '.cwd = "/x" | .tool_input.command = "c"')"
   [ "$status" -eq 0 ]
-  [ "$(cat "$recorded")" = '[false][/x]' ]
+  [ "$(cat "$recorded")" = '[false][/x][c]' ]
 
   rm -f "$recorded"
-  run_hook "$(failure_payload "$text" | jq --arg c '/a  b\c' '.cwd = $c')"
+  run_hook "$(failure_payload "$text" | jq --arg c '/a  b\c' '.cwd = $c | .tool_input.command = "c"')"
   [ "$status" -eq 0 ]
-  [ "$(cat "$recorded")" = '[false][/a  b\c]' ]
+  [ "$(cat "$recorded")" = '[false][/a  b\c][c]' ]
 }
 
 @test "config-lock mask names config.lock and the settings act by path" {

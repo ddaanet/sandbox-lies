@@ -11,12 +11,14 @@
 # dropping what does not parse; `select(type == "object")` drops a scalar or
 # array, which jq cannot index without a fatal error; only a string field is
 # read as text. The output is the event, the sandbox flag, the payload cwd,
-# then each text part, each ending in a newline, which is the join. The
-# event is printed only when it equals one of the two literal names, the flag
-# is `true` or `false`, and the cwd has each backslash doubled and each
-# newline written `\n` (undone by `printf %b`), so the first three newlines
-# are always the split points for event/flag/cwd. NUL bytes are dropped in
-# jq: bash drops them from a `$(...)` too, but warns on stderr.
+# `tool_input.command`, then each text part, each ending in a newline, which
+# is the join. The event is printed only when it equals one of the two
+# literal names, the flag is `true` or `false`, and the cwd and command each
+# have every backslash doubled and every newline written `\n` (undone by
+# `printf %b`; a non-string or absent command reads empty, as a non-object
+# `tool_input` also does), so the first four newlines are always the split
+# points for event/flag/cwd/command. NUL bytes are dropped in jq: bash drops
+# them from a `$(...)` too, but warns on stderr.
 #
 # Writes nothing (NFR-4): no here-document, which bash before 5.1 spools
 # through a temp file.
@@ -45,23 +47,27 @@ parsed=$(jq -Rrs '
      then "true" else "false" end) as $flag |
     ((.cwd | strings) // "" |
      split("\\") | join("\\\\") | split("\n") | join("\\n")) as $cwd |
+    ((.tool_input | objects | .command | strings) // "" |
+     split("\\") | join("\\\\") | split("\n") | join("\\n")) as $cmd |
     if $event == "PostToolUseFailure" then
-      $event, $flag, $cwd, (.error | strings)
+      $event, $flag, $cwd, $cmd, (.error | strings)
     elif $event == "PostToolUse" then
-      $event, $flag, $cwd,
+      $event, $flag, $cwd, $cmd,
       (.tool_response | objects | (.stdout | strings), (.stderr | strings))
     else empty end |
     split("\u0000") | join("")
   ') || exit 0
 
-event="" flag=false cwd="" text=""
+event="" flag=false cwd="" command="" text=""
 case "$parsed" in
-  *"$nl"*"$nl"*"$nl"*)
+  *"$nl"*"$nl"*"$nl"*"$nl"*)
     event=${parsed%%"$nl"*}
     rest=${parsed#*"$nl"}
     flag=${rest%%"$nl"*}
     rest=${rest#*"$nl"}
     printf -v cwd '%b' "${rest%%"$nl"*}"
+    rest=${rest#*"$nl"}
+    printf -v command '%b' "${rest%%"$nl"*}"
     text=${rest#*"$nl"}
     ;;
 esac
@@ -95,13 +101,14 @@ while IFS= read -r name; do
   declare -F "$fn" >/dev/null || continue
 
   # FR-4: a name whose probe is also defined runs it first, outside the
-  # sandbox, with the result text on stdin and the flag and cwd as its
-  # arguments; the probe's first line becomes the verdict's outcome argument,
-  # any lines after it become the verdict's stdin, and the flag becomes its
-  # second argument (D-17), which a verdict not worded by the flag ignores.
+  # sandbox, with the result text on stdin and the flag, cwd and
+  # tool_input.command as its arguments; the probe's first line becomes the
+  # verdict's outcome argument, any lines after it become the verdict's
+  # stdin, and the flag becomes its second argument (D-17), which a verdict
+  # not worded by the flag ignores.
   probe_fn="probe_${name//-/_}"
   if declare -F "$probe_fn" >/dev/null; then
-    probe_out=$(printf '%s\n' "$text" | "$probe_fn" "$flag" "$cwd") || exit 0
+    probe_out=$(printf '%s\n' "$text" | "$probe_fn" "$flag" "$cwd" "$command") || exit 0
     case "$probe_out" in
       *"$nl"*)
         outcome=${probe_out%%"$nl"*}

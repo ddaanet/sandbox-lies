@@ -88,12 +88,13 @@ text_lacks() {
   [ "$status" -eq 1 ]
 }
 
-# readonly_path_tail — detectors.md's readonly-path `writable`
-# paragraph from "If a merge" on, leading blank included: the writable
-# paragraph's tail, and the rest of the nopath paragraph, which the doc
-# defines as its opening sentence "then the `writable` paragraph from
-# `If a merge` on".
+# readonly_path_tail — detectors.md's readonly-path tail with no facts on
+# stdin: the act alone (no readfile=, path= settings.json, or merge=1), which
+# is the whole-call re-run, capitalised and leading with a blank, as the
+# writable and nopath paragraphs both open onto it. The fact-driven
+# compositions (readfile=, the update-config act, the merge clauses) live in
+# tests/verdicts-readonly.bats.
 readonly_path_tail() {
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  printf '%s' ' If a merge or checkout died, files it wrote sit at the target, HEAD unmoved, blocking a re-run: restore them from HEAD once they match the target. Then re-run the whole call unsandboxed or, if it only read a command-output file (a `*.log`), the command that wrote it. For `.claude/settings.json`, use the `update-config` skill.'
+  printf '%s' ' Re-run the whole call with `dangerouslyDisableSandbox: true`.'
 }
