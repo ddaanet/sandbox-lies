@@ -52,19 +52,21 @@ assert_lacks() {
   [ "$sys" = 'index.lock — sandbox mask, not a real lock' ]
 }
 
-@test "mask paragraph is flag-neutral under flag true" {
-  # A character device under flag true is still mask (a mask visible outside
-  # the sandbox where re-running unsandboxed is a no-op); the wording holds
-  # rather than taking the flag as an argument (lock-detectors.md's git-lock
-  # Flag policy paragraph). Pinned as: flag true yields the same context and
-  # human line as flag false, and that context carries the clause for the
-  # flag-true case.
+@test "mask paragraph words the re-run by the flag" {
+  # D-17: a character device under flag true is still mask (a mask visible
+  # outside the sandbox where re-running unsandboxed is a no-op), but the
+  # *Re-run* wording it carries is now the flag's (lock-detectors.md's
+  # *Re-run*/*Retry* flag table), which hooks/annotate.sh must pass through as
+  # the verdict's $2 alongside the outcome. Neither flag value carries the old
+  # flag-neutral "if it already ran" clause this replaces; the human line
+  # stays the same either way.
   stub_probe git_lock mask
   local text ctx_false sys_false ctx_true sys_true
   text=$(cat "$FIXTURES/fire-lock-add-commit.txt")
 
   run_hook "$(failure_payload "$text" false)"
   [ "$status" -eq 0 ]
+  [ -f "$PROBE_CALLED" ]
   ctx_false=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
   sys_false=$(printf '%s' "$output" | jq -r '.systemMessage')
 
@@ -75,8 +77,14 @@ assert_lacks() {
   ctx_true=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
   sys_true=$(printf '%s' "$output" | jq -r '.systemMessage')
 
+  printf '%s' "$ctx_false" | grep -qF 'dangerouslyDisableSandbox: true'
+  assert_lacks "$ctx_false" 'once no sandboxed'
+  assert_lacks "$ctx_false" 'if it already ran'
+
   printf '%s' "$ctx_true" | grep -qF 'once no sandboxed command is running'
-  [ "$ctx_true" = "$ctx_false" ]
+  assert_lacks "$ctx_true" 'dangerouslyDisableSandbox: true'
+  assert_lacks "$ctx_true" 'if it already ran'
+
   [ "$sys_true" = "$sys_false" ]
 }
 
@@ -183,21 +191,53 @@ assert_lacks() {
   [ "$(cat "$recorded")" = '[false][/a  b\c]' ]
 }
 
-@test "config-lock mask names config.lock and update-config" {
-  stub_probe config_lock mask
-  local text payload ctx
+@test "config-lock mask names config.lock and the settings act by path" {
+  # D-17's config-lock settings act: the update-config act names
+  # `.claude/settings.json` and replaces *Re-run* only when the probe's path=
+  # is that file's lock; any other path (here, the fixture's own
+  # `.git/config.lock`) keeps *Re-run* and never mentions update-config.
+  # Checked under both flags, since the settings act holds "under either
+  # flag" (lock-detectors.md's config-lock Verdicts); the `.git/config.lock`
+  # case's *Re-run* is worded by the flag, so the hook passes it to
+  # verdict_config_lock as it does to verdict_git_lock.
+  local text flag ctx rerun other
   text=$(cat "$FIXTURES/fire-configlock-remote-add.txt")
-  payload=$(failure_payload "$text")
 
-  run_hook "$payload"
-  [ "$status" -eq 0 ]
-  [ -f "$PROBE_CALLED" ]
-  ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
-  # The human line also names config.lock: context carrying it would satisfy
-  # the first grep without the paragraph naming the file.
-  assert_lacks "$ctx" 'sandbox mask, not a real lock'
-  printf '%s' "$ctx" | grep -qF 'config.lock'
-  printf '%s' "$ctx" | grep -qF 'update-config'
+  for flag in false true; do
+    if [ "$flag" = false ]; then
+      # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+      rerun='Re-run the same command with `dangerouslyDisableSandbox: true`'
+      other='once no sandboxed'
+    else
+      rerun='Re-run the same command once no sandboxed command is running'
+      other='dangerouslyDisableSandbox: true'
+    fi
+
+    stub_probe_kv config_lock mask 'path=/r/.git/config.lock'
+    # The previous iteration's settings-path run left the marker behind.
+    rm -f "$PROBE_CALLED"
+    run_hook "$(failure_payload "$text" "$flag")"
+    [ "$status" -eq 0 ]
+    [ -f "$PROBE_CALLED" ]
+    ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
+    # The human line also names config.lock: context carrying it would
+    # satisfy the first grep without the paragraph naming the file.
+    assert_lacks "$ctx" 'sandbox mask, not a real lock'
+    printf '%s' "$ctx" | grep -qF 'config.lock'
+    assert_lacks "$ctx" 'update-config'
+    printf '%s' "$ctx" | grep -qF -- "$rerun"
+    assert_lacks "$ctx" "$other"
+
+    rm -f "$PROBE_CALLED"
+    stub_probe_kv config_lock mask 'path=/r/.claude/settings.json.lock'
+    run_hook "$(failure_payload "$text" "$flag")"
+    [ "$status" -eq 0 ]
+    [ -f "$PROBE_CALLED" ]
+    ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
+    printf '%s' "$ctx" | grep -qF 'config.lock'
+    printf '%s' "$ctx" | grep -qF 'update-config'
+    assert_lacks "$ctx" 'Re-run'
+  done
 }
 
 @test "piped lock failure on a success payload" {

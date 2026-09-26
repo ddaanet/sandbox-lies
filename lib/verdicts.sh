@@ -2,9 +2,13 @@
 # Agent paragraph and human line per verdict. `verdict_<name> [outcome]`
 # reads the probe's key=value lines on stdin (empty when the detector has no
 # probe), and prints the agent paragraph on line 1, the human line on line 2.
-# Phantom verdicts take no outcome argument. Text from
-# docs/references/detectors.md, except git_lock and config_lock, whose text
-# comes from docs/references/lock-detectors.md.
+# Phantom verdicts take no outcome argument. verdict_git_lock and
+# verdict_config_lock also take the flag as a second argument (D-17): absent
+# reads false, and it words the mask/orphan/unknown re-run/retry clause per
+# lock-detectors.md's flag table rather than leaving a condition in the text
+# for the agent to evaluate. Text from docs/references/detectors.md, except
+# git_lock and config_lock, whose text comes from
+# docs/references/lock-detectors.md.
 set -u
 
 verdict_phantom_chardev() {
@@ -25,11 +29,34 @@ verdict_phantom_gitadd() {
   printf '%s\n' 'git add — refused a sandbox mask'
 }
 
+# `_lock_rerun <flag>` / `_lock_retry <flag>` — lock-detectors.md's
+# *Re-run*/*Retry* flag table (D-17). Absent or any value but "true" reads as
+# false. Neither wording carries the old flag-neutral "if it already ran"
+# clause this replaces; _lock_rerun's result is a full sentence (trailing
+# period), _lock_retry's is a clause fragment its caller finishes.
+# shellcheck disable=SC2016 # backticks are literal prose, not expansion
+_lock_rerun() {
+  case "${1:-false}" in
+    true) printf 'Re-run the same command once no sandboxed command is running.' ;;
+    *) printf 'Re-run the same command with `dangerouslyDisableSandbox: true`.' ;;
+  esac
+}
+
+# shellcheck disable=SC2016 # backticks are literal prose, not expansion
+_lock_retry() {
+  case "${1:-false}" in
+    true) printf 'Retry the command once' ;;
+    *) printf 'Retry the command with `dangerouslyDisableSandbox: true`' ;;
+  esac
+}
+
+# `verdict_git_lock <outcome> [flag]` — flag absent reads false (D-17).
 verdict_git_lock() {
-  case "$1" in
+  local outcome="$1" flag="${2:-false}"
+  case "$outcome" in
     mask)
       # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-      printf '%s\n' 'The lock in this error is a sandbox artefact and the repository is healthy. Re-run the same command with `dangerouslyDisableSandbox: true`; if it already ran that way, re-run it once no sandboxed command is running. A repeat failure on a commit whose hook stages files is that hook leaking `GIT_INDEX_FILE`, not the sandbox.'
+      printf '%s\n' "The lock in this error is a sandbox artefact and the repository is healthy. $(_lock_rerun "$flag") A repeat failure on a commit whose hook stages files is that hook leaking \`GIT_INDEX_FILE\`, not the sandbox."
       printf '%s\n' 'index.lock — sandbox mask, not a real lock'
       ;;
     gone)
@@ -37,34 +64,53 @@ verdict_git_lock() {
       printf '%s\n' 'No lock exists now; git cleaned it after the failure. Retry once. A repeat failure on a commit whose hook stages files is that hook leaking `GIT_INDEX_FILE`, not the sandbox.'
       printf '%s\n' 'index.lock — cleared after failure'
       ;;
-    *) _verdict_lock_present index.lock "$1" ;;
+    *) _verdict_lock_present index.lock "$outcome" "$flag" ;;
   esac
 }
 
+# `verdict_config_lock <outcome> [flag]` — flag absent reads false (D-17).
+# mask reads the probe's path= line on stdin: a `.claude/settings.json.lock`
+# path swaps in the update-config act for *Re-run*, under either flag
+# (lock-detectors.md's config-lock Verdicts); any other path (including no
+# stdin at all) keeps *Re-run*, worded by the flag as git_lock's is.
 verdict_config_lock() {
-  case "$1" in
+  local outcome="$1" flag="${2:-false}" line path='' act
+  case "$outcome" in
     mask)
+      while IFS= read -r line || [ -n "$line" ]; do
+        case "$line" in
+          path=*) path=${line#path=} ;;
+        esac
+      done
+      case "$path" in
+        */.claude/settings.json.lock)
+          # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+          act='Write `.claude/settings.json` through the `update-config` skill.'
+          ;;
+        *) act=$(_lock_rerun "$flag") ;;
+      esac
       # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-      printf '%s\n' 'The `config.lock` behind this error is a sandbox artefact and the repository is healthy. Re-run the same command with `dangerouslyDisableSandbox: true`; if it already ran that way, re-run it once no sandboxed command is running. Run the `git config` or `git remote` write unsandboxed, or through the `update-config` skill when the target is `.claude/settings.json`.'
+      printf '%s\n' "The \`config.lock\` behind this error is a sandbox artefact and the repository is healthy. ${act}"
       printf '%s\n' 'config.lock — sandbox mask, not a real lock'
       ;;
     gone)
       printf '%s\n' 'No lock exists now; git cleaned it after the failure. Retry once.'
       printf '%s\n' 'config.lock — cleared after failure'
       ;;
-    *) _verdict_lock_present config.lock "$1" ;;
+    *) _verdict_lock_present config.lock "$outcome" "$flag" ;;
   esac
 }
 
-# `_verdict_lock_present <lock file> <outcome>` — the held, orphan and unknown
-# verdicts, whose text the two lock detectors share but for the file they
-# name. Interpolates pid=/bytes=/age= from the probe's remaining lines on
-# stdin (path= and any other key ignored). A key that is absent, or whose
-# value is not all digits as the probe contract has it, drops its clause
-# rather than leaving an empty or foreign value. Any other outcome prints
-# nothing.
+# `_verdict_lock_present <lock file> <outcome> [flag]` — the held, orphan and
+# unknown verdicts, whose text the two lock detectors share but for the file
+# they name and the flag they word orphan/unknown's *Retry* clause by
+# (flag absent reads false, D-17; held ignores it). Interpolates
+# pid=/bytes=/age= from the probe's remaining lines on stdin (path= and any
+# other key ignored). A key that is absent, or whose value is not all digits
+# as the probe contract has it, drops its clause rather than leaving an empty
+# or foreign value. Any other outcome prints nothing.
 _verdict_lock_present() {
-  local lock="$1" outcome="$2" line pid='' bytes='' age='' size=''
+  local lock="$1" outcome="$2" flag="${3:-false}" line pid='' bytes='' age='' size=''
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in
       *=*[!0-9]*) ;;
@@ -84,11 +130,11 @@ _verdict_lock_present() {
       printf '%s\n' "${lock} — held${pid:+ by pid ${pid}}"
       ;;
     orphan)
-      printf '%s\n' "The lock exists outside the sandbox${size} and no process holds it. Retry the command unsandboxed; a second identical failure means the lock predates this session."
+      printf '%s\n' "The lock exists outside the sandbox${size} and no process holds it. $(_lock_retry "$flag"); a second identical failure means the lock predates this session."
       printf '%s\n' "${lock} — present, no holder"
       ;;
     unknown)
-      printf '%s\n' "The lock exists outside the sandbox${size}; no holder check is available here. Retry the command unsandboxed."
+      printf '%s\n' "The lock exists outside the sandbox${size}; no holder check is available here. $(_lock_retry "$flag")."
       printf '%s\n' "${lock} — present, holder unknown"
       ;;
   esac

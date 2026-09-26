@@ -96,8 +96,11 @@ while IFS= read -r name; do
 
   # FR-4: a name whose probe is also defined runs it first, outside the
   # sandbox, with the result text on stdin and the flag and cwd as its
-  # arguments; the probe's first line becomes the verdict's outcome argument
-  # and any lines after it become the verdict's stdin.
+  # arguments; the probe's first line becomes the verdict's outcome argument,
+  # any lines after it become the verdict's stdin, and the flag is passed
+  # through as the verdict's own second argument (D-17: verdict_git_lock and
+  # verdict_config_lock word their re-run/retry clause by it; a verdict that
+  # ignores a second argument, as the others do, is unaffected).
   probe_fn="probe_${name//-/_}"
   if declare -F "$probe_fn" >/dev/null; then
     probe_out=$(printf '%s\n' "$text" | "$probe_fn" "$flag" "$cwd") || exit 0
@@ -111,7 +114,7 @@ while IFS= read -r name; do
         probe_rest=""
         ;;
     esac
-    out=$(printf '%s\n' "$probe_rest" | "$fn" "$outcome") || exit 0
+    out=$(printf '%s\n' "$probe_rest" | "$fn" "$outcome" "$flag") || exit 0
   else
     out=$("$fn" </dev/null) || exit 0
   fi
