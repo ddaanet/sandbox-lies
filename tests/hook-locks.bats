@@ -36,23 +36,6 @@ assert_lacks() {
   [ "$status" -eq 1 ]
 }
 
-# stub_probe_kv <name> <outcome> [line...] — as stub_probe, printing each
-# additional <line> after <outcome> instead of the fixed `path=stub`, so a
-# case can feed probe key=value lines (pid=, bytes=, age=) through the hook.
-# Each line is %q-quoted into the stub, so it may carry any character.
-stub_probe_kv() {
-  local name="$1" outcome="$2" called line body
-  shift 2
-  PROBE_CALLED="$BATS_TEST_TMPDIR/probe-$name-called"
-  called=$(printf '%q' "$PROBE_CALLED")
-  body="probe_${name}() { cat >/dev/null; : >${called}; printf '%s\\n' $(printf '%q' "$outcome")"
-  for line in "$@"; do
-    body="${body} $(printf '%q' "$line")"
-  done
-  body="${body}; }"
-  stub_lib probes.sh "$body"
-}
-
 @test "mask outcome through the hook" {
   stub_probe git_lock mask
   local text payload ctx sys

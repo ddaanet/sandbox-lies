@@ -94,6 +94,31 @@ _verdict_lock_present() {
   esac
 }
 
+# readonly-path (Item 6.1): unlike the phantom and lock verdicts, this one
+# interpolates the probe's path= line into the paragraph by plain variable
+# expansion — never sed or eval — so a path holding blanks, `&` or `\1`
+# passes through byte-exact. Only `writable` has text so far (detectors.md);
+# `readonly` and `nopath` print nothing, as an unmatched lock outcome does,
+# until Item 6.1 slices 3-4 add them. An empty path= (no probe line on
+# stdin, as the row-driven verdicts.bats cases pass) still prints the
+# paragraph, with nothing interpolated.
+verdict_readonly_path() {
+  local outcome="$1" line path=''
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      path=*) path=${line#path=} ;;
+    esac
+  done
+  case "$outcome" in
+    writable)
+      printf '%s' "$path"
+      # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+      printf '%s\n' ' is writable outside the sandbox, whose allowlist refused the write. Re-run the whole call with `dangerouslyDisableSandbox: true` or, if it only read a command-output file such as a `*.log`, the command that wrote that file. For `.claude/settings.json`, use the `update-config` skill. A merge or checkout that died here may be partial: compare modified files against the target first.'
+      printf '%s\n' 'read-only — sandbox allowlist, writable outside'
+      ;;
+  esac
+}
+
 # The shipped candidates. Each takes no outcome, as the phantom verdicts do;
 # text from docs/references/detectors.md's Verdict paragraphs, transcribed
 # verbatim.

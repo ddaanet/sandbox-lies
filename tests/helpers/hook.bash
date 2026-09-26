@@ -3,8 +3,8 @@
 # so a case can stub a copied lib file without touching the tracked source,
 # and builds payload JSON from the Item 1.4 recorded fixtures with jq.
 #
-# stub_probe (below) is shared by tests/hook-locks.bats and
-# tests/hook-candidates.bats: any case that fires a probe-gated detector
+# stub_probe and stub_probe_kv (below) are shared by tests/hook-locks.bats
+# and tests/hook-candidates.bats: any case that fires a probe-gated detector
 # stubs its probe, so no fixture's absolute path reaches the host
 # filesystem.
 
@@ -79,4 +79,22 @@ stub_probe() {
   PROBE_CALLED="$BATS_TEST_TMPDIR/probe-$name-called"
   called=$(printf '%q' "$PROBE_CALLED")
   stub_lib probes.sh "probe_${name}() { cat >/dev/null; : >${called}; printf '%s\\npath=stub\\n' '${outcome}'; }"
+}
+
+# stub_probe_kv <name> <outcome> [line...] — as stub_probe, printing each
+# additional <line> after <outcome> instead of the fixed `path=stub`, so a
+# case can feed probe key=value lines (pid=, bytes=, age=, path=) through the
+# hook.
+# Each line is %q-quoted into the stub, so it may carry any character.
+stub_probe_kv() {
+  local name="$1" outcome="$2" called line body
+  shift 2
+  PROBE_CALLED="$BATS_TEST_TMPDIR/probe-$name-called"
+  called=$(printf '%q' "$PROBE_CALLED")
+  body="probe_${name}() { cat >/dev/null; : >${called}; printf '%s\\n' $(printf '%q' "$outcome")"
+  for line in "$@"; do
+    body="${body} $(printf '%q' "$line")"
+  done
+  body="${body}; }"
+  stub_lib probes.sh "$body"
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 # The candidate detectors through the hook: the flag policy of the shipped
 # verdict-only candidates (tmpdir-unset, resume-lost, seccomp-init, Item 4.2)
-# and readonly-path's silence while it has no verdict (Item 4.3). First file
+# and readonly-path's probed verdicts (Item 6.1). First file
 # to exist for candidate hook cases (runbook Phase 4 preamble), so it also
 # carries the one BSD-portability case any such file owes.
 
@@ -89,34 +89,21 @@ run_hook() {
   [ -z "$output" ]
 }
 
-@test "hook silent without a verdict" {
-  # readonly-path fires (Item 4.3 slice 1) but has no verdict_readonly_path
-  # yet (Item 6.1 ships it): the declare -F gate on the verdict must run
-  # before the probe is even looked up (hooks/annotate.sh), so this probe is
-  # never reached.
-  stub_probe readonly_path writable
-  local text payload
+@test "writable outcome through the hook" {
+  stub_probe_kv readonly_path writable 'path=/r/x'
+  local text payload ctx sys
   text=$(cat "$FIXTURES/fire-readonly-path-cp-tmp.txt")
   payload=$(failure_payload "$text")
-  # detect names readonly-path on this text, alone: the silence below cannot
-  # come from nothing firing.
-  run bash -c 'printf "%s\n" "$1" | bash "$2"' \
-    _ "$text" "$HOOK_COPY/lib/matchers.sh"
-  [ "$status" -eq 0 ]
-  [ "$output" = readonly-path ]
 
-  run_hook "$payload"
-
-  [ "$status" -eq 0 ]
-  [ -z "$output" ]
-  [ ! -f "$PROBE_CALLED" ]
-
-  # The same payload with a stub verdict defined reaches the stub probe, so
-  # the absence above is the missing verdict's doing.
-  stub_lib verdicts.sh 'verdict_readonly_path() { cat >/dev/null; printf "stub paragraph\nstub line\n"; }'
   run_hook "$payload"
   [ "$status" -eq 0 ]
   [ -f "$PROBE_CALLED" ]
+  ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
+  sys=$(printf '%s' "$output" | jq -r '.systemMessage')
+  printf '%s' "$ctx" | grep -qF '/r/x'
+  printf '%s' "$ctx" | grep -qF 'is writable outside the sandbox'
+  printf '%s' "$ctx" | grep -qF 'compare modified files against the target'
+  [ "$sys" = 'read-only — sandbox allowlist, writable outside' ]
 }
 
 @test "tmpdir-unset flag policy survives BSD grep and sed" {

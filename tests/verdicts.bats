@@ -30,6 +30,7 @@ config_lock unknown
 tmpdir_unset -
 resume_lost -
 seccomp_init -
+readonly_path writable
 ROWS
 }
 
@@ -144,6 +145,25 @@ $text"
   line2=$(verdict_text seccomp_init - | sed -n '2p')
   [ "$line1" = 'The sandbox failed to initialise before the command ran; this is transient. Retry the identical command once; if it fails the same way, split it into smaller calls. Escape the sandbox only after both.' ]
   [ "$line2" = 'sandbox init failed — transient, retry' ]
+}
+
+@test "readonly-path writable verdict text matches detectors.md" {
+  # Transcribed from docs/references/detectors.md's readonly-path Verdicts
+  # list, <path> substituted by the probe's path= stdin line. The path holds
+  # a blank and the characters a sed replacement or an eval would act on, as
+  # an extracted path may. The doc writes the placeholder in backticks, which
+  # markdown needs for `<path>` anyway, so the path may render bare or in
+  # backticks; everything after it is pinned verbatim.
+  local p rest text line1 line2
+  p='/r/a b&c\1/x'
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  rest=' is writable outside the sandbox, whose allowlist refused the write. Re-run the whole call with `dangerouslyDisableSandbox: true` or, if it only read a command-output file such as a `*.log`, the command that wrote that file. For `.claude/settings.json`, use the `update-config` skill. A merge or checkout that died here may be partial: compare modified files against the target first.'
+  # shellcheck disable=SC1090 # $VERDICTS is lib/verdicts.sh, resolved above
+  text=$(printf '%s\n' "path=$p" | ( . "$VERDICTS"; verdict_readonly_path writable ))
+  line1=$(printf '%s\n' "$text" | sed -n '1p')
+  line2=$(printf '%s\n' "$text" | sed -n '2p')
+  [ "$line1" = "$p$rest" ] || [ "$line1" = "\`$p\`$rest" ]
+  [ "$line2" = 'read-only — sandbox allowlist, writable outside' ]
 }
 
 @test "lock verdict text matches lock-detectors.md" {
