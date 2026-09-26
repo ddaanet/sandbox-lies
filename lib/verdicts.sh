@@ -143,17 +143,12 @@ _verdict_lock_present() {
 # code span early, bytes intact. nopath has no path= line under the contract
 # and opens with its own sentence.
 #
-# writable and nopath then carry a composed tail (detectors.md's readonly-path
-# Verdicts tail and merge-clause composition), built from the probe's other
-# stdin facts: the act is the first of readfile= (re-run the writer), a
-# writable path= naming `.claude/settings.json` (the update-config skill), or
-# the plain whole-call re-run; a merge=1 fact leads a lowercase copy of that
-# act with a restore clause naming the target= and match= files (five names,
-# then "and N more"), or "restore them" with no target=, or nothing at all
-# with a target= and no match=, in which case the act stands alone,
-# capitalised, as it does with no merge=1. readonly ignores every fact but
-# path=. An outcome with no text here prints nothing, as an unmatched lock
-# outcome does.
+# writable and nopath then carry the tail detectors.md's readonly-path
+# Verdicts compose from the probe's other stdin facts (readfile=, merge=1,
+# target=, match=): one act, capitalised alone or lowercase after a merge
+# clause, each spelled twice since bash 3.2 has no case conversion. readonly
+# ignores every fact but path=. An outcome with no text here prints nothing,
+# as an unmatched lock outcome does.
 verdict_readonly_path() {
   local outcome="$1" line path='' readfile='' merge='' target=''
   local matches=() subject act act_low rest
@@ -175,9 +170,7 @@ verdict_readonly_path() {
   case "$outcome" in
     writable | nopath)
       if [ -n "$readfile" ]; then
-        # shellcheck disable=SC2016 # backticks are literal prose, not expansion
         act="Re-run the command that wrote \`$readfile\`."
-        # shellcheck disable=SC2016 # backticks are literal prose, not expansion
         act_low="re-run the command that wrote \`$readfile\`."
       else
         case "$outcome:$path" in
