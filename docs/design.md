@@ -127,7 +127,8 @@ semantics, the two escapes and their costs, strict mode, `$TMPDIR` scoping, a
 survives the masks fire while an agent is *writing* something, not while reading
 output. That is the plugin's one skill, `skills/sandbox-lies/SKILL.md`,
 triggered on those authoring moments. Where · pinned by: the skill file ·
-`tests/docs.bats` runs `detect` over it. Planned.
+`tests/docs.bats` runs `detect` over it. Partial (skill shipped; README pointer:
+Item 7.2).
 
 **FR-10 — Memory retirement, per section.** The commit that lands a detector or
 a skill section deletes the memory section it translates from
