@@ -101,10 +101,10 @@ _verdict_lock_present() {
 # `\1` or a leading `-` pass through byte-exact; a backtick in it closes the
 # code span early, bytes intact. nopath has no path= line under the contract
 # and opens with its own sentence. detectors.md defines nopath's rest as the
-# writable paragraph from "Re-run" on, hence the one `rerun` literal. An
+# writable paragraph from "A merge" on, hence the one `tail` literal. An
 # outcome with no text here prints nothing, as an unmatched lock outcome does.
 verdict_readonly_path() {
-  local outcome="$1" line path='' subject rerun
+  local outcome="$1" line path='' subject tail
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in
       path=*) path=${line#path=} ;;
@@ -116,18 +116,18 @@ verdict_readonly_path() {
     subject='The path'
   fi
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  rerun=' Re-run the whole call with `dangerouslyDisableSandbox: true` or, if it only read a command-output file such as a `*.log`, the command that wrote that file. For `.claude/settings.json`, use the `update-config` skill. A merge or checkout that died here may be partial: compare modified files against the target first.'
+  tail=' A merge or checkout that died here may be partial: compare modified files against the target, then re-run the whole call with `dangerouslyDisableSandbox: true` or, if it only read a command-output file such as a `*.log`, the command that wrote that file. For `.claude/settings.json`, use the `update-config` skill.'
   case "$outcome" in
     writable)
-      printf '%s\n' "$subject is writable outside the sandbox, whose allowlist refused the write.$rerun"
+      printf '%s\n' "$subject is writable outside the sandbox, whose allowlist refused the write.$tail"
       printf '%s\n' 'read-only — sandbox allowlist, writable outside'
       ;;
     readonly)
-      printf '%s\n' "$subject is not writable outside the sandbox either; this is not a sandbox effect."
+      printf '%s\n' "$subject is not writable outside the sandbox either; this is not a sandbox effect. Unsandboxing will not help: write somewhere writable, or ask before changing its permissions."
       printf '%s\n' 'read-only — real'
       ;;
     nopath)
-      printf '%s\n' "The sandbox's write allowlist most likely refused this write.$rerun"
+      printf '%s\n' "The sandbox's write allowlist most likely refused this write.$tail"
       printf '%s\n' 'read-only — sandbox allowlist'
       ;;
   esac

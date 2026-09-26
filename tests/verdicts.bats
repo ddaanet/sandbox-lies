@@ -64,14 +64,14 @@ $text"
   printf '%s' "$all"
 }
 
-# readonly_path_rerun_tail — detectors.md's readonly-path `writable`
-# paragraph from "Re-run" on, leading blank included: the writable
+# readonly_path_tail — detectors.md's readonly-path `writable`
+# paragraph from "A merge" on, leading blank included: the writable
 # paragraph's tail, and the rest of the nopath paragraph, which the doc
 # defines as its opening sentence "then the `writable` paragraph from
-# `Re-run` on".
-readonly_path_rerun_tail() {
+# `A merge` on".
+readonly_path_tail() {
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  printf '%s' ' Re-run the whole call with `dangerouslyDisableSandbox: true` or, if it only read a command-output file such as a `*.log`, the command that wrote that file. For `.claude/settings.json`, use the `update-config` skill. A merge or checkout that died here may be partial: compare modified files against the target first.'
+  printf '%s' ' A merge or checkout that died here may be partial: compare modified files against the target, then re-run the whole call with `dangerouslyDisableSandbox: true` or, if it only read a command-output file such as a `*.log`, the command that wrote that file. For `.claude/settings.json`, use the `update-config` skill.'
 }
 
 @test "verdicts under 400 chars" {
@@ -167,7 +167,7 @@ readonly_path_rerun_tail() {
   # the placeholder; with no path= line it is "The path".
   local p rest text line1 line2
   p='/r/a b&c\1/x'
-  rest=" is writable outside the sandbox, whose allowlist refused the write.$(readonly_path_rerun_tail)"
+  rest=" is writable outside the sandbox, whose allowlist refused the write.$(readonly_path_tail)"
   # shellcheck disable=SC1090 # $VERDICTS is lib/verdicts.sh, resolved above
   text=$(printf '%s\n' "path=$p" | ( . "$VERDICTS"; verdict_readonly_path writable ))
   line1=$(printf '%s\n' "$text" | sed -n '1p')
@@ -191,22 +191,22 @@ readonly_path_rerun_tail() {
   text=$(printf '%s\n' "path=$p" | ( . "$VERDICTS"; verdict_readonly_path readonly ))
   line1=$(printf '%s\n' "$text" | sed -n '1p')
   line2=$(printf '%s\n' "$text" | sed -n '2p')
-  [ "$line1" = "\`$p\` is not writable outside the sandbox either; this is not a sandbox effect." ]
+  [ "$line1" = "\`$p\` is not writable outside the sandbox either; this is not a sandbox effect. Unsandboxing will not help: write somewhere writable, or ask before changing its permissions." ]
   [ "$line2" = 'read-only — real' ]
 
   line1=$(verdict_text readonly_path readonly | sed -n '1p')
-  [ "$line1" = 'The path is not writable outside the sandbox either; this is not a sandbox effect.' ]
+  [ "$line1" = 'The path is not writable outside the sandbox either; this is not a sandbox effect. Unsandboxing will not help: write somewhere writable, or ask before changing its permissions.' ]
 }
 
 @test "readonly-path nopath verdict text matches detectors.md" {
   # Transcribed from docs/references/detectors.md's readonly-path Verdicts
   # list: nopath's opening sentence, then the writable paragraph from
-  # "Re-run" on, as the doc defines it. No path= line: the probe contract
+  # "A merge" on, as the doc defines it. No path= line: the probe contract
   # gives none for nopath.
   local line1 line2
   line1=$(verdict_text readonly_path nopath | sed -n '1p')
   line2=$(verdict_text readonly_path nopath | sed -n '2p')
-  [ "$line1" = "The sandbox's write allowlist most likely refused this write.$(readonly_path_rerun_tail)" ]
+  [ "$line1" = "The sandbox's write allowlist most likely refused this write.$(readonly_path_tail)" ]
   [ "$line2" = 'read-only — sandbox allowlist' ]
 }
 

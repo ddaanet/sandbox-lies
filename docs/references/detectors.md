@@ -175,15 +175,17 @@ worktree was removed unsandboxed.
 **Verdicts.**
 
 - `writable` — `<path>` is writable outside the sandbox, whose allowlist refused
-  the write. Re-run the whole call with `dangerouslyDisableSandbox: true` or, if
-  it only read a command-output file such as a `*.log`, the command that wrote
-  that file. For `.claude/settings.json`, use the `update-config` skill. A merge
-  or checkout that died here may be partial: compare modified files against the
-  target first. · `read-only — sandbox allowlist, writable outside`
+  the write. A merge or checkout that died here may be partial: compare modified
+  files against the target, then re-run the whole call with
+  `dangerouslyDisableSandbox: true` or, if it only read a command-output file
+  such as a `*.log`, the command that wrote that file. For
+  `.claude/settings.json`, use the `update-config` skill. ·
+  `read-only — sandbox allowlist, writable outside`
 - `readonly` — `<path>` is not writable outside the sandbox either; this is not
-  a sandbox effect. · `read-only — real`
+  a sandbox effect. Unsandboxing will not help: write somewhere writable, or ask
+  before changing its permissions. · `read-only — real`
 - `nopath` — The sandbox's write allowlist most likely refused this write, then
-  the `writable` paragraph from `Re-run` on. · `read-only — sandbox allowlist`
+  the `writable` paragraph from `A merge` on. · `read-only — sandbox allowlist`
 
 The read clause covers the corpus's command-output reads below: the refusal in
 such a file came from the call that wrote it, so re-running the read changes
