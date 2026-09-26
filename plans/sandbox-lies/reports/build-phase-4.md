@@ -170,6 +170,9 @@ and candidate memory retired; statuses flipped; design.md split".
 
 ## Resume
 
+Superseded: the boundary below ran from this block; resume from `## Phase 4
+boundary` instead.
+
 Resume /build at the Phase 4 boundary of
 /Users/david/code/sandbox-lies/plans/sandbox-lies/runbook.md. Items 4.1-4.3 and
 the deferred retirement are committed; the tree is clean (masks aside). Last
@@ -208,3 +211,91 @@ are listed above.
 
 About 185k tokens of this delegate's own context at the gate: a resumed delegate
 should be fresh for the Phase 4 boundary if the relay is slow.
+
+## Phase 4 boundary
+
+Run by a fresh delegate from the `## Resume` block above. Entry verify-step:
+`CLEAN` (bats 181 passed; precommit recap `plugin.json, hooks.json, shellcheck,
+bash -n, rumdl, line limits, links, tests`).
+
+### Corrector verdict and fixes
+
+`phase-4-corrector` (opus, report `phase-4-corrector.md`) over
+`git diff e4cc0d3..HEAD`: **Ready**, no critical finding, no UNFIXABLE.
+Committed with its fixes as "Phase 4 checkpoint — vacuous silence case pinned;
+tmpdir-unset verdict states only this call; Item 3.1 evidence mask-free".
+Precommit before the commit: bats 181 passed, same recap.
+
+- Major, fixed: `tests/hook-candidates.bats` `hook silent without a verdict`
+  passed vacuously if nothing fired or the probe stub stopped overriding. Added
+  a guard that `detect` names `readonly-path` on the fixture, and a positive
+  twin (stub `verdict_readonly_path` defined → probe called). Mutation-proven:
+  removing the hook's `declare -F` gate turns the case red.
+- Minor, fixed: stale RED-phase comments in `tests/matchers.bats`; the
+  `hook-candidates.bats` header now names Item 4.3; plan-item reference removed
+  from `lib/probes.sh`'s contract comment; blanket `2>/dev/null` dropped from
+  `tests/probes-readonly.bats` teardown; `docs/references/hook.md` Flow now
+  states the skip-before-probe rule and the `; ` joiner.
+- Deferred: `docs/design.md` `## Now` is stale (still names the corpus replay as
+  next). The runbook assigns `## Now` to Item 8.2, so it waits.
+
+### Carry items
+
+1. **Item 3.1 evidence.** The paragraphs had moved to
+   `docs/references/lock-detectors.md` with the split. The git-lock
+   `Live reproduction owed: mask` paragraph keeps its conclusion (git ran
+   sandboxed, `git:*` unhonoured on CC 2.1.283) and now rests on the
+   2026-09-26 `/tmp` write test; the two mask-based sentences are gone and a
+   sentence says why a mask proves nothing about the call that sees it. The
+   config-lock reproduction's "despite `git:*`" claim now points at that test.
+   No other `docs/` sentence argued from masks.
+2. **`tmpdir-unset` caveat.** A dated `Caveat (2026-09-26)` paragraph in the
+   `detectors.md` entry. The verdict changed in its three places together
+   (`detectors.md`, `lib/verdicts.sh`, `tests/verdicts.bats`) plus the two
+   `systemMessage` assertions in `tests/hook-candidates.bats`: `$TMPDIR`
+   "expanded empty in this unsandboxed call" (was "is unset outside the
+   sandbox"); human line `$TMPDIR — expanded empty, path collapsed to /` (was
+   `$TMPDIR — unset unsandboxed`). Also reworded: design.md NFR-4 ("may be
+   unset") and the translation-map row. Changelog entry 2026-09-26.
+
+### Findings worth my human partner's attention
+
+- The Item 3.1 conclusion now rests on an inference across sessions: the `/tmp`
+  test ran in the main session on 2026-09-26, the reproductions on 2026-09-25
+  (partly in a delegate). It holds if CC was already 2.1.283 then; that was not
+  recorded.
+- `tmpdir-unset` may be near-dead on current CC (unsandboxed `$TMPDIR` is
+  `/tmp`). It stays shipped; its precision was measured on older traffic only.
+  Worth a look at Item 8.1 dogfood whether it ever fires.
+
+### For the Finish run summary
+
+- Phase 4 checkpoint applied one major test fix and six minors; `## Now` in
+  design.md deferred to Item 8.2.
+- The two carry items above changed shipped verdict text (tmpdir-unset) after
+  its item closed.
+
+### Deviations
+
+- The corrector was dispatched unnamed (teammates cannot name spawned agents);
+  its report path follows the naming scheme. It returned without a hand-back
+  message; the report file was complete and was read instead.
+- The old `## Resume` section above is marked superseded rather than removed.
+
+### Phase 5 boundary resume block
+
+```text
+Resume /build at Phase 5 of /Users/david/code/sandbox-lies/plans/sandbox-lies/runbook.md.
+Phase 4 closed at commit "Phase 4 checkpoint — vacuous silence case pinned; tmpdir-unset verdict states only this call; Item 3.1 evidence mask-free", followed by this report's commit.
+Build baseline: .git/build-baseline. verify-step: /Users/david/.claude/plugins/cache/ddaanet/edify/0.3.0/skills/build/scripts/verify-step.sh (run unsandboxed).
+Next: Item 5.1 (readonly-path live proof; general item; escalate on a successful write or any probe output other than writable), then the Phase 5 boundary corrector, then Phase 6 (Item 6.1, readonly-path verdict, tdd).
+Sandbox facts for 5.1 (CC 2.1.283): git:* in excludedCommands does NOT unsandbox git; masks are visible from every process while any sandboxed command runs, so a mask never proves which call was sandboxed; the mask-free test is `touch /tmp/<name>` (EROFS only inside the sandbox); an unsandboxed call's $TMPDIR is /tmp, not unset.
+Carry: Item 6.1's readonly-path verdict carries the command-output-read clause (runbook Item 4.3 list revision). docs/references/lock-detectors.md and docs/references/hook.md are new nodes. tests/hook-locks.bats is at 375 lines; docs/design.md at 396/400; detectors.md at 308/400.
+Splitting is authorized (my human partner, standing): split any doc an edit pushes past 400 lines, per craft:design-doc-writing, fix inbound links, record in docs/changelog.md.
+Phase 6 memory retirement (harness-mounted config, sibling worktree, cost 3) passes the gitlore approval gate: batch it into one memory commit.
+Shared dispatch context from Phase 4: .git/phase4-dispatch.md (refresh its phase section for 5/6).
+```
+
+### Context usage
+
+About 90k tokens of this delegate's own context at the end of the boundary.
