@@ -94,3 +94,21 @@ failed, and a device did exist outside the sandbox. The `mask` paragraph now
 reads true under both flags — re-run unsandboxed, or, if the call already ran
 that way, once no sandboxed command is running — and its human line says the
 lock is not real rather than that no file exists.
+
+## 2026-09-26 — lock and candidate memory retired; hook runtime split out
+
+With the lock verdicts and the `tmpdir-unset`, `resume-lost` and `seccomp-init`
+verdicts shipped, their memory sections left `memory/ddaanet/sandbox-effects.md`
+together: the `.git/index.lock` section with its `.git/config.lock` paragraph,
+cost 1 of `Leaving the sandbox` (the unsandboxed `$TMPDIR` collapse), the
+`--resume` mechanism and the sandbox-setup section. The skill-mapped parts stay
+for the skill: the `$TMPDIR` instability paragraph, and the eval-harness
+consequence of a lost transcript under a new heading. Cost 1's note that the
+classifier judges an unsandboxed recipe by its top-level command moved into cost
+3, whose recipe guidance also goes to the skill. `zellij-socket` stayed a
+candidate, so its section stays. The status flips took `docs/design.md` past its
+line cap, so the Architecture section's flow, why-the-hook-sees and paths
+paragraphs moved verbatim into `references/hook.md`, the need-time cluster for
+changing `annotate.sh` or a probe's path handling; the hub keeps the component
+map, now with the `scripts/check-*.sh` gates again, and one paragraph of
+conclusions.

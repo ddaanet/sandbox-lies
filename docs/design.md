@@ -1,12 +1,17 @@
 # sandbox-lies — design
 
-**Status:** Partial. Built and tested: the hook, the `phantom-*` verdicts, the
-lock probes (not live-proved or hook-called). Nothing dogfooded; no candidates.
-**Verified against:** `52e6dd82b831a1cc2b7b516d4c248df6fb1ebc8c` (2026-09-22).
+**Status:** Partial. Built and tested: the hook, the `phantom-*` and lock
+verdicts, the hook's lock-probe call, the `tmpdir-unset`, `resume-lost` and
+`seccomp-init` verdicts, and the `readonly-path` matcher and probe (no verdict
+yet). Nothing dogfooded. **Verified against:**
+`52e6dd82b831a1cc2b7b516d4c248df6fb1ebc8c` (2026-09-22).
 
-Changelog: [changelog.md](changelog.md). Per-detector mechanism:
-[references/detectors.md](references/detectors.md). Never make a behavioural
-claim from this hub that the reference does not carry.
+Changelog: [changelog.md](changelog.md). This document is a hub; `references/`
+holds one node per mechanism — per detector in
+[references/detectors.md](references/detectors.md), the hook at run time in
+[references/hook.md](references/hook.md). Read the node before making a claim
+about, or changing, the mechanism it argues; never make a behavioural claim from
+this hub that a node does not carry.
 
 ## Now
 
@@ -63,7 +68,8 @@ then stderr from `tool_response` on a success payload — holds it in memory, ru
 `detect`, runs the probe for each verdict that has one, and emits a single JSON
 document. Any parse or runtime failure exits 0 with no output. Where · pinned
 by: `hooks/annotate.sh` · `tests/hook.bats` over both events' recorded payloads,
-`tests/hook-malformed.bats` over malformed ones. Partial (probe call: Item 4.1).
+`tests/hook-malformed.bats` over malformed ones, `tests/hook-locks.bats` over
+the probe call. Done.
 
 **FR-4 — Probes.** For each verdict whose correct action depends on state the
 tool could not see, the hook runs a discriminator outside the sandbox and the
@@ -74,17 +80,19 @@ existence and holder (`git-lock`, `config-lock`) and path writability
 (`readonly-path`). Each probe is proved once against a live reproduction before
 it ships; the reproduction is recorded in `references/`. Where · pinned by:
 `lib/probes.sh` · `tests/probes*.bats` over synthetic trees, with a character
-device at the lock path and no holder tool on `PATH`. Partial (lock probes
-proved live; hook call: Item 4.1; `readonly-path`: Item 4.3).
+device at the lock path and no holder tool on `PATH`; `tests/hook-locks.bats`
+over the hook's call. Partial (lock probes proved live and hook-called;
+`readonly-path` probe built, live proof: Item 5.1, verdict: Item 6.1).
 
 **FR-5 — Sandbox-state awareness.** The payload's
 `tool_input.dangerouslyDisableSandbox` (absent means false) decides wording: a
 symptom on a call that ran unsandboxed has a different cause, and the verdict
 says so or the detector stays silent. Every detector states its flag policy in
 `references/`; the gating lives in the hook or the verdict, never in a matcher.
-Where · pinned by: `hooks/annotate.sh` · `tests/hook.bats` pairs each fixture
-with both flag values against that policy. Partial (lock, candidate,
-`readonly-path` policies: Items 4.1, 4.2, 6.1).
+Where · pinned by: `hooks/annotate.sh` · `tests/hook.bats`,
+`tests/hook-locks.bats` and `tests/hook-candidates.bats` pair each fixture with
+both flag values against that policy. Partial (`readonly-path` policy: Item
+6.1).
 
 **FR-6 — Verdict text.** Each verdict is a short paragraph of acts the agent
 performs, under 400 characters, and no verdict instructs removing anything
@@ -95,15 +103,16 @@ line on `systemMessage` is one lowercase clause. No verdict quotes a diagnostic
 together with its follow-on sentence. Where · pinned by: `lib/verdicts.sh` ·
 `tests/verdicts.bats` asserts length and runs `detect` over every verdict text
 expecting silence; `tests/hook-cap.bats` asserts the 2 KB cap with stub
-paragraphs. Partial (lock, candidate, `readonly-path` verdicts: Items 4.1, 4.2,
-6.1).
+paragraphs. Partial (`readonly-path` verdicts: Item 6.1).
 
 **FR-7 — Detector catalogue.** Ten detectors, in
 [references/detectors.md](references/detectors.md): five measured and shipped
 from the pilot, five candidates. A candidate ships under the rule in D-15, with
 its corpus figure — hit count, precision, measurement date, pilot-traffic note.
 Where · pinned by: the reference's per-detector table · `tests/matchers.bats`
-has a `fire-*` and a `quiet-*` fixture per shipped detector. Planned.
+has a `fire-*` and a `quiet-*` fixture per shipped detector. Partial (four
+candidates shipped, `readonly-path` without its verdict until Item 6.1;
+`zellij-socket` stays a candidate).
 
 **FR-8 — Fixtures come from the corpus.** Every `fire-*` fixture is a verbatim
 tool result cut by `tests/extract-fixtures.py` from `~/.claude/projects`; every
@@ -130,7 +139,8 @@ phantom-listing rule, folded into the existing phantom-dotfile bullet of
 `memory/ddaanet/shared-claude.md`. Where · pinned by: the tier's index ·
 `tests/docs.bats` fails if a live pointer (`hooks/`, `lib/`, `skills/`, `tests/`
 outside fixtures, `CLAUDE.md`, `README.md`) still names the retired path.
-Partial (phantom and `/tmp` retired; rest: Items 4.1, 4.2, 6.1, 7.1, 8.2).
+Partial (phantom, `/tmp`, lock, `$TMPDIR`-unset, `--resume` and sandbox-setup
+sections retired; rest: Items 6.1, 7.1, 8.2).
 
 **FR-11 — Self-quiet.** No live file in this repository fires a detector when
 read back. Source files build each diagnostic literal from fragments so the
@@ -147,7 +157,8 @@ name: `tests/fixtures/`, and three dated pilot files that quote live diagnostics
 last replay, and every false positive is classified. Corpus figures carry their
 date and how much pilot traffic the corpus had absorbed, because the corpus is
 self-polluting. Where · pinned by: `references/` per detector · the replay
-harness under `tests/`. Partial (harness promoted).
+harness under `tests/`. Done (harness promoted; each shipped candidate
+re-measured with its shipped matcher as arbiter, not gated).
 
 **NFR-2 — Portability.** bash 3.2, BSD `grep`/`sed`/`mktemp`/`stat`/`wc`, `jq`.
 The suite re-runs itself with BSD-strict stubs on `PATH`. Where · pinned by:
@@ -182,30 +193,14 @@ skills/sandbox-lies/    the symptom-less knowledge
 .bin/claude             dev shim: `--plugin-dir` this checkout (D-16)
 tests/                  matchers, hook, probes, verdicts, docs; fixtures/
 scripts/run-bats.sh     failure-only bats wrapper
+scripts/check-*.sh      line-limit and link gates, NFR-5
 ```
 
-**Flow.** The harness starts `annotate.sh` after every Bash call with the
-payload on stdin: `PostToolUseFailure` when the command exited non-zero,
-`PostToolUse` otherwise, never both (D-13). The script rebuilds the result text
-as the model saw it, pipes it through `detect`, and stops if nothing fires. For
-each verdict it calls `probe_<verdict>` if one exists, which prints an outcome
-token and its values; `verdict_<name>` prints the agent paragraph and the human
-line. The paragraphs concatenate into `additionalContext`, the human lines into
-`systemMessage`, and one JSON object goes to stdout with exit 0.
-
-**Why the hook can see what the tool could not.** Hooks are run by the harness,
-not through the Bash tool, so they are outside the command sandbox; a stat from
-the hook is the "run it unsandboxed" step the memory file asked the agent to
-perform. Reopen-if: a hook is ever found sandboxed. A probe that finds a
-character device treats it as a mask, never as a file — unsandboxed readers have
-seen masks while another session's sandbox was live.
-
-**Paths.** A lock probe takes its path from the error text; a relative one (git
-prints it from the main worktree's top-level) resolves from the nearest ancestor
-of the payload's `cwd`, itself included, holding a `.git` directory, else from
-the `cwd`, and with no `cwd` from the probe's working directory, never `/`.
-Phantom masks sit in the session's project root only, and the `phantom-*`
-detectors read text and run no probe; their verdict says where the masks are.
+The harness starts `annotate.sh` outside the command sandbox, so a probe's stat
+is the unsandboxed step the memory file asked the agent to take (reopen-if: a
+hook is ever found sandboxed), and a character device at a probed path is a
+mask. The call flow, that argument and how a probe resolves a relative path are
+in [references/hook.md](references/hook.md).
 
 The detector-by-detector mechanism — matcher shape, discriminator, probe,
 verdict outcomes, corpus figure — is in

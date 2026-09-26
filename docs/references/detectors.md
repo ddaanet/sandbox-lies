@@ -279,7 +279,7 @@ Phase 6 step.
 | harness-mounted config paths; merge recovery | `readonly-path`; recovery clause in its verdict and the skill |
 | sibling worktree writes | `readonly-path` |
 | leaving the sandbox: escapes, strict mode, read-only default | skill |
-| cost 1, `$TMPDIR` unset and unstable | `tmpdir-unset`; instability → skill |
+| cost 1, `$TMPDIR` unset and unstable | `tmpdir-unset`; instability → skill; its top-level-classifier note moved to cost 3 |
 | cost 2, classifier and compounds | skill |
 | cost 3, recipes entirely unsandboxed | `readonly-path`; skill |
 | `excludedCommands` whole-call semantics | skill |

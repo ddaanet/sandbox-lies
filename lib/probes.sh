@@ -139,10 +139,11 @@ _probe_lock_at() {
     fi
 
     # A character device is a /dev/null sandbox mask, which unsandboxed
-    # readers have seen while another session's sandbox was live (design.md's
-    # "Why the hook can see" paragraph), never a lock git wrote: mask under
-    # either flag. Tested before the holder tool, stat or wc touches the
-    # path: /dev/null is open in many processes and would read held. `[ -c ]`
+    # readers have seen while another session's sandbox was live
+    # (docs/references/hook.md, "Why the hook can see"), never a lock git
+    # wrote: mask under either flag. Tested before the holder tool, stat or
+    # wc touches the path: /dev/null is open in many processes and would
+    # read held. `[ -c ]`
     # follows a symlink, so a link to a device masks too.
     if [ -c "$path" ]; then
         printf '%s\n' mask "path=$path"
