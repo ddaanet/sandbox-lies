@@ -89,6 +89,29 @@ run_hook() {
   [ -z "$output" ]
 }
 
+@test "readonly-path flag policy" {
+  # Silent when the flag is true, and the probe is not run.
+  local text payload sys
+  text=$(cat "$FIXTURES/fire-readonly-path-cp-tmp.txt")
+  stub_probe readonly_path writable
+
+  payload=$(failure_payload "$text")
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  [ -n "$output" ] \
+    || { echo "no verdict emitted, flag absent" >&2; return 1; }
+  [ -f "$PROBE_CALLED" ]
+  sys=$(printf '%s' "$output" | jq -r '.systemMessage')
+  [ "$sys" = 'read-only — sandbox allowlist, writable outside' ]
+
+  rm -f "$PROBE_CALLED"
+  payload=$(failure_payload "$text" true)
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ ! -f "$PROBE_CALLED" ]
+}
+
 @test "writable outcome through the hook" {
   stub_probe_kv readonly_path writable 'path=/r/x'
   local text payload ctx sys
