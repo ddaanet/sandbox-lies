@@ -911,15 +911,20 @@ fire case under `make_bsd_stubs grep sed` (Portability).
      fixture, stub probe printing `writable` and `path=/r/x`: context
      contains `/r/x`, `is writable outside the sandbox` and `compare
      modified files against the target`; human line `read-only — sandbox
-     allowlist, writable outside`. Verdict rows added for all three
-     outcomes. Shipping `verdict_readonly_path` turns
-     `tests/hook-candidates.bats`'s `hook silent without a verdict` red: it
+     allowlist, writable outside`. Verdict row added for `writable` only
+     (list revision after slice 1: rows for all three here would make slice
+     2's GREEN write slice 3's text, leaving slice 3 no red). Shipping
+     `verdict_readonly_path` turns `tests/hook-candidates.bats`'s
+     `hook silent without a verdict` red: it
      retires, since `tests/hook-locks.bats`'s `no probe without a verdict`
      (a fake name) pins the same gate independently of any shipped
-     detector.
+     detector; slice 2's RED removes it. `stub_probe_kv` moves from
+     `tests/hook-locks.bats` into `tests/helpers/hook.bash` for its second
+     user.
   3. `readonly and nopath` — stub `readonly`: context contains `not a
      sandbox effect`; stub `nopath`: context contains `write allowlist` and
-     `compare modified files against the target`.
+     `compare modified files against the target`. Verdict rows added for
+     `readonly` and `nopath`.
   4. `silent unsandboxed` — flag `true`: empty stdout, and the stub probe
      records no call.
 
