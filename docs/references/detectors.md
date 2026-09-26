@@ -155,7 +155,7 @@ it, or on its parent when it does not exist.
 
 **Live reproduction (2026-09-26): `writable`.** Scratch repo under
 `/tmp/claude/` with a linked worktree directly under `/tmp/`, outside the
-sandbox's write allowlist, both made unsandboxed; CC 2.1.283, `/bin/sh` dash. A
+sandbox's write allowlist, both made unsandboxed; CC 2.1.281, `/bin/sh` dash. A
 sandboxed `sh -c 'touch <worktree>/<file>'` raised touch's read-only error
 naming the file in straight quotes; a `touch` directly under `/tmp/` in the same
 call raised the same error, so that call was sandboxed. `detect` on that text
@@ -208,7 +208,7 @@ with `mkdir -p`) in this and every unsandboxed or delegated command. ·
 2026-09-25; no pilot traffic. The 182 matches without the flag are silent
 (sandboxed collapses, deliberately missing paths).
 
-**Caveat (2026-09-26).** On CC 2.1.283 an unsandboxed call's `$TMPDIR` read
+**Caveat (2026-09-26).** On CC 2.1.281 an unsandboxed call's `$TMPDIR` read
 `/tmp`, not unset, so the collapse may not occur unsandboxed on current CC; the
 13 hits predate that observation. The verdict states only what the flagged call
 shows, never that the variable is always unset outside the sandbox.

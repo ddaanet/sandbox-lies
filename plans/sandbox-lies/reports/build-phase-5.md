@@ -17,7 +17,7 @@ proof.
 
 ## Item 5.1 outcome: `writable`, no escalation
 
-Run in session on 2026-09-26, CC 2.1.283, `/bin/sh` is dash. In the outputs
+Run in session on 2026-09-26, CC 2.1.281 (transcript `version` field), `/bin/sh` is dash. In the outputs
 below, `<EROFS>` stands for the kernel's read-only-filesystem message, printed
 verbatim in the session: a tracked report quoting it whole would fire the
 detector (self-quiet, `tests/docs.bats`).
@@ -143,6 +143,22 @@ Precommit before the commit: bats 181 passed, same recap.
   `hook silent without a verdict` cases noted as affected; and the retirement
   precedent.
 
+## Version stamp correction (carry item from the team lead)
+
+Every "CC 2.1.283" stamp in `docs/` was wrong. `claude --version` reports the
+installed binary, not the running session. Checked against the transcript
+`version` field: this delegate and its corrector ran 2.1.281. Replaced at
+`docs/references/detectors.md` (the Item 5.1 reproduction and the
+`tmpdir-unset` caveat), `docs/references/lock-detectors.md` (Item 3.1 evidence)
+and `docs/changelog.md` (the 2026-09-26 entry), and in this report.
+`lock-detectors.md` links the 2026-09-25 reproductions with the 2026-09-26
+`/tmp` test without stating their versions, so it now says both days ran
+2.1.281. That settles the Phase 4 finding about an inference across sessions.
+My one-command check covered 2026-09-26 only; 2026-09-25 rests on the main
+session's reading of the transcripts. The stamps in earlier reports
+(`build-phase-4.md`, `phase-4-corrector.md`, `phase-5-corrector.md`) are left
+as the historical record. `memory/` was not touched.
+
 ## Open gate
 
 None.
@@ -156,7 +172,7 @@ Build baseline: .git/build-baseline. verify-step: /Users/david/.claude/plugins/c
 Next: Item 6.1 (readonly-path verdict, tdd, three slices; its live-proof gate is met: detectors.md readonly-path entry carries "Live reproduction (2026-09-26)"), then the Phase 6 boundary corrector, then Phase 7.
 Item 6.1 context: the hook skips a detected name with no verdict function before its probe runs, so shipping verdict_readonly_path is also what wires the probe call (FR-4 status names both). tests/hook-candidates.bats "hook silent without a verdict" and its positive twin pin that skip for readonly-path today. stub_probe (tests/helpers/hook.bash) prints path=stub; stub_probe_kv, for custom key=value lines such as slice 1's path=/r/x, lives only in tests/hook-locks.bats.
 Finding carried: shell redirection failures (dash "cannot create", bash "line N:") print the path unquoted and reach nopath; the probe stays as built unless my human partner decides otherwise.
-Sandbox facts (CC 2.1.283): git:* in excludedCommands does NOT unsandbox git; masks are visible from every process while any sandboxed command runs, so a mask never proves which call was sandboxed; the mask-free test is `touch /tmp/<name>` (EROFS only inside the sandbox); an unsandboxed call's $TMPDIR is /tmp, not unset.
+Sandbox facts (CC 2.1.281 — stamp versions from the transcript `version` field, never `claude --version`, which reports the installed binary): git:* in excludedCommands does NOT unsandbox git; masks are visible from every process while any sandboxed command runs, so a mask never proves which call was sandboxed; the mask-free test is `touch /tmp/<name>` (EROFS only inside the sandbox); an unsandboxed call's $TMPDIR is /tmp, not unset.
 Carry: Item 6.1's readonly-path verdict carries the command-output-read clause (runbook Item 4.3 list revision). docs/references/lock-detectors.md and docs/references/hook.md are nodes. tests/hook-locks.bats is at 375 lines; docs/design.md at 396/400; detectors.md at 318/400.
 Splitting is authorized (my human partner, standing): split any doc an edit pushes past 400 lines, per craft:design-doc-writing, fix inbound links, record in docs/changelog.md.
 Phase 6 memory retirement (harness-mounted config, sibling worktree, cost 3) passes the gitlore approval gate: batch it into one memory commit.

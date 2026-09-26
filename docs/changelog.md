@@ -115,7 +115,7 @@ conclusions.
 
 ## 2026-09-26 — `$TMPDIR` not unset unsandboxed; mask evidence replaced
 
-On CC 2.1.283 an unsandboxed call's `$TMPDIR` read `/tmp`, not unset, which
+On CC 2.1.281 an unsandboxed call's `$TMPDIR` read `/tmp`, not unset, which
 falsified the `tmpdir-unset` verdict's claim that the variable is unset outside
 the sandbox; the collapse its 13 corpus hits record may not occur on current CC.
 The verdict now states only what the flagged call shows — the expansion came up
