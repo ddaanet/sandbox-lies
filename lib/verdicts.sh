@@ -94,32 +94,52 @@ _verdict_lock_present() {
   esac
 }
 
-# `verdict_readonly_path <outcome>` — opens the paragraph with the probe's
-# path= stdin line in backticks, interpolated by plain expansion, never sed
-# or eval, so a path holding blanks, `&` or `\1` passes through byte-exact.
-# With no path= line or an empty one, outside the probe contract, the
-# paragraph opens with "The path" instead. An outcome with no text here
-# prints nothing, as an unmatched lock outcome does.
+# `verdict_readonly_path <outcome>` — opens the writable and readonly
+# paragraphs with the probe's path= stdin line in backticks, interpolated by
+# plain expansion, never sed or eval, so a path holding blanks, `&` or `\1`
+# passes through byte-exact. With no path= line or an empty one, outside the
+# probe contract, the paragraph opens with "The path" instead. nopath carries
+# no path= line under the probe contract, so it opens with its own sentence
+# rather than a subject. writable and nopath share the "Re-run" tail
+# verbatim, via `_verdict_readonly_path_tail`, so the two paragraphs cannot
+# drift apart. An outcome with no text here prints nothing, as an unmatched
+# lock outcome does.
 verdict_readonly_path() {
-  local outcome="$1" line path=''
+  local outcome="$1" line path='' subject
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in
       path=*) path=${line#path=} ;;
     esac
   done
+  if [ -n "$path" ]; then
+    # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+    subject=$(printf '`%s`' "$path")
+  else
+    subject='The path'
+  fi
   case "$outcome" in
     writable)
-      if [ -n "$path" ]; then
-        # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-        printf '`%s`' "$path"
-      else
-        printf '%s' 'The path'
-      fi
-      # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-      printf '%s\n' ' is writable outside the sandbox, whose allowlist refused the write. Re-run the whole call with `dangerouslyDisableSandbox: true` or, if it only read a command-output file such as a `*.log`, the command that wrote that file. For `.claude/settings.json`, use the `update-config` skill. A merge or checkout that died here may be partial: compare modified files against the target first.'
+      printf '%s' "$subject"
+      printf '%s\n' " is writable outside the sandbox, whose allowlist refused the write.$(_verdict_readonly_path_tail)"
       printf '%s\n' 'read-only — sandbox allowlist, writable outside'
       ;;
+    readonly)
+      printf '%s\n' "$subject is not writable outside the sandbox either; this is not a sandbox effect."
+      printf '%s\n' 'read-only — real'
+      ;;
+    nopath)
+      printf '%s\n' "The sandbox's write allowlist most likely refused this write.$(_verdict_readonly_path_tail)"
+      printf '%s\n' 'read-only — sandbox allowlist'
+      ;;
   esac
+}
+
+# `_verdict_readonly_path_tail` — the writable paragraph's text from "Re-run"
+# on, one literal shared verbatim with the nopath paragraph: detectors.md
+# defines nopath as its own opening sentence plus this tail.
+_verdict_readonly_path_tail() {
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  printf '%s' ' Re-run the whole call with `dangerouslyDisableSandbox: true` or, if it only read a command-output file such as a `*.log`, the command that wrote that file. For `.claude/settings.json`, use the `update-config` skill. A merge or checkout that died here may be partial: compare modified files against the target first.'
 }
 
 # The shipped candidates. Each takes no outcome, as the phantom verdicts do;

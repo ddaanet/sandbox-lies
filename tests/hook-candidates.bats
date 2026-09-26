@@ -106,6 +106,39 @@ run_hook() {
   [ "$sys" = 'read-only — sandbox allowlist, writable outside' ]
 }
 
+@test "readonly outcome through the hook" {
+  stub_probe_kv readonly_path readonly 'path=/r/y'
+  local text payload ctx sys
+  text=$(cat "$FIXTURES/fire-readonly-path-cp-tmp.txt")
+  payload=$(failure_payload "$text")
+
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  [ -f "$PROBE_CALLED" ]
+  ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
+  sys=$(printf '%s' "$output" | jq -r '.systemMessage')
+  printf '%s' "$ctx" | grep -qF '/r/y'
+  printf '%s' "$ctx" | grep -qF 'not a sandbox effect'
+  [ "$sys" = 'read-only — real' ]
+}
+
+@test "nopath outcome through the hook" {
+  # The probe contract gives no path= line for nopath.
+  stub_probe_kv readonly_path nopath
+  local text payload ctx sys
+  text=$(cat "$FIXTURES/fire-readonly-path-cp-tmp.txt")
+  payload=$(failure_payload "$text")
+
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  [ -f "$PROBE_CALLED" ]
+  ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
+  sys=$(printf '%s' "$output" | jq -r '.systemMessage')
+  printf '%s' "$ctx" | grep -qF 'write allowlist'
+  printf '%s' "$ctx" | grep -qF 'compare modified files against the target'
+  [ "$sys" = 'read-only — sandbox allowlist' ]
+}
+
 @test "tmpdir-unset flag policy survives BSD grep and sed" {
   local text payload bsd ctx sys
   text=$(cat "$FIXTURES/fire-tmpdir-unset-redirect.txt")

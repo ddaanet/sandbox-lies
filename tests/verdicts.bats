@@ -31,6 +31,8 @@ tmpdir_unset -
 resume_lost -
 seccomp_init -
 readonly_path writable
+readonly_path readonly
+readonly_path nopath
 ROWS
 }
 
@@ -60,6 +62,16 @@ all_verdict_text() {
 $text"
   done < <(rows)
   printf '%s' "$all"
+}
+
+# readonly_path_rerun_tail — detectors.md's readonly-path `writable`
+# paragraph from "Re-run" on, leading blank included: the writable
+# paragraph's tail, and the rest of the nopath paragraph, which the doc
+# defines as its opening sentence "then the `writable` paragraph from
+# `Re-run` on".
+readonly_path_rerun_tail() {
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  printf '%s' ' Re-run the whole call with `dangerouslyDisableSandbox: true` or, if it only read a command-output file such as a `*.log`, the command that wrote that file. For `.claude/settings.json`, use the `update-config` skill. A merge or checkout that died here may be partial: compare modified files against the target first.'
 }
 
 @test "verdicts under 400 chars" {
@@ -155,8 +167,7 @@ $text"
   # the placeholder; with no path= line it is "The path".
   local p rest text line1 line2
   p='/r/a b&c\1/x'
-  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  rest=' is writable outside the sandbox, whose allowlist refused the write. Re-run the whole call with `dangerouslyDisableSandbox: true` or, if it only read a command-output file such as a `*.log`, the command that wrote that file. For `.claude/settings.json`, use the `update-config` skill. A merge or checkout that died here may be partial: compare modified files against the target first.'
+  rest=" is writable outside the sandbox, whose allowlist refused the write.$(readonly_path_rerun_tail)"
   # shellcheck disable=SC1090 # $VERDICTS is lib/verdicts.sh, resolved above
   text=$(printf '%s\n' "path=$p" | ( . "$VERDICTS"; verdict_readonly_path writable ))
   line1=$(printf '%s\n' "$text" | sed -n '1p')
@@ -166,6 +177,37 @@ $text"
 
   line1=$(verdict_text readonly_path writable | sed -n '1p')
   [ "$line1" = "The path$rest" ]
+}
+
+@test "readonly-path readonly verdict text matches detectors.md" {
+  # Transcribed from docs/references/detectors.md's readonly-path Verdicts
+  # list, <path> interpolated in backticks as the writable case does, and
+  # "The path" with no path= line (outside the probe contract, as the
+  # row-driven cases call it), so no subjectless sentence.
+  local p text line1 line2
+  p='/r/a b&c\1/x'
+
+  # shellcheck disable=SC1090 # $VERDICTS is lib/verdicts.sh, resolved above
+  text=$(printf '%s\n' "path=$p" | ( . "$VERDICTS"; verdict_readonly_path readonly ))
+  line1=$(printf '%s\n' "$text" | sed -n '1p')
+  line2=$(printf '%s\n' "$text" | sed -n '2p')
+  [ "$line1" = "\`$p\` is not writable outside the sandbox either; this is not a sandbox effect." ]
+  [ "$line2" = 'read-only — real' ]
+
+  line1=$(verdict_text readonly_path readonly | sed -n '1p')
+  [ "$line1" = 'The path is not writable outside the sandbox either; this is not a sandbox effect.' ]
+}
+
+@test "readonly-path nopath verdict text matches detectors.md" {
+  # Transcribed from docs/references/detectors.md's readonly-path Verdicts
+  # list: nopath's opening sentence, then the writable paragraph from
+  # "Re-run" on, as the doc defines it. No path= line: the probe contract
+  # gives none for nopath.
+  local line1 line2
+  line1=$(verdict_text readonly_path nopath | sed -n '1p')
+  line2=$(verdict_text readonly_path nopath | sed -n '2p')
+  [ "$line1" = "The sandbox's write allowlist most likely refused this write.$(readonly_path_rerun_tail)" ]
+  [ "$line2" = 'read-only — sandbox allowlist' ]
 }
 
 @test "lock verdict text matches lock-detectors.md" {
