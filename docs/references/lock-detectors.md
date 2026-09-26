@@ -83,11 +83,12 @@ paths and `git status` in the scratch repo and in the project root: no
 `index.lock` in either, only the project root's `.git/config.lock` as a
 character device. With no index lock masked, the error could not arise. Git did
 run sandboxed there, the `git:*` exclusion unhonoured on CC 2.1.281, the version
-both days ran: in the main session on 2026-09-26, `git --version && touch /tmp/sbx-probe-git` failed with
-the read-only-filesystem error, and the same `touch` with the sandbox disabled
-succeeded. A write to `/tmp/<name>` fails that way only inside the sandbox. A
-mask proves nothing about the call that sees it, since masks are visible from
-every process while any sandboxed command runs.
+both days ran: in the main session on 2026-09-26,
+`git --version && touch /tmp/sbx-probe-git` failed with the read-only-filesystem
+error, and the same `touch` with the sandbox disabled succeeded. A write to
+`/tmp/<name>` fails that way only inside the sandbox. A mask proves nothing
+about the call that sees it, since masks are visible from every process while
+any sandboxed command runs.
 
 ## config-lock
 

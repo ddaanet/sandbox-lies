@@ -159,6 +159,16 @@ session's reading of the transcripts. The stamps in earlier reports
 (`build-phase-4.md`, `phase-4-corrector.md`, `phase-5-corrector.md`) are left
 as the historical record. `memory/` was not touched.
 
+**Gate slip.** The stamp commit landed with `just precommit` failing: the edit
+left a paragraph in `lock-detectors.md` unreflowed. I had piped the gate into
+`tail` and chained the commit with `&&`, so tail's exit status stood in for the
+gate's. The follow-up commit carries the `rumdl fmt` reflow, and the gate was
+re-run with its own exit status captured: exit 0, bats 181 passed, recap
+`plugin.json, hooks.json, shellcheck, bash -n, rumdl, line limits, links,
+tests`. My earlier commits in this phase ran the same `| tail` shape. Their
+recaps printed `precommit passed`, and the entry and post-item verify-step
+runs reported `CLEAN`, so the gate had passed for each of them.
+
 ## Open gate
 
 None.
