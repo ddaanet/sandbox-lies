@@ -127,3 +127,23 @@ sandboxed, but a mask is visible from every process while any sandboxed command
 runs, so it proves nothing about the call that sees it. The conclusion stands on
 a mask-free test instead: a `touch` under `/tmp` chained after `git` failed
 read-only, and the same write with the sandbox disabled succeeded.
+
+## 2026-09-26 — `readonly-path` verdicts shipped; config and worktree memory retired
+
+`readonly-path` now reaches its probe and one of three verdicts, and stays
+silent on an unsandboxed call. The probe's path extraction was widened before
+the verdict shipped, from real messages collected sandboxed: curly quotes,
+`mv`'s target after `to`, and four unquoted forms (bash's `line N:`, dash's
+`cannot create`, git's `could not lock config file` and `cannot mkdir`); any
+other unquoted shape stays `nopath`. The probe moved to
+`lib/probes-readonly.sh`. The `writable` and `nopath` verdicts carry the
+command-output-read clause: a refusal read back from a `*.log` or similar points
+at the command that wrote the file. They ask for the partial-merge comparison
+before the re-run, and `readonly` names an act. `writable` is the first verdict
+to interpolate an unbounded value, so FR-6's 400 characters now state what the
+suite measures: the text before interpolation, where `writable` stands at 391
+and a path of 15 characters or more takes it to 400. The harness-mounted config
+and sibling-worktree sections left `memory/ddaanet/sandbox-effects.md`; the
+merge-recovery procedure stays under its own heading for the skill, cost 3 keeps
+its recipe guidance without the quoted diagnostic, and the sibling section's
+classifier note moved into cost 2.

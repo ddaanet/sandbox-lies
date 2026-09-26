@@ -10,12 +10,11 @@
 # variable an error when a test sources this file directly.
 set -u
 
-# lib/probes.sh sources lib/probes-readonly.sh, with the same
-# BASH_SOURCE-relative pattern used for matchers.sh before the split, so a
-# caller that sources this file alone (the probes*.bats family) still gets
-# probe_readonly_path defined; hooks/annotate.sh needs no separate source
-# line for it. Sourcing an already-sourced lib/probes-readonly.sh just
-# redefines the same functions.
+# lib/probes.sh sources lib/probes-readonly.sh by a BASH_SOURCE-relative
+# path, so a caller that sources this file alone (the probes*.bats family)
+# still gets probe_readonly_path defined; hooks/annotate.sh needs no
+# separate source line for it. Sourcing an already-sourced
+# lib/probes-readonly.sh just redefines the same functions.
 _probes_lib_dir=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd) || return 1
 # shellcheck disable=SC1091 # lib/ sits beside this file; path is dynamic
 . "$_probes_lib_dir/probes-readonly.sh" || return 1

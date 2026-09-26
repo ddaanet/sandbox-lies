@@ -1,12 +1,13 @@
 #!/usr/bin/env bats
-# lib/probes.sh: probe_readonly_path (Item 4.3 slices 2-4), the A-3 contract
-# for the readonly-path candidate. No verdict ships yet (Item 6.1), so the
-# hook never calls this probe (tests/hook-candidates.bats "hook silent
-# without a verdict" pins that).
+# lib/probes-readonly.sh, sourced through lib/probes.sh as the hook sources
+# it: probe_readonly_path (Item 4.3 slices 2-4, Item 6.1 slice 1), the A-3
+# contract for readonly-path. The hook's call to it is pinned in
+# tests/hook-candidates.bats.
 #
 # Refusal lines are the cut fire-readonly-path-* fixtures with their quoted
-# path replaced at run time (readonly_path_text, helpers/probes.bash), so
-# this file never holds the readonly-path refusal whole (self-quiet, FR-11).
+# path replaced at run time (readonly_path_text, helpers/probes.bash), or are
+# built around erofs_message, so this file never holds the readonly-path
+# refusal whole (self-quiet, FR-11).
 
 ROOT="${BATS_TEST_DIRNAME}/.."
 

@@ -2,8 +2,8 @@
 
 **Status:** Partial. Built and tested: the hook, the `phantom-*` and lock
 verdicts, the hook's lock-probe call, the `tmpdir-unset`, `resume-lost` and
-`seccomp-init` verdicts, and the `readonly-path` matcher and probe (no verdict
-yet). Nothing dogfooded. **Verified against:**
+`seccomp-init` verdicts, and the `readonly-path` verdicts with the hook's call
+to their probe. Nothing dogfooded. **Verified against:**
 `52e6dd82b831a1cc2b7b516d4c248df6fb1ebc8c` (2026-09-22).
 
 Changelog: [changelog.md](changelog.md). This document is a hub; `references/`
@@ -79,10 +79,11 @@ flag (FR-5) as its first argument, prints an outcome token on its first line and
 existence and holder (`git-lock`, `config-lock`) and path writability
 (`readonly-path`). Each probe is proved once against a live reproduction before
 it ships; the reproduction is recorded in `references/`. Where · pinned by:
-`lib/probes.sh` · `tests/probes*.bats` over synthetic trees, with a character
-device at the lock path and no holder tool on `PATH`; `tests/hook-locks.bats`
-over the hook's call. Partial (lock probes proved live and hook-called;
-`readonly-path` probe proved live, hook call with its verdict: Item 6.1).
+`lib/probes.sh`, `lib/probes-readonly.sh` · `tests/probes*.bats` over synthetic
+trees, with a character device at the lock path and no holder tool on `PATH`,
+and `tests/probes-readonly.bats` over each path-extraction form;
+`tests/hook-locks.bats` and `tests/hook-candidates.bats` over the hook's calls.
+Done.
 
 **FR-5 — Sandbox-state awareness.** The payload's
 `tool_input.dangerouslyDisableSandbox` (absent means false) decides wording: a
@@ -91,28 +92,27 @@ says so or the detector stays silent. Every detector states its flag policy in
 `references/`; the gating lives in the hook or the verdict, never in a matcher.
 Where · pinned by: `hooks/annotate.sh` · `tests/hook.bats`,
 `tests/hook-locks.bats` and `tests/hook-candidates.bats` pair each fixture with
-both flag values against that policy. Partial (`readonly-path` policy: Item
-6.1).
+both flag values against that policy. Done.
 
 **FR-6 — Verdict text.** Each verdict is a short paragraph of acts the agent
-performs, under 400 characters, and no verdict instructs removing anything
-(D-7). Verdicts compose in catalogue order; the two `phantom-*` listing verdicts
-share one paragraph when both fire, and a paragraph that would push
-`additionalContext` past 2 KB is dropped while its human line is kept. The human
-line on `systemMessage` is one lowercase clause. No verdict quotes a diagnostic
-together with its follow-on sentence. Where · pinned by: `lib/verdicts.sh` ·
-`tests/verdicts.bats` asserts length and runs `detect` over every verdict text
+performs, under 400 characters before a probe value (a path, a pid) is
+interpolated, and no verdict instructs removing anything (D-7). Verdicts compose
+in catalogue order; the two `phantom-*` listing verdicts share one paragraph
+when both fire, and a paragraph that would push `additionalContext` past 2 KB is
+dropped while its human line is kept. The human line on `systemMessage` is one
+lowercase clause. No verdict quotes a diagnostic together with its follow-on
+sentence. Where · pinned by: `lib/verdicts.sh` · `tests/verdicts.bats` asserts
+length with no probe lines on stdin and runs `detect` over every verdict text
 expecting silence; `tests/hook-cap.bats` asserts the 2 KB cap with stub
-paragraphs. Partial (`readonly-path` verdicts: Item 6.1).
+paragraphs. Done.
 
 **FR-7 — Detector catalogue.** Ten detectors, in
 [references/detectors.md](references/detectors.md): five measured and shipped
 from the pilot, five candidates. A candidate ships under the rule in D-15, with
 its corpus figure — hit count, precision, measurement date, pilot-traffic note.
 Where · pinned by: the reference's per-detector table · `tests/matchers.bats`
-has a `fire-*` and a `quiet-*` fixture per shipped detector. Partial (four
-candidates shipped, `readonly-path` without its verdict until Item 6.1;
-`zellij-socket` stays a candidate).
+has a `fire-*` and a `quiet-*` fixture per shipped detector. Done (four
+candidates shipped; `zellij-socket` stays a candidate under D-15).
 
 **FR-8 — Fixtures come from the corpus.** Every `fire-*` fixture is a verbatim
 tool result cut by `tests/extract-fixtures.py` from `~/.claude/projects`; every
@@ -139,8 +139,8 @@ phantom-listing rule, folded into the existing phantom-dotfile bullet of
 `memory/ddaanet/shared-claude.md`. Where · pinned by: the tier's index ·
 `tests/docs.bats` fails if a live pointer (`hooks/`, `lib/`, `skills/`, `tests/`
 outside fixtures, `CLAUDE.md`, `README.md`) still names the retired path.
-Partial (phantom, `/tmp`, lock, `$TMPDIR`-unset, `--resume` and sandbox-setup
-sections retired; rest: Items 6.1, 7.1, 8.2).
+Partial (phantom, `/tmp`, lock, `$TMPDIR`-unset, `--resume`, sandbox-setup,
+harness-mounted and sibling-worktree sections retired; rest: Items 7.1, 8.2).
 
 **FR-11 — Self-quiet.** No live file in this repository fires a detector when
 read back. Source files build each diagnostic literal from fragments so the
@@ -189,6 +189,7 @@ hooks/hooks.json        PostToolUse + PostToolUseFailure · "Bash" · timeout 10
 hooks/annotate.sh       payload → text → detect → probes → one JSON
 lib/matchers.sh         matchers + detect          (promoted from the pilot)
 lib/probes.sh           probe_<verdict> functions   (layer 3)
+lib/probes-readonly.sh  probe_readonly_path         (layer 3)
 lib/verdicts.sh         agent paragraph + human line per verdict
 skills/sandbox-lies/    the symptom-less knowledge
 .bin/claude             dev shim: `--plugin-dir` this checkout (D-16)

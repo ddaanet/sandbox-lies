@@ -106,7 +106,9 @@ _probe_readonly_resolve() {
 # same byte-safety reason as _probe_lock_path. Residual: a quoted path
 # holding its own closing quote, which GNU prints double-quoted or as
 # `'it'\''s'` when straight and as a backslash-escaped quote when curly,
-# yields nopath or the piece before that quote.
+# yields nopath or the piece before that quote; a curly-quoted or unquoted
+# path holding two straight quotes yields the piece between them, since the
+# straight rule is tried first.
 _probe_readonly_path_from_line() {
     local nl='
 '

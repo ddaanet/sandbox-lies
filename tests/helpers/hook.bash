@@ -84,8 +84,7 @@ stub_probe() {
 # stub_probe_kv <name> <outcome> [line...] — as stub_probe, printing each
 # additional <line> after <outcome> instead of the fixed `path=stub`, so a
 # case can feed probe key=value lines (pid=, bytes=, age=, path=) through the
-# hook.
-# Each line is %q-quoted into the stub, so it may carry any character.
+# hook. Each line is %q-quoted into the stub, so it may carry any character.
 stub_probe_kv() {
   local name="$1" outcome="$2" called line body
   shift 2

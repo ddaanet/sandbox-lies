@@ -153,8 +153,9 @@ after the tool's own prefix: bash's `line N: <path>:`, dash's
 and `fatal: cannot mkdir <path>:`. Any other unquoted shape is `nopath`. An
 unquoted path runs to the line's last colon and space, since the kernel message
 after it holds none, so a path holding blanks, `: ` or its form's own words is
-read whole. Residual: a quoted path holding its own closing quote, which the
-tool prints escaped, is cut at that quote or yields `nopath`.
+read whole. Residuals: a quoted path holding its own closing quote, which the
+tool prints escaped, is cut at that quote or yields `nopath`; a curly-quoted or
+unquoted path holding two straight quotes is read as what lies between them.
 
 | outcome | condition |
 |---|---|
@@ -308,7 +309,7 @@ Phase 6 step.
 | phantom dotfiles: visible unsandboxed | flag policy of the `phantom-*` detectors |
 | phantom dotfiles: `## Context` is a Bash call | L-1; `shared-claude.md` bullet; skill (`!`-expansion facts) |
 | harness-mounted config paths; merge recovery | `readonly-path`; recovery clause in its verdict and the skill |
-| sibling worktree writes | `readonly-path` |
+| sibling worktree writes | `readonly-path`; its classifier note moved to cost 2 |
 | leaving the sandbox: escapes, strict mode, read-only default | skill |
 | cost 1, `$TMPDIR` collapse and instability | `tmpdir-unset`; instability → skill; its top-level-classifier note moved to cost 3 |
 | cost 2, classifier and compounds | skill |
