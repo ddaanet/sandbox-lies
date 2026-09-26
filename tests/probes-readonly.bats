@@ -197,11 +197,15 @@ ro_dir() {
 # 2.1.281; runbook Item 6.1 slice 1 table), its path swapped for one under
 # $BATS_TEST_TMPDIR; the kernel's message comes from erofs_message
 # (self-quiet, FR-11) rather than being quoted here. Every name holds a
-# blank: an unquoted form ends its path at the `: ` before the message, not
-# at a blank, and a quoted one keeps every byte between its quotes.
+# blank, and each unquoted one also holds `: ` and its own form's words: the
+# capture starts after the words' first occurrence, at the tool's prefix,
+# and ends at the last `: `, not at a blank, the first `: ` or a later copy
+# of the words.
 
 # The em dash (U+2014) shares its first two bytes with both curly quotes, so
-# a capture excluding the closing quote's bytes one by one stops inside it.
+# a capture excluding the closing quote's bytes one by one stops inside it,
+# and a prefix excluding the opening quote's bytes (a tool invoked by a path
+# holding one) never reaches the quote. Of two curly segments, the first.
 @test "curly-quoted mkdir path is extracted" {
   local p="$BATS_TEST_TMPDIR/curly — target" text
   text="mkdir: cannot create directory ‘$p’: $(erofs_message)"
@@ -212,10 +216,20 @@ ro_dir() {
   [ -z "$stderr" ]
   [ "${output%%$'\n'*}" = writable ]
   printf '%s\n' "$output" | grep -qxF "path=$p"
+
+  text="/opt/tools—2/mkdir: cannot create directory ‘$p’"
+  text="$text ‘$BATS_TEST_TMPDIR/second’: $(erofs_message)"
+
+  run_probe probe_readonly_path false "$BATS_TEST_TMPDIR" "$text"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF "path=$p"
 }
 
 @test "bash line-N path is extracted" {
-  local p="$BATS_TEST_TMPDIR/bash target" text
+  local p="$BATS_TEST_TMPDIR/bash line 3: target" text
   text="/bin/bash: line 4: $p: $(erofs_message)"
 
   run_probe probe_readonly_path false "$BATS_TEST_TMPDIR" "$text"
@@ -227,7 +241,7 @@ ro_dir() {
 }
 
 @test "dash redirect path is extracted" {
-  local p="$BATS_TEST_TMPDIR/dash target" text
+  local p="$BATS_TEST_TMPDIR/dash 2: cannot create target" text
   text="sh: 1: cannot create $p: $(erofs_message)"
 
   run_probe probe_readonly_path false "$BATS_TEST_TMPDIR" "$text"
@@ -239,7 +253,7 @@ ro_dir() {
 }
 
 @test "git config-lock path is extracted" {
-  local p="$BATS_TEST_TMPDIR/config target" text
+  local p="$BATS_TEST_TMPDIR/error: could not lock config file target" text
   text="error: could not lock config file $p: $(erofs_message)"
 
   run_probe probe_readonly_path false "$BATS_TEST_TMPDIR" "$text"
@@ -251,7 +265,7 @@ ro_dir() {
 }
 
 @test "git mkdir path is extracted" {
-  local p="$BATS_TEST_TMPDIR/git mkdir target" text
+  local p="$BATS_TEST_TMPDIR/fatal: cannot mkdir target" text
   text="fatal: cannot mkdir $p: $(erofs_message)"
 
   run_probe probe_readonly_path false "$BATS_TEST_TMPDIR" "$text"

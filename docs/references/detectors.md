@@ -147,11 +147,14 @@ Expected residual: a path not writable outside the sandbox either.
 **Probe.** Extract the path from the matching line; `test -w` on it, or on its
 parent when it does not exist. The path is the first single-quoted segment,
 straight or curly as a UTF-8 locale prints it, except after `mv`'s `to`, which
-names the target. Unquoted, it is read in four fixed forms only: bash's
-`line N: <path>:`, dash's `cannot create <path>:`, git's
-`could not lock config file <path>:` and `cannot mkdir <path>:`. Any other
-unquoted shape is `nopath`. Residual: an unquoted path containing a colon and a
-space is misread.
+names the target. Unquoted, it is read in four fixed forms only, each right
+after the tool's own prefix: bash's `line N: <path>:`, dash's
+`N: cannot create <path>:`, git's `error: could not lock config file <path>:`
+and `fatal: cannot mkdir <path>:`. Any other unquoted shape is `nopath`. An
+unquoted path runs to the line's last colon and space, since the kernel message
+after it holds none, so a path holding blanks, `: ` or its form's own words is
+read whole. Residual: a quoted path holding its own closing quote, which the
+tool prints escaped, is cut at that quote or yields `nopath`.
 
 | outcome | condition |
 |---|---|
