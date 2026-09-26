@@ -106,7 +106,8 @@ human line is kept. The human line on `systemMessage` is one lowercase clause.
 No verdict quotes a diagnostic together with its follow-on sentence. Where ·
 pinned by: `lib/verdicts.sh` · `tests/verdicts.bats` asserts length with no
 probe lines on stdin and runs `detect` over every verdict text expecting
-silence; `tests/hook-cap.bats` asserts the 2 KB cap with stub paragraphs. Done.
+silence; `tests/verdicts-locks.bats` asserts the D-17 flag wording for the lock
+verdicts; `tests/hook-cap.bats` asserts the 2 KB cap with stub paragraphs. Done.
 
 **FR-7 — Detector catalogue.** Ten detectors, in
 [references/detectors.md](references/detectors.md): five measured and shipped
