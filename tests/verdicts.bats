@@ -151,9 +151,8 @@ $text"
   # Transcribed from docs/references/detectors.md's readonly-path Verdicts
   # list, <path> substituted by the probe's path= stdin line. The path holds
   # a blank and the characters a sed replacement or an eval would act on, as
-  # an extracted path may. The doc writes the placeholder in backticks, which
-  # markdown needs for `<path>` anyway, so the path may render bare or in
-  # backticks; everything after it is pinned verbatim.
+  # an extracted path may. The path renders in backticks, as the doc writes
+  # the placeholder; with no path= line it is "The path".
   local p rest text line1 line2
   p='/r/a b&c\1/x'
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
@@ -162,8 +161,11 @@ $text"
   text=$(printf '%s\n' "path=$p" | ( . "$VERDICTS"; verdict_readonly_path writable ))
   line1=$(printf '%s\n' "$text" | sed -n '1p')
   line2=$(printf '%s\n' "$text" | sed -n '2p')
-  [ "$line1" = "$p$rest" ] || [ "$line1" = "\`$p\`$rest" ]
+  [ "$line1" = "\`$p\`$rest" ]
   [ "$line2" = 'read-only — sandbox allowlist, writable outside' ]
+
+  line1=$(verdict_text readonly_path writable | sed -n '1p')
+  [ "$line1" = "The path$rest" ]
 }
 
 @test "lock verdict text matches lock-detectors.md" {

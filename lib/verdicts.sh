@@ -94,14 +94,12 @@ _verdict_lock_present() {
   esac
 }
 
-# readonly-path (Item 6.1): unlike the phantom and lock verdicts, this one
-# interpolates the probe's path= line into the paragraph by plain variable
-# expansion — never sed or eval — so a path holding blanks, `&` or `\1`
-# passes through byte-exact. Only `writable` has text so far (detectors.md);
-# `readonly` and `nopath` print nothing, as an unmatched lock outcome does,
-# until Item 6.1 slices 3-4 add them. An empty path= (no probe line on
-# stdin, as the row-driven verdicts.bats cases pass) still prints the
-# paragraph, with nothing interpolated.
+# `verdict_readonly_path <outcome>` — opens the paragraph with the probe's
+# path= stdin line in backticks, interpolated by plain expansion, never sed
+# or eval, so a path holding blanks, `&` or `\1` passes through byte-exact.
+# With no path= line or an empty one, outside the probe contract, the
+# paragraph opens with "The path" instead. An outcome with no text here
+# prints nothing, as an unmatched lock outcome does.
 verdict_readonly_path() {
   local outcome="$1" line path=''
   while IFS= read -r line || [ -n "$line" ]; do
@@ -111,7 +109,12 @@ verdict_readonly_path() {
   done
   case "$outcome" in
     writable)
-      printf '%s' "$path"
+      if [ -n "$path" ]; then
+        # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+        printf '`%s`' "$path"
+      else
+        printf '%s' 'The path'
+      fi
       # shellcheck disable=SC2016 # backticks are literal prose, not expansion
       printf '%s\n' ' is writable outside the sandbox, whose allowlist refused the write. Re-run the whole call with `dangerouslyDisableSandbox: true` or, if it only read a command-output file such as a `*.log`, the command that wrote that file. For `.claude/settings.json`, use the `update-config` skill. A merge or checkout that died here may be partial: compare modified files against the target first.'
       printf '%s\n' 'read-only — sandbox allowlist, writable outside'
