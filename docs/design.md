@@ -82,7 +82,7 @@ it ships; the reproduction is recorded in `references/`. Where · pinned by:
 `lib/probes.sh` · `tests/probes*.bats` over synthetic trees, with a character
 device at the lock path and no holder tool on `PATH`; `tests/hook-locks.bats`
 over the hook's call. Partial (lock probes proved live and hook-called;
-`readonly-path` probe proved live, verdict: Item 6.1).
+`readonly-path` probe proved live, hook call with its verdict: Item 6.1).
 
 **FR-5 — Sandbox-state awareness.** The payload's
 `tool_input.dangerouslyDisableSandbox` (absent means false) decides wording: a

@@ -154,14 +154,14 @@ it, or on its parent when it does not exist.
 | `nopath` | no path extracted |
 
 **Live reproduction (2026-09-26): `writable`.** Scratch repo under
-`/tmp/claude/` with a linked worktree directly under `/tmp/`, both made
-unsandboxed; CC 2.1.283, `/bin/sh` dash. A sandboxed
-`sh -c 'touch <worktree>/<file>'` raised touch's read-only error naming the
-file, quoted; a `touch` directly under `/tmp/` in the same call raised the same
-error, so that call was sandboxed. `detect` on that text named `readonly-path`,
-and `probe_readonly_path false <root>` run unsandboxed on it printed `writable`,
-`path=<worktree>/<file>`. Neither file was written; the worktree was removed
-unsandboxed.
+`/tmp/claude/` with a linked worktree directly under `/tmp/`, outside the
+sandbox's write allowlist, both made unsandboxed; CC 2.1.283, `/bin/sh` dash. A
+sandboxed `sh -c 'touch <worktree>/<file>'` raised touch's read-only error
+naming the file in straight quotes; a `touch` directly under `/tmp/` in the same
+call raised the same error, so that call was sandboxed. `detect` on that text
+named `readonly-path`, and `probe_readonly_path false <root>` run unsandboxed on
+it printed `writable`, `path=<worktree>/<file>`. Neither file was written; the
+worktree was removed unsandboxed.
 
 **Verdicts.**
 
