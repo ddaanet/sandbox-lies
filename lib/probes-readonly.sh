@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # lib/probes-readonly.sh — probe_readonly_path, the A-3 contract probe for
 # the readonly-path candidate (docs/design.md FR-4): reads the Bash tool
-# result text on stdin, takes the sandbox flag as $1 and the payload cwd as
-# $2, and prints an outcome token on its first line followed by a path= line;
-# exit 0. Split out of lib/probes.sh to keep that file under the line cap;
-# lib/probes.sh sources this file, so hooks/annotate.sh needs no source line
-# of its own for it.
+# result text on stdin, takes the sandbox flag as $1, the payload cwd as $2
+# and tool_input.command as $3, and prints an outcome token on its first
+# line, then a path= line, then — under writable and nopath only — the
+# readfile=/merge=1/target=/match= facts detectors.md's readonly-path Probe
+# facts table describes (Item 8.0 slice 3); exit 0. Split out of
+# lib/probes.sh to keep that file under the line cap; lib/probes.sh sources
+# this file, so hooks/annotate.sh needs no source line of its own for it.
 #
 # set -u as in lib/matchers.sh, lib/verdicts.sh and lib/probes.sh; bats does
 # not set it, so setting it here keeps an unset variable an error when a
@@ -14,23 +16,29 @@ set -u
 
 # probe_readonly_path reuses lib/matchers.sh's own matching-line
 # discriminator (_readonly_path_line) rather than a second copy of the
-# pattern. hooks/annotate.sh already sources matchers.sh before lib/probes.sh
+# pattern, and lib/probes-readonly-facts.sh's _readonly_print_facts for its
+# writable/nopath tail (kept in its own file to hold this one under the line
+# cap). hooks/annotate.sh already sources matchers.sh before lib/probes.sh
 # (which sources this file), so this re-source is only load-bearing where a
 # caller sources this file, or lib/probes.sh, on its own; sourcing twice just
 # redefines the same functions.
 _probes_lib_dir=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd) || return 1
 # shellcheck disable=SC1091 # lib/ sits beside this file; path is dynamic
 . "$_probes_lib_dir/matchers.sh" || return 1
+# shellcheck disable=SC1091 # lib/ sits beside this file; path is dynamic
+. "$_probes_lib_dir/probes-readonly-facts.sh" || return 1
 unset _probes_lib_dir
 
-# probe_readonly_path <flag> <cwd> — A-3 contract for readonly-path: line 1
-# `writable`, `readonly` or `nopath`, then `path=` when a path was extracted.
-# <flag> is part of the interface but unread here: whether the hook calls
-# this probe at all is the candidate's flag policy
+# probe_readonly_path <flag> <cwd> <command> — A-3 contract for
+# readonly-path: line 1 `writable`, `readonly` or `nopath`, then `path=`
+# when a path was extracted, then — under `writable` and `nopath` only —
+# the facts _readonly_print_facts derives from the result text and
+# <command>. <flag> is part of the interface but unread here: whether the
+# hook calls this probe at all is the candidate's flag policy
 # (docs/references/detectors.md), decided before the probe runs, not inside
 # it.
 probe_readonly_path() {
-    local cwd="${2-}" text path target outcome
+    local cwd="${2-}" command="${3-}" text path target outcome
     text=$(cat)
     # One pipeline ending in sed, which exits 0: grep's 1 on a text with no
     # matching line never becomes the assignment's status, so a caller
@@ -39,6 +47,7 @@ probe_readonly_path() {
         | _probe_readonly_path_from_line)
     if [ -z "$path" ]; then
         printf '%s\n' nopath
+        _readonly_print_facts "$text" "$command" "" "$cwd"
         return 0
     fi
     path=$(_probe_readonly_resolve "$path" "$cwd")
@@ -62,6 +71,9 @@ probe_readonly_path() {
         outcome="readonly"
     fi
     printf '%s\n' "$outcome" "path=$path"
+    if [ "$outcome" != readonly ]; then
+        _readonly_print_facts "$text" "$command" "$path" "$cwd"
+    fi
 }
 
 # _probe_readonly_resolve <path> <cwd> — joins a relative <path> onto <cwd>
