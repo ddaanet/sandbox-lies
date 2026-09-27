@@ -2,9 +2,10 @@
 
 **Status:** Partial. Built and tested: the hook, the `phantom-*` and lock
 verdicts, the hook's lock-probe call, the `tmpdir-unset`, `resume-lost` and
-`seccomp-init` verdicts, the `readonly-path` verdicts with the hook's call to
-their probe, and the skill. Nothing dogfooded. **Verified against:**
-`52e6dd82b831a1cc2b7b516d4c248df6fb1ebc8c` (2026-09-22).
+`seccomp-init` verdicts, the `readonly-path` verdicts composed from their
+probe's facts, the skill, and the dogfood shim. Dogfooded 2026-09-27 on CC
+2.1.283. The memory file is not retired: its zellij section has no detector.
+**Verified against:** `45c0316e` (2026-09-27).
 
 Changelog: [changelog.md](changelog.md). This document is a hub; `references/`
 holds one node per mechanism — per detector in
@@ -15,14 +16,15 @@ this hub that a node does not carry.
 
 ## Now
 
-- **Focus:** first build — promote the pilot, wrap it in the hook, add the
-  probes.
-- **Next:** corpus replay for the five candidate detectors; each shipped section
-  leaves the memory file in the same commit.
+- **Focus:** closing the first build — review and TDD audit.
+- **Next:** publish the plugin; then publish the memory tier, held until the
+  plugin installs in the other ddaanet repos. `nopath` shapes worth a form:
+  `tee:`, `sed`'s temporary file, git's `could not write config file`.
 - **Do not re-litigate:** output annotation over command matching (D-1); hooks
   do not block or rewrite (D-2); exit status is not a gate (D-4); the skill
   lives here, not in `craft` (D-9); no verdict instructs a removal (D-7);
-  retirement is immediate per section (D-11).
+  retirement is immediate per section (D-11); the script decides conditions
+  (D-17).
 
 Status legend — `Done`: implemented and pinned by a test or a gate that
 re-checks it on every commit. `Done (prose)`: instructions with nothing
@@ -192,8 +194,7 @@ hooks/hooks.json        PostToolUse + PostToolUseFailure · "Bash" · timeout 10
 hooks/annotate.sh       payload → text → detect → probes → one JSON
 lib/matchers.sh         matchers + detect          (promoted from the pilot)
 lib/probes.sh           probe_<verdict> functions   (layer 3)
-lib/probes-readonly.sh  probe_readonly_path         (layer 3)
-lib/probes-readonly-*.sh its D-17 facts: -facts.sh, and -command.sh's scan
+lib/probes-readonly*.sh probe_readonly_path, its D-17 facts and command scan
 lib/verdicts.sh         agent paragraph + human line per verdict
 skills/sandbox-lies/    the symptom-less knowledge
 .bin/claude             dev shim: `--plugin-dir` this checkout (D-16)
