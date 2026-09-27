@@ -12,6 +12,13 @@ repository. Two shapes occur:
   `-r--r--r--`, size 0), a path that ought to be a directory getting a zero-byte
   file too.
 
+The masks sit under the sandboxed call's working directory, not only under the
+project root. Seen on CC 2.1.281: the Bash tool's working directory persists
+between calls, so one `cd` into a submodule left later sandboxed calls masking
+`.claude/` and `.mcp.json` inside the submodule, and a sandboxed commit there
+then failed on them. Give commands absolute paths, or `cd` within the same call,
+and never leave the working directory in a subdirectory.
+
 This plugin annotates a listing or a status that shows them. What it cannot
 annotate is code that consumes such output without an agent reading it.
 

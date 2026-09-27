@@ -110,39 +110,32 @@ depends on today's filesystem rather than on the question asked.
 
 ### nopath lines (matching line, trimmed to 200 chars), grouped by shape
 
+Each line is quoted as a list item, so this report does not itself fire
+`readonly-path` when read back (FR-11).
+
 11 `nopath` hits found; 10 shown below (one of the four duplicate
 "could not write config file" lines omitted since it is byte-identical
 to the three others quoted) — every distinct shape is represented.
 
 **Shape: `tee: <path>: Read-only file system`** (2 of 2 shown)
-```
-tee: /tmp/release-test-out.txt: Read-only file system
-tee: /tmp/collect_before.txt: Read-only file system
-```
+- `tee: /tmp/release-test-out.txt: Read-only file system`
+- `tee: /tmp/collect_before.txt: Read-only file system`
 
 **Shape: `sed: couldn't open temporary file <relative-path>: Read-only file system`** (2 of 2 shown)
-```
-sed: couldn't open temporary file hooks/sedUWZIXj: Read-only file system
-sed: couldn't open temporary file hooks/sed7bAEpG: Read-only file system
-```
+- `sed: couldn't open temporary file hooks/sedUWZIXj: Read-only file system`
+- `sed: couldn't open temporary file hooks/sed7bAEpG: Read-only file system`
 
 **Shape: `warning: failed to remove <name>: Device or resource busy`** (2 of 2 shown)
-```
-warning: failed to remove .bash_profile: Device or resource busy
-warning: failed to remove .bash_profile: Device or resource busy
-```
+- `warning: failed to remove .bash_profile: Device or resource busy`
+- `warning: failed to remove .bash_profile: Device or resource busy`
 
 **Shape: `error: could not write config file <path>: Device or resource busy`** (3 of 4 shown; 1 identical duplicate omitted)
-```
-error: could not write config file .git/config: Device or resource busy
-error: could not write config file .git/config: Device or resource busy
-error: could not write config file .git/config: Device or resource busy
-```
+- `error: could not write config file .git/config: Device or resource busy`
+- `error: could not write config file .git/config: Device or resource busy`
+- `error: could not write config file .git/config: Device or resource busy`
 
 **Shape: `cp: cannot create regular file <empty>: Read-only file system`** (1 of 1 shown)
-```
-cp: cannot create regular file : Read-only file system
-```
+- `cp: cannot create regular file : Read-only file system`
 
 All five shapes are genuine near-misses of the probe's four recognised
 unquoted forms (bash's `line N:`, dash's `N: cannot create`, git's
