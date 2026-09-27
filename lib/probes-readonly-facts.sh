@@ -42,7 +42,9 @@ _readonly_print_facts() {
         fi
     done < <(_readonly_merge_segment \
         ${_readonly_tokens[@]+"${_readonly_tokens[@]}"})
-    ! _readonly_partial_checkout_text "$text" || partial=1
+    if _readonly_partial_checkout_text "$text"; then
+        partial=1
+    fi
     if [ -z "$sub" ] && [ "$partial" -eq 0 ]; then
         return 0
     fi
