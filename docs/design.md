@@ -5,7 +5,7 @@ verdicts, the hook's lock-probe call, the `tmpdir-unset`, `resume-lost` and
 `seccomp-init` verdicts, the `readonly-path` verdicts composed from their
 probe's facts, the skill, and the dogfood shim. Dogfooded 2026-09-27 on CC
 2.1.283. The memory file is not retired: its zellij section has no detector.
-**Verified against:** `45c03163` (2026-09-27).
+**Verified against:** `0df5864e` (2026-09-27).
 
 Changelog: [changelog.md](changelog.md). This document is a hub; `references/`
 holds one node per mechanism — per detector in
@@ -16,8 +16,7 @@ this hub that a node does not carry.
 
 ## Now
 
-- **Focus:** closing the first build — Item 8.2's memory-tier edits, then review
-  and TDD audit.
+- **Focus:** closing the first build — its review and TDD audit.
 - **Next:** publish the plugin; then publish the memory tier, held until the
   plugin installs in the other ddaanet repos. `nopath` shapes worth a form:
   `tee:`, `sed`'s temporary file, git's `could not write config file`.
@@ -143,11 +142,11 @@ deletes it, both index lines and rewrites its six inbound `[[sandbox-effects]]`
 links; the translation map in `references/detectors.md` is the audit that every
 paragraph landed. One residue survives as prose: the `!`-expansion
 phantom-listing rule, folded into the existing phantom-dotfile bullet of
-`memory/ddaanet/shared-claude.md`. Where · pinned by: the tier's index ·
-`tests/docs.bats` fails if a live pointer (`hooks/`, `lib/`, `skills/`, `tests/`
-outside fixtures, `CLAUDE.md`, `README.md`) still names the retired path.
-Partial (every section retired but zellij, whose detector stays a candidate;
-file deletion: Item 8.2).
+`memory/ddaanet/shared-claude.md`. Where · pinned by: the tier's index · from
+the file's deletion, `tests/docs.bats` fails if a live pointer (`hooks/`,
+`lib/`, `skills/`, `tests/` outside fixtures, `CLAUDE.md`, `README.md`) names
+the retired path. Partial (every section retired but zellij, whose detector
+stays a candidate; the deletion and that case: Item 8.2).
 
 **FR-11 — Self-quiet.** No live file in this repository fires a detector when
 read back. Source files build each diagnostic literal from fragments so the

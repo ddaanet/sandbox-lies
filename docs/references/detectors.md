@@ -20,8 +20,8 @@ directory; no recorded call changed directory, so where a `cd` inside the call
 leaves `cwd` is unrecorded. A sandboxed write refused by the allowlist carried
 no harness sandbox-violation annotation in the payload or in the model's tool
 result (L-5). A **probe** runs in the hook process, outside the sandbox, reads
-the same text on stdin with the flag as its first argument and the payload `cwd`
-as its second, and prints an outcome token on its first line followed by
+the same text on stdin with the flag, the payload `cwd` and `tool_input.command`
+as its arguments, and prints an outcome token on its first line followed by
 `key=value` lines. The **flag** is `tool_input.dangerouslyDisableSandbox` from
 the payload, absent from `tool_input` when unset (read as false) and `true` when
 set (recorded 2026-09-23); every detector states its **flag policy** — what
@@ -145,22 +145,22 @@ Expected residual: a path not writable outside the sandbox either.
 
 **Flag policy.** Silent when the flag is true.
 
-**Probe.** Extract the path from the matching line; `test -w` on it, or on its
-parent when it does not exist. The path is the first single-quoted segment,
-straight or curly as a UTF-8 locale prints it, except after `mv`'s `to`, which
-names the target. Unquoted, it is read in four fixed forms only, each right
-after the tool's own prefix: bash's `line N: <path>:`, dash's
-`N: cannot create <path>:`, git's `error: could not lock config file <path>:`
-and `fatal: cannot mkdir <path>:`. Any other unquoted shape is `nopath`. An
-unquoted path runs to the line's last colon and space, since the kernel message
-after it holds none, so a path holding blanks, `: ` or its form's own words is
-read whole. A relative path joins onto the payload `cwd`. Residuals: a quoted
-path holding its own closing quote, which the tool prints escaped, is cut at
-that quote or yields `nopath`; a curly-quoted or unquoted path holding two
-straight quotes is read as what lies between them. Git names the path in its
-partial-checkout errors from the worktree's top-level, so from a subdirectory or
-under `git -C` the path is wrong, and one whose parent is missing reads
-`readonly`, which carries no merge clause.
+**Probe.** Extract the path from the matching line, printed as `path=`;
+`test -w` on it, or on its parent when it does not exist. The path is the first
+single-quoted segment, straight or curly as a UTF-8 locale prints it, except
+after `mv`'s `to`, which names the target. Unquoted, it is read in four fixed
+forms only, each right after the tool's own prefix: bash's `line N: <path>:`,
+dash's `N: cannot create <path>:`, git's
+`error: could not lock config file <path>:` and `fatal: cannot mkdir <path>:`.
+Any other unquoted shape is `nopath`. An unquoted path runs to the line's last
+colon and space, since the kernel message after it holds none, so a path holding
+blanks, `: ` or its form's own words is read whole. A relative path joins onto
+the payload `cwd`. Residuals: a quoted path holding its own closing quote, which
+the tool prints escaped, is cut at that quote or yields `nopath`; a curly-quoted
+or unquoted path holding two straight quotes is read as what lies between them.
+Git names the path in its partial-checkout errors from the worktree's top-level,
+so from a subdirectory or under `git -C` the path is wrong, and one whose parent
+is missing reads `readonly`, which carries no merge clause.
 
 | outcome | condition |
 |---|---|

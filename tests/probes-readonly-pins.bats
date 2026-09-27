@@ -86,8 +86,8 @@ assert_merge_without_target() {
 # _readonly_merge_segment's cands array stays empty — the shape that aborted
 # the probe on bash 3.2 under set -u (Major Issue 1) before every possibly-
 # empty array was guarded. The suite runs bash 5, which does not reproduce
-# that abort even unguarded (Residual, detectors.md), so this test pins the
-# outcome rather than the crash path itself.
+# that abort even unguarded, so this test pins the outcome rather than the
+# crash path itself.
 @test "a bare git pull gives merge=1 with a clean exit" {
   local text
   text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
@@ -198,6 +198,69 @@ assert_merge_without_target() {
   [ "$status" -eq 0 ]
   printf '%s\n' "$output" | grep -qxF 'target=feat'
   printf '%s\n' "$output" | grep -qxF 'match=f1000'
+}
+
+# make_merge_pass_repo <repo> — main holds x and z; feat changes z; HEAD at
+# main with a clean tree. Each merge-pass case below then puts z at feat's
+# content, the one match it expects.
+make_merge_pass_repo() {
+  make_one_commit_repo "$1" main
+  printf 'x main\n' >"$1/x"
+  printf 'z main\n' >"$1/z"
+  git -C "$1" add x z
+  git -C "$1" commit -q -m xz
+  git -C "$1" checkout -q -b feat
+  printf 'z feat\n' >"$1/z"
+  git -C "$1" add z
+  git -C "$1" commit -q -m feat
+  git -C "$1" checkout -q main
+}
+
+# Critical Issue 2's single ls-tree pairs its records with the modified files
+# in one pass over both sorted lists, stepping past a name only one side
+# holds. m, staged new, is modified against HEAD but absent at feat, and
+# sorts before z: stepping the ls-tree side past it instead ends the pass
+# before z is reached.
+@test "a modified file absent at the target does not hide a later match" {
+  local repo="$BATS_TEST_TMPDIR/passrepo" text
+  make_merge_pass_repo "$repo"
+  printf 'z feat\n' >"$repo/z"
+  printf 'm new\n' >"$repo/m"
+  git -C "$repo" add m
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "")
+
+  run_probe_command probe_readonly_path false "$repo" 'git merge feat' "$text"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  printf '%s\n' "$output" | grep -qxF 'target=feat'
+  printf '%s\n' "$output" | grep -qxF 'match=z'
+}
+
+# The other side: x is a file in the working tree and a directory at feat,
+# which ls-tree -r lists as x/y, a record no modified file pairs with; x/y
+# sorts before z, and stepping the file side past it ends the pass before z.
+@test "a directory at the target where a modified file sits does not hide a later match" {
+  local repo="$BATS_TEST_TMPDIR/passrepo" text
+  make_merge_pass_repo "$repo"
+  git -C "$repo" checkout -q feat
+  git -C "$repo" rm -q x
+  mkdir "$repo/x"
+  printf 'y feat\n' >"$repo/x/y"
+  git -C "$repo" add x/y
+  git -C "$repo" commit -q -m 'x becomes a directory'
+  git -C "$repo" checkout -q main
+  printf 'z feat\n' >"$repo/z"
+  printf 'x edited\n' >"$repo/x"
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "")
+
+  run_probe_command probe_readonly_path false "$repo" 'git merge feat' "$text"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  git -C "$repo" ls-tree -r --name-only feat -- x | grep -qxF x/y
+  printf '%s\n' "$output" | grep -qxF 'target=feat'
+  printf '%s\n' "$output" | grep -qxF 'match=z'
 }
 
 # Critical Issue 1: the tokenizer stops at 16384 characters, and a cut scan

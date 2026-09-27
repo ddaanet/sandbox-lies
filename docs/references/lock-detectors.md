@@ -26,7 +26,8 @@ relative one resolves against the nearest ancestor of the payload `cwd` (itself
 included) holding a `.git` directory, else against the `cwd`, and a missing or
 empty `cwd` falls back to the probe's own working directory, never `/` — then a
 holder check: `lsof -t`, else `fuser`. Size and age come from a portable `stat`
-form (BSD and GNU differ).
+form (BSD and GNU differ). Every outcome also prints the resolved lock path as
+`path=`.
 
 | outcome | condition |
 |---|---|
