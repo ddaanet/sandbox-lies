@@ -15,8 +15,9 @@ then shows as if they were files in the repository. Two shapes occur:
 That directory is not always the project root. Seen on CC 2.1.281: the Bash
 tool's working directory persists between calls, so one `cd` into a submodule
 left later sandboxed calls masking `.claude/` and `.mcp.json` inside the
-submodule, and a sandboxed commit there then failed on them. A `cd` at the head
-of a call persists too. Give commands absolute paths or `git -C <dir>`;
+submodule, and a sandboxed commit there then failed on them. A top-level `cd`
+anywhere in a call persists, not only at its head; one inside `( … )` does not
+(probed 2026-09-27, CC 2.1.281). Give commands absolute paths or `git -C <dir>`;
 otherwise end the call with a `cd <root>` line. A subshell, `(cd <dir> && …)`,
 comes last: a git inside it misses an honoured `git:*` exclusion. Unsandboxed,
 `git -C`, a `cd` beside a git segment and a subshell each cost a classifier call
