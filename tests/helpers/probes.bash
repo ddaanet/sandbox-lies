@@ -1,8 +1,9 @@
 # Shared helpers for tests/probes.bats, tests/probes-edges.bats,
-# tests/probes-tools.bats, tests/probes-config.bats and
-# tests/probes-readonly.bats: the error builders, the `run` wrappers, the
-# tools-only PATH, the lock holder and the no-.git precondition their probe
-# cases use.
+# tests/probes-tools.bats, tests/probes-config.bats, tests/probes-readonly.bats,
+# tests/probes-readonly-facts.bats and tests/probes-readonly-pins.bats: the
+# error builders, the `run` wrappers, the tools-only PATH, the lock holder,
+# the no-.git precondition, the readonly-path scratch repo and the index
+# mtime reader their probe cases use.
 
 # Self-quiet (FR-11): git's lock error is built from two fragments at run
 # time, as lib/matchers.sh match_git_lock builds its follow-on, so no test
@@ -51,6 +52,55 @@ readonly_path_text() {
   sed -E "s#'[^']*'#${replacement}#" "${BATS_TEST_DIRNAME}/fixtures/${fixture}.txt"
 }
 
+# make_scratch_repo <repo> — HEAD at main; branch feat changes a, b, c and
+# `e f` against main's content and leaves d as main has it; the working tree
+# left as a real partial checkout would: a staged at feat's content, b and
+# `e f` unstaged at feat's content, c edited to a third value neither commit
+# holds, d untouched. d's working-tree content equals feat's too, so it is
+# the decoy for the modified-against-HEAD filter; `e f` holds a blank. Shared
+# by tests/probes-readonly-facts.bats and tests/probes-readonly-pins.bats.
+make_scratch_repo() {
+  local repo="$1"
+  git init -q -b main "$repo"
+  git -C "$repo" config user.email test@example.invalid
+  git -C "$repo" config user.name test
+  git -C "$repo" config commit.gpgsign false
+  printf 'a main\n' >"$repo/a"
+  printf 'b main\n' >"$repo/b"
+  printf 'c main\n' >"$repo/c"
+  printf 'd both\n' >"$repo/d"
+  printf 'e main\n' >"$repo/e f"
+  git -C "$repo" add a b c d 'e f'
+  git -C "$repo" commit -q -m main
+  git -C "$repo" checkout -q -b feat
+  printf 'a feat\n' >"$repo/a"
+  printf 'b feat\n' >"$repo/b"
+  printf 'c feat\n' >"$repo/c"
+  printf 'e feat\n' >"$repo/e f"
+  git -C "$repo" add a b c 'e f'
+  git -C "$repo" commit -q -m feat
+  git -C "$repo" checkout -q main
+  printf 'a feat\n' >"$repo/a"
+  git -C "$repo" add a
+  printf 'b feat\n' >"$repo/b"
+  printf 'e feat\n' >"$repo/e f"
+  printf 'c other\n' >"$repo/c"
+}
+
+# index_mtime <index> — seconds since the epoch. BSD's `stat -f %m` is kept
+# only when it reads as digits: on GNU, -f is filesystem mode, and with a file
+# operand it prints that filesystem's free-block report, which changes between
+# two reads. Else GNU's `stat -c %Y`.
+index_mtime() {
+  local m
+  if m=$(stat -f %m "$1" 2>/dev/null) && [ -n "$m" ] \
+    && [ -z "${m//[0-9]/}" ]; then
+    printf '%s\n' "$m"
+  else
+    stat -c %Y "$1"
+  fi
+}
+
 # run_probe <probe> <flag> <cwd> <text> — the probe under bats' run with
 # <text> on stdin: stdout in $output, stderr in $stderr, exit in $status.
 # stderr is kept apart so it cannot shift the outcome off line 1. Line 1 is
@@ -58,6 +108,13 @@ readonly_path_text() {
 # lines, so a stray blank first line would pass for the token.
 run_probe() {
   run --separate-stderr "$1" "$2" "$3" <<<"$4"
+}
+
+# run_probe_command <probe> <flag> <cwd> <command> <text> — as run_probe, but
+# also passing <command> as the probe's third argument, as hooks/annotate.sh
+# passes tool_input.command to probe_readonly_path.
+run_probe_command() {
+  run --separate-stderr "$1" "$2" "$3" "$4" <<<"$5"
 }
 
 # tools_only_path <dir> — symlinks into <dir> every external tool the
@@ -131,8 +188,9 @@ assert_no_git_above() {
   [ ! -e "/.git" ]
 }
 
-# run_probe_bounded <probe> <flag> <cwd> <text> — as run_probe, but the probe
-# runs backgrounded with its streams captured to files and a bounded poll,
+# run_probe_bounded <probe> <flag> <cwd> <text> [<command>] — as run_probe
+# (as run_probe_command when <command> is given), but the probe runs
+# backgrounded with its streams captured to files and a bounded poll,
 # setting $status, $output and $stderr itself. A probe that hangs (a walk-up
 # regression, or tests/probes-edges.bats' non-regular-lock case before its
 # [ -f ] guard) then fails the test on $status instead of hanging the suite.
@@ -147,12 +205,13 @@ assert_no_git_above() {
 # that exited since the poll, so errexit cannot end the test before $status
 # is set.
 #
-# Shared by tests/probes-edges.bats and tests/probes-config.bats.
+# Shared by tests/probes-edges.bats, tests/probes-config.bats and
+# tests/probes-readonly-pins.bats.
 run_probe_bounded() {
   local out="$BATS_TEST_TMPDIR/bounded-out" err="$BATS_TEST_TMPDIR/bounded-err"
   local rc="$BATS_TEST_TMPDIR/bounded-status" pid tries=0
   set -m
-  ("$1" "$2" "$3" <<<"$4" >"$out" 2>"$err"; echo "$?" >"$rc") &
+  ("$1" "$2" "$3" ${5+"$5"} <<<"$4" >"$out" 2>"$err"; echo "$?" >"$rc") &
   pid=$!
   while kill -0 "$pid" 2>/dev/null; do
     if [ "$tries" -ge 30 ]; then

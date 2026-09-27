@@ -22,14 +22,6 @@ setup() {
   source "$ROOT/lib/probes.sh"
 }
 
-# run_probe_command <probe> <flag> <cwd> <command> <text> — as helpers/
-# probes.bash's run_probe, but also passing <command> as the probe's third
-# argument (Item 8.0 slice 3): stdout in $output, stderr in $stderr, exit in
-# $status.
-run_probe_command() {
-  run --separate-stderr "$1" "$2" "$3" "$4" <<<"$5"
-}
-
 # git's partial-checkout lines under a read-only mount, in the shapes git's
 # own format strings give them (git 2.47): the unlink form single-quotes the
 # path, the create form does not, so the first reads writable and the second
@@ -44,54 +36,6 @@ partial_checkout_create_error() {
   local msg='error: unable to create '
   msg="${msg}file $1: $(erofs_message)"
   printf '%s\n' "$msg"
-}
-
-# make_scratch_repo <repo> — HEAD at main; branch feat changes a, b, c and
-# `e f` against main's content and leaves d as main has it; the working tree
-# left as a real partial checkout would: a staged at feat's content, b and
-# `e f` unstaged at feat's content, c edited to a third value neither commit
-# holds, d untouched. d's working-tree content equals feat's too, so it is
-# the decoy for the modified-against-HEAD filter; `e f` holds a blank.
-make_scratch_repo() {
-  local repo="$1"
-  git init -q -b main "$repo"
-  git -C "$repo" config user.email test@example.invalid
-  git -C "$repo" config user.name test
-  git -C "$repo" config commit.gpgsign false
-  printf 'a main\n' >"$repo/a"
-  printf 'b main\n' >"$repo/b"
-  printf 'c main\n' >"$repo/c"
-  printf 'd both\n' >"$repo/d"
-  printf 'e main\n' >"$repo/e f"
-  git -C "$repo" add a b c d 'e f'
-  git -C "$repo" commit -q -m main
-  git -C "$repo" checkout -q -b feat
-  printf 'a feat\n' >"$repo/a"
-  printf 'b feat\n' >"$repo/b"
-  printf 'c feat\n' >"$repo/c"
-  printf 'e feat\n' >"$repo/e f"
-  git -C "$repo" add a b c 'e f'
-  git -C "$repo" commit -q -m feat
-  git -C "$repo" checkout -q main
-  printf 'a feat\n' >"$repo/a"
-  git -C "$repo" add a
-  printf 'b feat\n' >"$repo/b"
-  printf 'e feat\n' >"$repo/e f"
-  printf 'c other\n' >"$repo/c"
-}
-
-# index_mtime <index> — seconds since the epoch. BSD's `stat -f %m` is kept
-# only when it reads as digits: on GNU, -f is filesystem mode, and with a file
-# operand it prints that filesystem's free-block report, which changes between
-# two reads. Else GNU's `stat -c %Y`.
-index_mtime() {
-  local m
-  if m=$(stat -f %m "$1" 2>/dev/null) && [ -n "$m" ] \
-    && [ -z "${m//[0-9]/}" ]; then
-    printf '%s\n' "$m"
-  else
-    stat -c %Y "$1"
-  fi
 }
 
 @test "readfile reports a command-output path from a single reader" {
