@@ -1038,6 +1038,26 @@ fire case under `make_bsd_stubs grep sed` (Portability).
      `merge=1` and no `target=`. The repository is the path's nearest
      existing directory's, else the cwd's. The probe leaves `.git/index`
      byte- and mtime-identical and no `index.lock`.
+  List revision after slice 3: the slice-3 code review fixed defects its
+  tests did not reach (`reports/item-8-0-s3-code-review.md`); slice 4 pins
+  them, proven by mutation since the behaviour exists.
+  `tests/probes-readonly-facts.bats` (370) nears the cap, so slice 4 goes in
+  a new `tests/probes-readonly-pins.bats`, `make_scratch_repo` moving to
+  `tests/helpers/` for both files.
+  4. `the probe's review fixes hold` (`tests/probes-readonly-pins.bats`) —
+     over the slice-3 scratch repo plus a tracked file stat-dirty with
+     unchanged content (`touch d`): `.git/index` byte- and mtime-identical,
+     no `index.lock`, `d` never a `match=`. Exit 0, empty stderr, `merge=1`
+     and no `target=` for a candidate naming a tag on a tree, a tag on a
+     blob, and in a repo whose `.git` file names a missing gitdir, and one
+     with an unborn HEAD. A bare `git pull`: `merge=1`, exit 0, empty
+     stderr. 1001 modified files matching the target: no `target=`. A
+     reader name past character 16384: no `readfile=`. A heredoc body line
+     `git merge feat`: no `merge=1`; `git fetch` newline `git merge feat`:
+     `merge=1`; `cat build.log` newline `rm -rf x`: no `readfile=`.
+     `nopath` with a relative cwd resolves `target=` within a bound.
+     Residual: the bash 3.2 empty-array abort does not execute on bash 5,
+     so the `git pull` test pins the outcome, not that path.
 
 - Item 8.1: `.bin/claude`, `.envrc` — the D-16 shim: prepends
   `--plugin-dir <this checkout>` and execs the next `claude` on `PATH` with
