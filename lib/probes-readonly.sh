@@ -4,8 +4,8 @@
 # result text on stdin, takes the sandbox flag as $1, the payload cwd as $2
 # and tool_input.command as $3, and prints an outcome token on its first
 # line, then a path= line, then — under writable and nopath only — the
-# readfile=/merge=1/target=/match= facts detectors.md's readonly-path Probe
-# facts table describes; exit 0. Split out of
+# readfile=/merge=1/partial=1/target=/match= facts detectors.md's
+# readonly-path Probe facts table describes; exit 0. Split out of
 # lib/probes.sh to keep that file under the line cap; lib/probes.sh sources
 # this file, so hooks/annotate.sh needs no source line of its own for it.
 #

@@ -38,6 +38,14 @@ partial_checkout_create_error() {
   printf '%s\n' "$msg"
 }
 
+# git's third partial-checkout line (verified live, git 2.47.3): a missing
+# directory under a read-only mount, its path single-quoted.
+partial_checkout_mkdir_error() {
+  local msg='fatal: cannot create '
+  msg="${msg}directory at '$1': $(erofs_message)"
+  printf '%s\n' "$msg"
+}
+
 @test "readfile reports a command-output path from a single reader" {
   local text
   text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
@@ -195,6 +203,46 @@ partial_checkout_create_error() {
     'just sync' "$text"
   [ "${output%%$'\n'*}" = writable ]
   run ! grep -q '^merge=1$' <<<"$output"
+}
+
+@test "partial=1 fires with merge=1 for each of git's three partial-checkout errors, not for another tool's refusal" {
+  local text
+
+  text=$(partial_checkout_unlink_error "$BATS_TEST_TMPDIR/a")
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'just sync' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'merge=1'
+  printf '%s\n' "$output" | grep -qxF 'partial=1'
+
+  text=$(partial_checkout_create_error "$BATS_TEST_TMPDIR/b")
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'just sync' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = nopath ]
+  printf '%s\n' "$output" | grep -qxF 'merge=1'
+  printf '%s\n' "$output" | grep -qxF 'partial=1'
+
+  # The third needle alone, under a non-merge command, still gives merge=1.
+  text=$(partial_checkout_mkdir_error "$BATS_TEST_TMPDIR/c")
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'just sync' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'merge=1'
+  printf '%s\n' "$output" | grep -qxF 'partial=1'
+
+  # negative control: a merge-style command whose text holds only another
+  # tool's refusal gives merge=1 from the command shape alone, no partial=1.
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/a'")
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'git merge feat' "$text"
+  printf '%s\n' "$output" | grep -qxF 'merge=1'
+  run ! grep -q '^partial=1$' <<<"$output"
 }
 
 # The index is back-dated so that a rewrite moves its mtime even within the

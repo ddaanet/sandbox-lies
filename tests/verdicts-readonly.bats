@@ -102,8 +102,10 @@ $n" "$MATCHERS"
 }
 
 @test "readonly-path merge alone restores the written files then acts" {
+  # partial=1 is now required alongside merge=1 for the no-target restore
+  # clause (Item 8.0 slice 5); added here so this composition keeps passing.
   local text line1
-  text=$(readonly_path_text writable path=/r/x merge=1)
+  text=$(readonly_path_text writable path=/r/x merge=1 partial=1)
   line1=$(printf '%s\n' "$text" | sed -n '1p')
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   [ "$line1" = '`/r/x` is writable outside the sandbox, whose allowlist refused it. The merge or checkout left the files it wrote with HEAD unmoved, blocking a re-run: restore them from HEAD, then re-run the whole call with `dangerouslyDisableSandbox: true`.' ]
@@ -113,9 +115,57 @@ $n" "$MATCHERS"
   [ -z "$output" ]
 }
 
+@test "readonly-path merge alone with no partial=1 states the act alone, capitalised" {
+  local text line1 baseline baseline1
+  # positive control: merge=1 with partial=1 keeps the restore-them clause.
+  text=$(readonly_path_text writable path=/r/x merge=1 partial=1)
+  line1=$(printf '%s\n' "$text" | sed -n '1p')
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  [ "$line1" = '`/r/x` is writable outside the sandbox, whose allowlist refused it. The merge or checkout left the files it wrote with HEAD unmoved, blocking a re-run: restore them from HEAD, then re-run the whole call with `dangerouslyDisableSandbox: true`.' ]
+  [ "${#line1}" -lt 400 ]
+
+  # negative: merge=1 alone, no partial=1, states the act alone, capitalised
+  # — identical to the no-facts baseline, no restore clause at all.
+  text=$(readonly_path_text writable path=/r/x merge=1)
+  baseline=$(readonly_path_text writable path=/r/x)
+  line1=$(printf '%s\n' "$text" | sed -n '1p')
+  baseline1=$(printf '%s\n' "$baseline" | sed -n '1p')
+  [ "$line1" = "$baseline1" ]
+  text_lacks "$line1" 'restore'
+  [ "${#line1}" -lt 400 ]
+  run bash -c 'printf "%s\n" "$1" | bash "$2"' _ "$text" "$MATCHERS"
+  [ "$status" -eq 1 ]
+  [ -z "$output" ]
+}
+
+@test "readonly-path merge with target, partial=1 and no match still states the act alone" {
+  # Already holds on unchanged code: the target= branch decides the
+  # no-clause case regardless of partial=1 — mutation-proved in the RED
+  # report, not a new-behaviour red here. Paired with the same facts plus a
+  # match= line, which keeps the match clause alongside partial=1.
+  local text baseline line1 baseline1
+  text=$(readonly_path_text writable path=/r/x merge=1 partial=1 target=main match=a)
+  line1=$(printf '%s\n' "$text" | sed -n '1p')
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  [ "$line1" = '`/r/x` is writable outside the sandbox, whose allowlist refused it. The merge or checkout left files at the target with HEAD unmoved, blocking a re-run: restore `a` from HEAD — they match `main` —, then re-run the whole call with `dangerouslyDisableSandbox: true`.' ]
+
+  text=$(readonly_path_text writable path=/r/x merge=1 partial=1 target=main)
+  baseline=$(readonly_path_text writable path=/r/x)
+  line1=$(printf '%s\n' "$text" | sed -n '1p')
+  baseline1=$(printf '%s\n' "$baseline" | sed -n '1p')
+  [ "$line1" = "$baseline1" ]
+  text_lacks "$line1" 'restore'
+  [ "${#line1}" -lt 400 ]
+  run bash -c 'printf "%s\n" "$1" | bash "$2"' _ "$text" "$MATCHERS"
+  [ "$status" -eq 1 ]
+  [ -z "$output" ]
+}
+
 @test "readonly-path merge clause leads lowercase into whichever act the facts select" {
+  # partial=1 added to the first case (Item 8.0 slice 5): merge=1 alone, no
+  # target, needs it too for the no-target restore clause.
   local text line1
-  text=$(readonly_path_text writable path=/r/x merge=1 readfile=/w/b.log)
+  text=$(readonly_path_text writable path=/r/x merge=1 partial=1 readfile=/w/b.log)
   line1=$(printf '%s\n' "$text" | sed -n '1p')
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   [ "$line1" = '`/r/x` is writable outside the sandbox, whose allowlist refused it. The merge or checkout left the files it wrote with HEAD unmoved, blocking a re-run: restore them from HEAD, then re-run the command that wrote `/w/b.log`.' ]
@@ -218,7 +268,7 @@ $n" "$MATCHERS"
 $(readonly_path_text writable path=/r/x readfile=/w/build.log)
 $(readonly_path_text writable path=/r/.claude/settings.json)
 $(readonly_path_text writable path=/r/x merge=1 target=main match=a match=b)
-$(readonly_path_text writable path=/r/x merge=1)
+$(readonly_path_text writable path=/r/x merge=1 partial=1)
 $(readonly_path_text nopath)
 $(readonly_path_text nopath merge=1 target=main match=a)"
   printf '%s' "$combined" | grep -qF 'The merge or checkout left'

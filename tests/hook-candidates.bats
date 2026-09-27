@@ -114,8 +114,9 @@ run_hook() {
 
 @test "writable outcome through the hook" {
   # The probe's fact lines after the outcome reach the verdict's stdin: the
-  # merge=1 line selects the merge clause.
-  stub_probe_kv readonly_path writable 'path=/r/x' 'merge=1'
+  # merge=1 and partial=1 lines select the merge clause (partial=1 is now
+  # required alongside merge=1 for the no-target restore, Item 8.0 slice 5).
+  stub_probe_kv readonly_path writable 'path=/r/x' 'merge=1' 'partial=1'
   local text payload ctx sys
   text=$(cat "$FIXTURES/fire-readonly-path-cp-tmp.txt")
   payload=$(failure_payload "$text")
@@ -163,6 +164,44 @@ run_hook() {
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   [ "$ctx" = "The sandbox's write allowlist most likely refused this write. Re-run the whole call with \`dangerouslyDisableSandbox: true\`." ]
   [ "$sys" = 'read-only — probably the sandbox, path not checked' ]
+}
+
+@test "the no-target merge clause needs git's own partial-checkout error, not any refused write" {
+  # The real probe, not stubbed (setup's hook_copy_tree copies the tracked
+  # lib/ as is): the two cut fixtures under their own recorded commands, cwd
+  # overridden to a writable scratch dir so the mkdir fixture's relative
+  # path reads writable per its own note.
+  local text payload ctx sys cmd_mkdir cmd_busy
+
+  # positive control: the git-mkdir fixture's own line is one of git's three
+  # partial-checkout needles, so partial=1 leads the restore-them clause.
+  cmd_mkdir='git -C /tmp/sl8c-wt checkout feat2 2>&1'
+  text=$(cat "$FIXTURES/fire-readonly-path-git-mkdir.txt")
+  payload=$(failure_payload "$text" | jq --arg c "$cmd_mkdir" \
+    --arg d "$BATS_TEST_TMPDIR" '.tool_input.command = $c | .cwd = $d')
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
+  sys=$(printf '%s' "$output" | jq -r '.systemMessage')
+  [ "$sys" = 'read-only — sandbox allowlist, writable outside' ]
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  [ "$ctx" = "\`$BATS_TEST_TMPDIR/newdir2\`"' is writable outside the sandbox, whose allowlist refused it. The merge or checkout left the files it wrote with HEAD unmoved, blocking a re-run: restore them from HEAD, then re-run the whole call with `dangerouslyDisableSandbox: true`.' ]
+
+  # negative: the git-config-busy fixture's refusal is another write's own,
+  # not one of git's three needles, so no restore clause leads even though
+  # the recorded command's own checkout still gives merge=1. The verdict
+  # must still fire, as the act alone: an empty hook output has no restore.
+  # shellcheck disable=SC2016 # $WT is the recorded command's literal text
+  cmd_busy='cd /Users/david/code/micro/micro && git checkout -q display-golden-tests && git branch -f softwrapcolumn2 swc2-rebuild && git branch -D swc2-rebuild && git tag -d DGT_FINAL && WT="/tmp/claude-1000/-Users-david-code-micro/e0c3e94a-77e1-4c01-9ced-db2811d297d7/scratchpad/verify-wt" && git worktree remove --force "$WT" && echo "=== final status ===" && git status --short && echo "clean-if-empty" && echo "=== branches ===" && git branch | cat'
+  text=$(cat "$FIXTURES/fire-readonly-path-git-config-busy.txt")
+  payload=$(failure_payload "$text" | jq --arg c "$cmd_busy" \
+    --arg d "$BATS_TEST_TMPDIR" '.tool_input.command = $c | .cwd = $d')
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
+  sys=$(printf '%s' "$output" | jq -r '.systemMessage')
+  [ "$sys" = 'read-only — probably the sandbox, path not checked' ]
+  [ "$ctx" = "The sandbox's write allowlist most likely refused this write. Re-run the whole call with \`dangerouslyDisableSandbox: true\`." ]
 }
 
 @test "every probe receives tool_input.command byte-exact" {

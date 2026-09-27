@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# lib/probes-readonly-facts.sh — the readfile=/merge=1/target=/match= facts
-# _readonly_print_facts derives for probe_readonly_path under writable and
-# nopath (detectors.md's readonly-path Probe facts table), reading the
-# command through lib/probes-readonly-command.sh's scan. Split out of
-# lib/probes-readonly.sh to keep that file under the line cap;
+# lib/probes-readonly-facts.sh — the readfile=/merge=1/partial=1/target=/
+# match= facts _readonly_print_facts derives for probe_readonly_path under
+# writable and nopath (detectors.md's readonly-path Probe facts table),
+# reading the command through lib/probes-readonly-command.sh's scan. Split
+# out of lib/probes-readonly.sh to keep that file under the line cap;
 # lib/probes-readonly.sh sources both, so no other caller needs a source
 # line of its own for them.
 #
@@ -16,17 +16,17 @@ set -u
 
 # _readonly_print_facts <text> <command> <path> <cwd> — the writable/nopath
 # tail of the A-3 contract (detectors.md's readonly-path Probe facts table):
-# readfile=, merge=1, target= and match= lines, derived from <text> and
-# <command> only — never from the outcome (D-1). <path> is the extracted
-# refusal path, empty under nopath; the repository search starts there, or
-# at <cwd> when there is none (detectors.md: "the path's nearest existing
-# directory, else the cwd's" — walking up from <path> reaches the same
-# first .git ancestor either way, since a check below a nonexistent
+# readfile=, merge=1, partial=1, target= and match= lines, derived from
+# <text> and <command> only — never from the outcome (D-1). <path> is the
+# extracted refusal path, empty under nopath; the repository search starts
+# there, or at <cwd> when there is none (detectors.md: "the path's nearest
+# existing directory, else the cwd's" — walking up from <path> reaches the
+# same first .git ancestor either way, since a check below a nonexistent
 # directory can never succeed, so no separate existence walk is needed).
 # _readonly_tokens and _readonly_tokens_cut are _readonly_tokenize's output.
 _readonly_print_facts() {
     local text="$1" command="$2" path="$3" cwd="$4" readfile word sub=''
-    local start repo _readonly_tokens_cut=0
+    local start repo _readonly_tokens_cut=0 partial=0
     local -a _readonly_tokens=() cands=()
 
     _readonly_tokenize "$command"
@@ -42,10 +42,12 @@ _readonly_print_facts() {
         fi
     done < <(_readonly_merge_segment \
         ${_readonly_tokens[@]+"${_readonly_tokens[@]}"})
-    if [ -z "$sub" ] && ! _readonly_partial_checkout_text "$text"; then
+    ! _readonly_partial_checkout_text "$text" || partial=1
+    if [ -z "$sub" ] && [ "$partial" -eq 0 ]; then
         return 0
     fi
     printf 'merge=1\n'
+    [ "$partial" -eq 0 ] || printf 'partial=1\n'
 
     # target= is only attempted after these three subcommands (detectors.md);
     # pull, rebase and cherry-pick still fire merge=1 above but name no ref.
@@ -60,11 +62,12 @@ _readonly_print_facts() {
     _readonly_repo_facts "$repo" "${cands[@]}"
 }
 
-# _readonly_partial_checkout_text <text> — true when <text> holds git's
-# "unable to unlink old" or "unable to create file" refusal (a checkout or
-# merge that only wrote some of the target's files before the mount refused
-# the rest), each built from two fragments so this file holds neither
-# phrase whole (self-quiet, FR-11, as tests/helpers/probes.bash's
+# _readonly_partial_checkout_text <text> — true when <text> holds one of
+# git's three partial-checkout refusals, "unable to unlink old", "unable to
+# create file" or "cannot create directory at" (a checkout or merge that
+# only wrote some of the target's files before the mount refused the rest),
+# each built from two fragments so this file holds none of the three
+# phrases whole (self-quiet, FR-11, as tests/helpers/probes.bash's
 # git_lock_error does for git's own lock text). `case` glob matching, not
 # grep: `*` matches across the embedded newlines <text> may hold.
 _readonly_partial_checkout_text() {
@@ -76,6 +79,11 @@ _readonly_partial_checkout_text() {
     esac
     needle='unable to create'
     needle="$needle file"
+    case "$text" in
+        *"$needle"*) return 0 ;;
+    esac
+    needle='cannot create'
+    needle="$needle directory at"
     case "$text" in
         *"$needle"*) return 0 ;;
     esac
@@ -115,7 +123,8 @@ _readonly_git_dir() {
 #
 # Bounded (NFR-3): four git processes whatever the file count, and past
 # 1000 modified files no target= either, so the verdict's generic "restore
-# them from HEAD" clause stands in for a list it could not build in time.
+# them from HEAD" clause — printed only when the text itself gave
+# partial=1 — stands in for a list it could not build in time.
 # Writes nothing (NFR-4): optional locks off; diff-index compares stat data
 # without refreshing the index (a porcelain `git diff` refresh can rewrite
 # it) and with fsmonitor off (its daemon writes an IPC socket under .git);

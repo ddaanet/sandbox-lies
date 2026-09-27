@@ -145,18 +145,19 @@ _verdict_lock_present() {
 #
 # writable and nopath then carry the tail detectors.md's readonly-path
 # Verdicts compose from the probe's other stdin facts (readfile=, merge=1,
-# target=, match=): one act, capitalised alone or lowercase after a merge
-# clause, each spelled twice since bash 3.2 has no case conversion. readonly
-# ignores every fact but path=. An outcome with no text here prints nothing,
-# as an unmatched lock outcome does.
+# partial=1, target=, match=): one act, capitalised alone or lowercase after
+# a merge clause, each spelled twice since bash 3.2 has no case conversion.
+# readonly ignores every fact but path=. An outcome with no text here prints
+# nothing, as an unmatched lock outcome does.
 verdict_readonly_path() {
-  local outcome="$1" line path='' readfile='' merge='' target=''
+  local outcome="$1" line path='' readfile='' merge='' partial='' target=''
   local matches=() subject act act_low rest
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in
       path=*) path=${line#path=} ;;
       readfile=*) readfile=${line#readfile=} ;;
       merge=*) merge=${line#merge=} ;;
+      partial=*) partial=${line#partial=} ;;
       target=*) target=${line#target=} ;;
       match=*) matches+=("${line#match=}") ;;
     esac
@@ -194,7 +195,7 @@ verdict_readonly_path() {
           if [ "${#matches[@]}" -gt 0 ]; then
             rest=" The merge or checkout left files at the target with HEAD unmoved, blocking a re-run: restore $(_readonly_match_list "${matches[@]}") from HEAD — they match \`$target\` —, then $act_low"
           fi
-        else
+        elif [ -n "$partial" ]; then
           rest=" The merge or checkout left the files it wrote with HEAD unmoved, blocking a re-run: restore them from HEAD, then $act_low"
         fi
       fi
