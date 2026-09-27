@@ -183,8 +183,22 @@ modified files already at that target, and a read of a command-output file; the
 verdict states only the acts those facts select. The update-config act replaces
 the re-run when the path or the config file is `.claude/settings.json`. With the
 branches gone the budget no longer forces "unsandboxed", so the re-runs name
-`dangerouslyDisableSandbox: true` again. The two conditions a stateless hook
-cannot see — a repeat failure — stay in the text. D-17 took `docs/design.md`
+`dangerouslyDisableSandbox: true` again. The clauses keyed to a repeat failure,
+which a stateless hook cannot see, stay in the text. D-17 took `docs/design.md`
 past its cap, so the arguments for D-6 and D-13 moved verbatim into
 `references/hook.md` and D-14's into `references/lock-detectors.md`, each
 leaving its conclusion in the hub.
+
+## 2026-09-27 — dogfooded through the shim
+
+The D-16 shim landed as `.bin/claude`. It drops every `PATH` entry whose
+`claude` is the shim itself rather than every entry spelled like its directory:
+a trailing slash on that entry had the shim re-executing itself without end.
+Through it, on CC 2.1.283, the skill listed as `sandbox-lies:sandbox-lies` and
+the hook's context on an `sh -c 'ls -la'` run without the sandbox flag carried
+the `phantom-chardev` verdict, which closed FR-1. Earlier in the build, on CC
+2.1.281, masks turned up under the sandboxed call's working directory after a
+persisted `cd` into a submodule, not only under the project root; the skill and
+`references/hook.md` now say so, while the phantom verdicts still name the
+project root. D-1's argument moved verbatim into `references/hook.md`, leaving
+its conclusion in the hub, to keep `docs/design.md` under its cap.

@@ -16,8 +16,9 @@ The masks sit under the sandboxed call's working directory, not only under the
 project root. Seen on CC 2.1.281: the Bash tool's working directory persists
 between calls, so one `cd` into a submodule left later sandboxed calls masking
 `.claude/` and `.mcp.json` inside the submodule, and a sandboxed commit there
-then failed on them. Give commands absolute paths, or `cd` within the same call,
-and never leave the working directory in a subdirectory.
+then failed on them. A `cd` at the head of a call persists too. Give commands
+absolute paths or `git -C <dir>`, or put the `cd` in a subshell,
+`(cd <dir> && …)`, so the working directory never stays in a subdirectory.
 
 This plugin annotates a listing or a status that shows them. What it cannot
 annotate is code that consumes such output without an agent reading it.

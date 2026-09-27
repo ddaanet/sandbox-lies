@@ -8,6 +8,9 @@
 
 bats_require_minimum_version 1.5.0
 
+load helpers/bsd-stubs
+load helpers/probes
+
 ROOT="$(cd "${BATS_TEST_DIRNAME}/.." && pwd)"
 SHIM="$ROOT/.bin/claude"
 
@@ -38,15 +41,29 @@ STUB
   run ! grep -qxF "$ROOT/.bin" "$BATS_TEST_TMPDIR/entries"
 }
 
+@test "an entry naming the shim's directory in another spelling is stripped too" {
+  # A trailing slash and a relative `.bin` each name the shim's directory
+  # without matching its spelling; either left on PATH re-execs the shim
+  # without end, which the bounded run reports as status 124.
+  cd "$ROOT"
+  PATH="$ROOT/.bin/:.bin:$NEXT:$PATH" run_probe_bounded "$SHIM" -p 'a b' ''
+  [ "$status" -eq 0 ]
+  printf '%s\n' --plugin-dir "$ROOT" -p 'a b' >"$BATS_TEST_TMPDIR/want"
+  diff "$BATS_TEST_TMPDIR/want" "$BATS_TEST_TMPDIR/argv"
+  tr ':' '\n' <"$BATS_TEST_TMPDIR/path" >"$BATS_TEST_TMPDIR/entries"
+  grep -qxF "$NEXT" "$BATS_TEST_TMPDIR/entries"
+  run ! grep -qxF -e "$ROOT/.bin/" -e .bin "$BATS_TEST_TMPDIR/entries"
+}
+
 @test "with no other claude on PATH the shim exits 127 and says so" {
   local bare="$BATS_TEST_TMPDIR/bare"
   mkdir -p "$bare"
   local tool
-  for tool in sh dirname tr grep paste; do
+  for tool in sh dirname tr paste; do
     ln -s "$(command -v "$tool")" "$bare/$tool"
   done
   # env, not a prefix assignment: bats' own `run` needs mktemp from PATH
-  run --separate-stderr env PATH="$ROOT/.bin:$bare" "$SHIM"
+  run -127 --separate-stderr env PATH="$ROOT/.bin:$bare" "$SHIM"
   [ "$status" -eq 127 ]
   [ "$stderr" = "sandbox-lies: no other claude on PATH" ]
 }

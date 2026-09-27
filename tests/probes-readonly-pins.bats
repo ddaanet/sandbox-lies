@@ -10,6 +10,7 @@ ROOT="${BATS_TEST_DIRNAME}/.."
 
 bats_require_minimum_version 1.5.0
 
+load helpers/bsd-stubs
 load helpers/probes
 
 setup() {

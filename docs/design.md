@@ -16,7 +16,8 @@ this hub that a node does not carry.
 
 ## Now
 
-- **Focus:** closing the first build — review and TDD audit.
+- **Focus:** closing the first build — Item 8.2's memory-tier edits, then review
+  and TDD audit.
 - **Next:** publish the plugin; then publish the memory tier, held until the
   plugin installs in the other ddaanet repos. `nopath` shapes worth a form:
   `tee:`, `sed`'s temporary file, git's `could not write config file`.
@@ -53,8 +54,7 @@ can stat the lock the tool could not see.
 `permissionDecision`, no `updatedInput`, no `updatedToolOutput`. The original
 result stays in context beside the verdict. Where · pinned by:
 `hooks/hooks.json` · `tests/hook.bats` asserts the emitted JSON carries only
-`hookSpecificOutput.additionalContext` and `systemMessage`. Partial (dogfood:
-Item 8.1).
+`hookSpecificOutput.additionalContext` and `systemMessage`. Done.
 
 **FR-2 — Matcher contract.** A matcher is a shell function that reads one Bash
 tool result on stdin and exits 0 when its symptom is present, 1 when it is not.
@@ -83,7 +83,7 @@ function reads both, and the flag. Three probes: lock existence and holder
 reports the command facts and the partial-merge files its acts depend on (D-17).
 Each probe is proved once against a live reproduction before it ships; the
 reproduction is recorded in `references/`. Where · pinned by: `lib/probes.sh`,
-`lib/probes-readonly.sh` · `tests/probes*.bats` over synthetic trees, with a
+`lib/probes-readonly*.sh` · `tests/probes*.bats` over synthetic trees, with a
 character device at the lock path and no holder tool on `PATH`, and
 `tests/probes-readonly.bats` over each path-extraction form;
 `tests/hook-locks.bats` and `tests/hook-candidates.bats` over the hook's calls.
@@ -109,7 +109,9 @@ No verdict quotes a diagnostic together with its follow-on sentence. Where ·
 pinned by: `lib/verdicts.sh` · `tests/verdicts.bats` asserts length with no
 probe lines on stdin and runs `detect` over every verdict text expecting
 silence; `tests/verdicts-locks.bats` asserts the D-17 flag wording for the lock
-verdicts; `tests/hook-cap.bats` asserts the 2 KB cap with stub paragraphs. Done.
+verdicts, `tests/verdicts-readonly.bats` each `readonly-path` composition and
+its length; `tests/hook-cap.bats` asserts the 2 KB cap with stub paragraphs.
+Done.
 
 **FR-7 — Detector catalogue.** Ten detectors, in
 [references/detectors.md](references/detectors.md): five measured and shipped
@@ -216,16 +218,10 @@ verdict outcomes, corpus figure — is in
 ## Design decisions
 
 **D-1 — Output annotation, not command matching.** Every detector reads the tool
-result. The pilot's one `PreToolUse` command matcher (sandboxed `claude -p`
-dropping `SessionStart` hooks) found zero true positives over 21,453 calls:
-every real invocation was already unsandboxed by the `claude:*` exclusion, and
-the one uncovered case sat inside a `just` recipe whose command text held no
-`claude` token. That failure does not generalise to the output annotators — it
-was the only detector whose target produces no output — and it is why the plugin
-exists at all: the pilot's rule was "all three hold"; two held decisively and
-the third died for a reason specific to its shape. Accepted tradeoff: a symptom
-that never reaches the output (the `claude -p` case, `excludedCommands`
-semantics) is out of hook reach and goes to the skill.
+result; the pilot's one command matcher found no true positive. Argued in
+[references/hook.md](references/hook.md). Accepted tradeoff: a symptom that
+never reaches the output (the `claude -p` case, `excludedCommands` semantics) is
+out of hook reach and goes to the skill.
 
 **D-2 — Annotate only.** No deny, no rewrite. A post-tool hook cannot block
 anyway, and `updatedToolOutput` is validated against the tool's output shape;

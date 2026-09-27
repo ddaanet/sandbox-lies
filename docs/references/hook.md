@@ -1,11 +1,11 @@
 # The hook at run time
 
 How `hooks/annotate.sh` runs on each Bash call, why it can see what the tool
-could not, and how a probe finds the path it checks; the arguments for D-6
-(probes in the hook) and D-13 (the two events). `docs/design.md` §Architecture
-keeps the component map and one line for each conclusion here; the per-detector
-mechanism is in [detectors.md](detectors.md) and
-[lock-detectors.md](lock-detectors.md). Read this node before changing
+could not, and how a probe finds the path it checks; the arguments for D-1
+(output over command), D-6 (probes in the hook) and D-13 (the two events).
+`docs/design.md` §Architecture keeps the component map and one line for each
+conclusion here; the per-detector mechanism is in [detectors.md](detectors.md)
+and [lock-detectors.md](lock-detectors.md). Read this node before changing
 `annotate.sh`'s call sequence or a probe's path handling.
 
 **Flow.** The harness starts `annotate.sh` after every Bash call with the
@@ -27,6 +27,16 @@ perform. Reopen-if: a hook is ever found sandboxed. A probe that finds a
 character device treats it as a mask, never as a file — unsandboxed readers have
 seen masks while another session's sandbox was live.
 
+**Output annotation, not command matching (D-1).** The pilot's one `PreToolUse`
+command matcher (sandboxed `claude -p` dropping `SessionStart` hooks) found zero
+true positives over 21,453 calls: every real invocation was already unsandboxed
+by the `claude:*` exclusion, and the one uncovered case sat inside a `just`
+recipe whose command text held no `claude` token. That failure does not
+generalise to the output annotators — it was the only detector whose target
+produces no output — and it is why the plugin exists at all: the pilot's rule
+was "all three hold"; two held decisively and the third died for a reason
+specific to its shape.
+
 **Probes run in the hook and inject the verdict, not the test (D-6).** The
 memory's longest section taught a three-way test for the lock error whose first
 step was an unsandboxed `ls`. The hook performs it. A probe that has never
@@ -38,8 +48,10 @@ a hook that otherwise costs nothing.
 prints it from the main worktree's top-level) resolves from the nearest ancestor
 of the payload's `cwd`, itself included, holding a `.git` directory, else from
 the `cwd`, and with no `cwd` from the probe's working directory, never `/`.
-Phantom masks sit in the session's project root only, and the `phantom-*`
-detectors read text and run no probe; their verdict says where the masks are.
+Phantom masks sit under the sandboxed call's working directory: the session's
+project root, or a subdirectory a persisted `cd` left the Bash tool in (seen on
+CC 2.1.281). The `phantom-*` detectors read text and run no probe; their verdict
+names the project root, the usual case.
 
 **Failures arrive on `PostToolUseFailure` (D-13).** In the CC 2.1.280 bundle the
 Bash tool raises on a non-zero exit, and the tool-failure path dispatches

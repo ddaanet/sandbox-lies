@@ -28,8 +28,8 @@ set -u
 # (a 40 KB command took 20 s that way). Residuals: $'...', $( ), backticks,
 # subshells and braces are not parsed, so their contents read as words of
 # the enclosing command; any << ends the scan at its line, arithmetic's
-# included; a reader or git behind a cd, a variable assignment or another
-# prefix word is not recognised (detectors.md).
+# included; a reader behind a cd, or a reader or git behind a variable
+# assignment or another prefix word, is not recognised (detectors.md).
 _readonly_tokenize() {
     local ch word='' invalue=0 quote='' esc=0 lts=0 heredoc=0 sep
     local nl=$'\n' tab=$'\t' max=16384

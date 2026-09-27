@@ -205,8 +205,9 @@ assert_no_git_above() {
 # that exited since the poll, so errexit cannot end the test before $status
 # is set.
 #
-# Shared by tests/probes-edges.bats, tests/probes-config.bats and
-# tests/probes-readonly-pins.bats.
+# Shared by tests/probes-edges.bats, tests/probes-config.bats,
+# tests/probes-readonly-pins.bats and tests/shim.bats, whose <probe> is the
+# shim and whose <flag> and <cwd> are its arguments.
 run_probe_bounded() {
   local out="$BATS_TEST_TMPDIR/bounded-out" err="$BATS_TEST_TMPDIR/bounded-err"
   local rc="$BATS_TEST_TMPDIR/bounded-status" pid tries=0

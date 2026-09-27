@@ -3,10 +3,15 @@
 # to the next `claude` on PATH with this directory stripped from PATH, so the
 # next launcher in the chain cannot find the shim again.
 unset CDPATH # else `cd` may echo the target, corrupting the capture below
-self=$(cd "$(dirname "$0")" && pwd)
-root=$(dirname "$self")
-# explicit `-` operand: BSD paste has no implicit stdin, unlike GNU
-PATH=$(printf '%s' "$PATH" | tr ':' '\n' | grep -vxF "$self" | paste -sd: -)
+root=$(dirname "$(cd "$(dirname "$0")" && pwd)")
+# An entry is dropped when its `claude` is this file (`-ef`), not when its
+# spelling matches: a trailing slash or a relative `.bin` would otherwise
+# survive and exec the shim again, forever. Explicit `-` operand: BSD paste
+# has no implicit stdin, unlike GNU.
+# shellcheck disable=SC3013 # -ef: dash, bash, BSD sh and busybox test all have it
+PATH=$(printf '%s\n' "$PATH" | tr ':' '\n' | while IFS= read -r dir; do
+  [ "$dir/claude" -ef "$0" ] || printf '%s\n' "$dir"
+done | paste -sd: -)
 export PATH
 real=$(command -v claude) || {
   echo "sandbox-lies: no other claude on PATH" >&2
