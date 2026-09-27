@@ -120,6 +120,17 @@ SPEC = [
     ("fire-readonly-path-git-busy", "-Users-david-code-gitlore", "2026-07-23",
      "git worktree remove /Users/david/code/gitlore/.eval-tmp/head-tree",
      "Device or resource busy", "short", 40, 4000),
+    # a checkout that finished, then a config write refused: the command's
+    # merge shape with no git partial-checkout error (Item 8.0 slice 5)
+    ("fire-readonly-path-git-config-busy", "-Users-david-code-micro",
+     "2026-07-09",
+     "git checkout -q display-golden-tests && git branch -f softwrapcolumn2",
+     "could not write config file", "short", 40, 4000),
+    # git's partial-checkout error for a new directory, from the live
+    # reproduction in docs/references/detectors.md (Item 8.0 slice 5)
+    ("fire-readonly-path-git-mkdir", "-Users-david-code-sandbox-lies",
+     "2026-09-27", "git -C /tmp/sl8c-wt checkout feat2 2>&1",
+     "cannot create directory at", "short", 40, 4000),
     # the memory index line naming the message mid-line
     ("quiet-readonly-path-index-line", "-Users-david-code-gitlore",
      "2026-08-13", 'grep -n "claude-plugin-dev" memory/ddaanet/MEMORY.md',

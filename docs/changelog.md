@@ -202,3 +202,15 @@ persisted `cd` into a submodule, not only under the project root; the skill and
 `references/hook.md` now say so, while the phantom verdicts still name the
 project root. D-1's argument moved verbatim into `references/hook.md`, leaving
 its conclusion in the hub, to keep `docs/design.md` under its cap.
+
+## 2026-09-27 — the merge clause needs git's own error
+
+The `readonly-path` verdict's "restore them from HEAD" clause, given when no
+target resolves, had fired on the command's shape alone: a git merge, pull,
+checkout, switch, rebase or cherry-pick anywhere in the call. Over the corpus it
+fired 3 times and was false every time, since another write in the call was the
+one refused. The probe now prints `partial=1` when the text holds git's
+partial-checkout error, and the no-target clause needs it. The clause naming
+files that match the target is unchanged, since those matches are their own
+evidence. Git's `cannot create directory at` error, which a live reproduction
+showed ending a merge that adds a directory, joined the two earlier needles.

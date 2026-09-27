@@ -1058,6 +1058,26 @@ fire case under `make_bsd_stubs grep sed` (Portability).
      `nopath` with a relative cwd resolves `target=` within a bound.
      Residual: the bash 3.2 empty-array abort does not execute on bash 5,
      so the `git pull` test pins the outcome, not that path.
+  List revision after slice 4: slice 5 added by my human partner's ruling
+  on the Phase 8 corrector's finding 1, option (a)
+  (`reports/build-phase-8b.md` §Open gate); `detectors.md` changed first.
+  5. `the no-target merge clause needs git's error`
+     (`tests/probes-readonly-facts.bats`, `tests/verdicts-readonly.bats`,
+     `tests/hook-candidates.bats`) — the probe prints `partial=1`, with
+     `merge=1`, for a text holding any of git's three partial-checkout
+     errors (`unable to unlink old`, `unable to create file`,
+     `cannot create directory at`) under any command, and not for a
+     merge-style command whose text holds another tool's refusal only;
+     the third needle alone gives `merge=1` too. `verdict_readonly_path`:
+     `merge=1` + `partial=1` → "restore them from HEAD, then <act>";
+     `merge=1` alone → the act alone, capitalised, no "restore";
+     `merge=1` + `partial=1` + `target=` without `match=` → no clause;
+     `match=` lines keep their clause without `partial=1`. Through the
+     hook with the real probe: the cut `fire-readonly-path-git-config-busy`
+     under its recorded command (a checkout, then a refused config write)
+     carries no "restore"; the cut `fire-readonly-path-git-mkdir` under its
+     recorded command carries "restore them from HEAD". Length and quiet
+     tests cover the new composition.
 
 - Item 8.1: `.bin/claude`, `.envrc` — the D-16 shim: prepends
   `--plugin-dir <this checkout>` and execs the next `claude` on `PATH` with

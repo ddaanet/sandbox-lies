@@ -1,0 +1,20 @@
+error: could not write config file .git/config: Device or resource busy
+warning: update of config-file failed
+Deleted branch swc2-rebuild (was 9d437544).
+Deleted tag 'DGT_FINAL' (was b4470599)
+=== final status ===
+clean-if-empty
+=== branches ===
+  dgt-backup
+  dgt-pre-sfc
+  dgt-pre-sparse
+  dgt-pre-win
+* display-golden-tests
+  display-golden-tests-backup
+  master
+  softwrapcolumn
+  softwrapcolumn2
+  swc2-backup
+  swc2-pre-sfc
+  swc2-pre-sparse
+  swc2-pre-win

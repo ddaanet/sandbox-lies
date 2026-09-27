@@ -58,6 +58,8 @@ expected_for() {
     fire-readonly-path-task-output)  printf 'readonly-path\n' ;;
     fire-readonly-path-python-errno) printf 'readonly-path\n' ;;
     fire-readonly-path-git-busy)     printf 'readonly-path\n' ;;
+    fire-readonly-path-git-config-busy) printf 'readonly-path\n' ;;
+    fire-readonly-path-git-mkdir)    printf 'readonly-path\n' ;;
     quiet-readonly-path-index-line)  : ;;
     *) return 1 ;;
   esac
@@ -244,6 +246,14 @@ assert_fixture() {
 
 @test "readonly-path fires on git's busy-device refusal" {
   assert_fixture fire-readonly-path-git-busy
+}
+
+@test "readonly-path fires on git's busy config write after a checkout" {
+  assert_fixture fire-readonly-path-git-config-busy
+}
+
+@test "readonly-path fires on git's partial-checkout directory refusal" {
+  assert_fixture fire-readonly-path-git-mkdir
 }
 
 @test "readonly-path stays quiet on the memory index line naming the message" {
