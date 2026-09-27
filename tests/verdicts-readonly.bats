@@ -101,9 +101,7 @@ $n" "$MATCHERS"
   [ -z "$output" ]
 }
 
-@test "readonly-path merge alone restores the written files then acts" {
-  # partial=1 is now required alongside merge=1 for the no-target restore
-  # clause (Item 8.0 slice 5); added here so this composition keeps passing.
+@test "readonly-path merge with partial=1 and no target restores the written files then acts" {
   local text line1
   text=$(readonly_path_text writable path=/r/x merge=1 partial=1)
   line1=$(printf '%s\n' "$text" | sed -n '1p')
@@ -139,10 +137,9 @@ $n" "$MATCHERS"
 }
 
 @test "readonly-path merge with target, partial=1 and no match still states the act alone" {
-  # Already holds on unchanged code: the target= branch decides the
-  # no-clause case regardless of partial=1 — mutation-proved in the RED
-  # report, not a new-behaviour red here. Paired with the same facts plus a
-  # match= line, which keeps the match clause alongside partial=1.
+  # The target= branch decides the no-clause case whatever partial=1 says.
+  # Paired with the same facts plus a match= line, which keeps the match
+  # clause alongside partial=1.
   local text baseline line1 baseline1
   text=$(readonly_path_text writable path=/r/x merge=1 partial=1 target=main match=a)
   line1=$(printf '%s\n' "$text" | sed -n '1p')
@@ -162,8 +159,7 @@ $n" "$MATCHERS"
 }
 
 @test "readonly-path merge clause leads lowercase into whichever act the facts select" {
-  # partial=1 added to the first case (Item 8.0 slice 5): merge=1 alone, no
-  # target, needs it too for the no-target restore clause.
+  # The no-target restore clause needs partial=1 beside merge=1.
   local text line1
   text=$(readonly_path_text writable path=/r/x merge=1 partial=1 readfile=/w/b.log)
   line1=$(printf '%s\n' "$text" | sed -n '1p')

@@ -154,9 +154,13 @@ after the tool's own prefix: bash's `line N: <path>:`, dash's
 and `fatal: cannot mkdir <path>:`. Any other unquoted shape is `nopath`. An
 unquoted path runs to the line's last colon and space, since the kernel message
 after it holds none, so a path holding blanks, `: ` or its form's own words is
-read whole. Residuals: a quoted path holding its own closing quote, which the
-tool prints escaped, is cut at that quote or yields `nopath`; a curly-quoted or
-unquoted path holding two straight quotes is read as what lies between them.
+read whole. A relative path joins onto the payload `cwd`. Residuals: a quoted
+path holding its own closing quote, which the tool prints escaped, is cut at
+that quote or yields `nopath`; a curly-quoted or unquoted path holding two
+straight quotes is read as what lies between them. Git names the path in its
+partial-checkout errors from the worktree's top-level, so from a subdirectory or
+under `git -C` the path is wrong, and one whose parent is missing reads
+`readonly`, which carries no merge clause.
 
 | outcome | condition |
 |---|---|

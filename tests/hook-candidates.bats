@@ -114,8 +114,7 @@ run_hook() {
 
 @test "writable outcome through the hook" {
   # The probe's fact lines after the outcome reach the verdict's stdin: the
-  # merge=1 and partial=1 lines select the merge clause (partial=1 is now
-  # required alongside merge=1 for the no-target restore, Item 8.0 slice 5).
+  # merge=1 and partial=1 lines select the no-target merge clause.
   stub_probe_kv readonly_path writable 'path=/r/x' 'merge=1' 'partial=1'
   local text payload ctx sys
   text=$(cat "$FIXTURES/fire-readonly-path-cp-tmp.txt")
@@ -169,8 +168,8 @@ run_hook() {
 @test "the no-target merge clause needs git's own partial-checkout error, not any refused write" {
   # The real probe, not stubbed (setup's hook_copy_tree copies the tracked
   # lib/ as is): the two cut fixtures under their own recorded commands, cwd
-  # overridden to a writable scratch dir so the mkdir fixture's relative
-  # path reads writable per its own note.
+  # overridden to a writable scratch dir, onto which the probe joins the
+  # mkdir fixture's relative path, so it reads writable.
   local text payload ctx sys cmd_mkdir cmd_busy
 
   # positive control: the git-mkdir fixture's own line is one of git's three

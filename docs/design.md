@@ -5,7 +5,7 @@ verdicts, the hook's lock-probe call, the `tmpdir-unset`, `resume-lost` and
 `seccomp-init` verdicts, the `readonly-path` verdicts composed from their
 probe's facts, the skill, and the dogfood shim. Dogfooded 2026-09-27 on CC
 2.1.283. The memory file is not retired: its zellij section has no detector.
-**Verified against:** `45c0316e` (2026-09-27).
+**Verified against:** `45c03163` (2026-09-27).
 
 Changelog: [changelog.md](changelog.md). This document is a hub; `references/`
 holds one node per mechanism — per detector in
