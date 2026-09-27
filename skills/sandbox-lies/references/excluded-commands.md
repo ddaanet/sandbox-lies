@@ -57,7 +57,8 @@ of *other* calls' sandboxes: their masks stay visible to it.
   runs. Nothing in the tool result or the transcript records that a call ran
   unsandboxed.
 - **`` !`cmd` `` expansions in a slash command or skill body are matched too**,
-  and `PreToolUse` hooks do not run on that path (`masks-and-gates.md`).
+  and `PreToolUse` hooks do not run on that path
+  ([masks-and-gates.md](masks-and-gates.md)).
 - **Settings reload live.** `excludedCommands`, `autoAllowBashIfSandboxed` and
   `permissions.deny` each took effect mid-session in both directions, with no
   restart, so a probe does not need a fresh session.

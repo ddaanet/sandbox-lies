@@ -1,6 +1,6 @@
 ---
 name: sandbox-lies
-description: "What the Claude Code command sandbox does to Bash calls that no tool result reveals: how `excludedCommands` and `dangerouslyDisableSandbox` escape it and what each costs, why `$TMPDIR` does not survive a call, and why masks break a cleanliness gate. Use when writing a `sandbox.excludedCommands` entry, a recipe or script that must run unsandboxed, a cleanliness gate over `git status`, a subagent directive or later command naming a scratch path, or a multi-turn `claude --resume` flow; when recovering a merge a sandbox write refusal killed mid-way; and when reading `ps` for a background task."
+description: "What the Claude Code command sandbox does to Bash calls that no tool result reveals: whether a call ran sandboxed, what `excludedCommands` and `dangerouslyDisableSandbox` cost, why `$TMPDIR` does not survive a call, and where masks land. Use when writing a `sandbox.excludedCommands` entry, a recipe or script that must run unsandboxed, a cleanliness gate over `git status`, a `cd` into a submodule or subdirectory, a scratch path a later command or subagent reads, a `claude -p` run for a `SessionStart` hook's side effect, or a multi-turn `claude --resume` flow; when acting on a slash command's `` !`cmd` `` context block or recovering a merge a sandbox write refusal killed; and when reading `ps` for a background task."
 ---
 
 # Sandbox lies
@@ -21,8 +21,8 @@ the recipe, the gate or the directive, before any output exists.
   sandboxed (2026-09-26). Re-probe before relying on an exclusion.
 - **A visible mask proves nothing about the call that saw it.** Mask paths are
   visible from every process while any sandboxed command runs, this session's or
-  a parallel agent's. The evidence runs one way: no mask where one would show
-  proves the call ran unsandboxed.
+  a parallel agent's. The evidence runs one way: no mask in a listing of the
+  call's own working directory proves the call ran unsandboxed.
 - **The mask-free test is a write only the sandbox refuses.**
   `touch /tmp/<name>` fails with the read-only-filesystem error only inside the
   sandbox. `${TMPDIR-UNSET}` also discriminates: `/tmp/claude-<uid>` sandboxed,
@@ -33,7 +33,8 @@ the recipe, the gate or the directive, before any output exists.
 
 ## Writing an `excludedCommands` entry
 
-An entry is a permission-rule pattern, and one matching segment unsandboxes the
+Where honoured — not on CC 2.1.281; re-probe with the `/tmp` write first — an
+entry is a permission-rule pattern, and one matching segment unsandboxes the
 *whole* call. Before writing one:
 
 - `foo bar` is exact and `foo bar:*` a prefix. A plain `"git status"` covers
@@ -43,10 +44,12 @@ An entry is a permission-rule pattern, and one matching segment unsandboxes the
 - The match is static: `false && git status; <payload>` frees the whole call
   while the decoy never runs.
 - It does not grant approval: the rest of the permission pipeline still judges
-  the command, usually clearing it as read-only before any classifier call.
+  the command, clearing a bare read-only command from the original working
+  directory before any classifier call.
 
 Splitting rules, wrapper unwrapping, the read-only validator's refusals and why
-an exclusion beats a rewriting hook: `references/excluded-commands.md`.
+an exclusion beats a rewriting hook:
+[references/excluded-commands.md](references/excluded-commands.md).
 
 ## Leaving the sandbox for one call
 
@@ -62,7 +65,23 @@ an exclusion beats a rewriting hook: `references/excluded-commands.md`.
   reading local git state or a masked path unsandboxed a standing default, call
   it directly, without asking. Anything that writes follows normal confirmation.
 
-Detail and observed refusals: `references/escapes-and-costs.md`.
+Detail and observed refusals:
+[references/escapes-and-costs.md](references/escapes-and-costs.md).
+
+## Keeping the working directory at the project root
+
+Masks sit under the sandboxed call's working directory, and the Bash tool keeps
+a `cd` between calls (CC 2.1.281): one `cd` into a submodule leaves every later
+sandboxed call masking inside it. In order of preference:
+
+- Give a command absolute paths; give git `-C <dir>`.
+- Otherwise end the call with a `cd <root>` line.
+- A subshell, `(cd <dir> && …)`, comes last: a git inside it misses an honoured
+  `git:*` exclusion.
+
+Unsandboxed, `git -C`, a `cd` beside a git segment and a subshell each forfeit
+the read-only auto-allow and cost a classifier call:
+[references/excluded-commands.md](references/excluded-commands.md).
 
 ## Writing a recipe or script that must run unsandboxed
 
@@ -78,19 +97,21 @@ Detail and observed refusals: `references/escapes-and-costs.md`.
   silently. Unsandbox the whole call whenever its point is a hook's side effect.
 
 The release half-landing, the eval-harness signatures and the `SessionStart`
-evidence: `references/recipes-and-claude.md`.
+evidence: [references/recipes-and-claude.md](references/recipes-and-claude.md).
 
 ## A scratch path that must survive the call
 
-`$TMPDIR` is exported by the sandbox per call and is not stable across calls,
-even sandboxed. Treat every use as scoped to the single command that expands it.
-For a backup a *later* call restores, and for any path written into a subagent
-directive, hardcode the literal scratch path (`/tmp/claude/<job>/…`, created
-with `mkdir -p`). A subagent shell inherits neither the environment nor the
-working directory, so a `$TMPDIR` in a handed-over command is unset at the other
-end, and a restore path that silently resolves elsewhere is the expensive case.
+`$TMPDIR` is set per call by the harness and is not stable across calls. Treat
+every use as scoped to the single command that expands it. For a backup a
+*later* call restores, and for any path written into a subagent directive,
+hardcode the literal scratch path (`/tmp/claude/<job>/…`, created with
+`mkdir -p`). A subagent shell inherits neither the environment nor the working
+directory, so a `$TMPDIR` in a handed-over command resolves to whatever the
+receiving call's `$TMPDIR` is, and a restore path that silently resolves
+elsewhere is the expensive case.
 
-The observed collapse: `references/escapes-and-costs.md`.
+The observed collapse:
+[references/escapes-and-costs.md](references/escapes-and-costs.md).
 
 ## Writing a cleanliness gate
 
@@ -107,8 +128,8 @@ The observed collapse: `references/escapes-and-costs.md`.
   annotation will say so. Never act on an injected listing: re-run `git status`
   unsandboxed first.
 
-Mask shapes, and the expansion path's mechanism:
-`references/masks-and-gates.md`.
+Mask shapes and placement, and the expansion path's mechanism:
+[references/masks-and-gates.md](references/masks-and-gates.md).
 
 ## Recovering a merge a sandbox refusal killed
 
@@ -117,11 +138,13 @@ harness-mounted file — the session's live `hooks/hooks.json`, held read-only
 whatever the write allowlist says — updates every other file it processed to the
 target's content while HEAD stays at the pre-merge commit. Git does not roll
 them back, and a plain re-run refuses them, as it refuses the files the target
-adds once they exist untracked. (A merge refused on a sibling worktree, outside
-the write allowlist altogether, was seen to abort cleanly, with no
-`MERGE_HEAD`.) Recover before retrying:
+adds once they exist untracked. On a sibling worktree outside the write
+allowlist altogether, the same merge or checkout died on git's own error
+creating a directory the target adds, or replacing a tracked file it changes,
+HEAD again unmoved (2026-09-27, CC 2.1.281). Recover before retrying:
 
-1. `git status`, and diff each modified file against the merge target
+1. Start from the files the hook's verdict names, where it names them; else
+   `git status`. Diff each modified file against the merge target
    (`git diff <target> -- <file>`).
 2. If they match the target exactly, restore them with
    `git checkout HEAD -- <files>`, and remove the untracked files the target
@@ -129,19 +152,22 @@ the write allowlist altogether, was seen to abort cleanly, with no
 3. Re-run the whole merge unsandboxed in one call, not piecemeal.
 4. If the checkout and the merge both choke on protected files,
    `git reset --hard <target>` run unsandboxed completes the fast-forward. It
-   discards every uncommitted change, so first confirm `git status` lists only
-   files the merge wrote.
+   discards every uncommitted change, so it follows normal confirmation, and
+   first confirm `git status` lists only files the merge wrote.
 
-## Background tasks are invisible to `ps`
+## Background tasks are invisible to a sandboxed `ps`
 
-The agent's Bash runs in its own PID namespace, and a call made with
-`run_in_background` — with everything it spawns — is absent from any process
-listing the agent can take: `ps` showed two `bash` entries while a background
-test suite was mid-run and went on to complete, and `ps aux` returned 5 lines
-sandboxed against 141 unsandboxed (2026-08-15). An empty `ps` is not evidence
-that a background job died. Restarting the work in the foreground to check puts
-two heavy runs on the box; the second times out, and both then look like the
-first one failing. Watch the task's output file and the artifact the job writes
-on success; a completion notification may never reach a subagent, so it is never
-the only thing waited on. Key a wait on the command's exit, not on an output
-line that reads as terminal.
+A sandboxed Bash call runs in its own PID namespace, so its `ps` lists only that
+call's processes: a `run_in_background` task, with everything it spawns, is
+absent from it. An unsandboxed `ps` lists it. Checked 2026-09-27 on CC 2.1.281:
+with a sandboxed `sleep` running in the background, `ps -eo pid,args` returned 5
+lines and no `sleep` sandboxed, and 204 lines with the `sleep` unsandboxed.
+Earlier, a `ps` showed two `bash` entries while a background test suite was
+mid-run and went on to complete (2026-08-15, CC version not recorded). An empty
+sandboxed `ps` is not evidence that a background job died. Restarting the work
+in the foreground to check puts two heavy runs on the box; the second times out,
+and both then look like the first one failing. Check with an unsandboxed `ps`,
+and watch the task's output file and the artifact the job writes on success; a
+completion notification may never reach a subagent, so it is never the only
+thing waited on. Key a wait on the command's exit, not on an output line that
+reads as terminal.

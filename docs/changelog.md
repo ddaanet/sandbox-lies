@@ -214,3 +214,17 @@ partial-checkout error, and the no-target clause needs it. The clause naming
 files that match the target is unchanged, since those matches are their own
 evidence. Git's `cannot create directory at` error, which a live reproduction
 showed ending a merge that adds a directory, joined the two earlier needles.
+
+## 2026-09-27 — skill review: `ps` corrected, the cwd act reachable
+
+The skill had said a background task is absent from any process listing the
+agent can take. A probe on CC 2.1.281 contradicted it: a sandboxed `ps` listed 5
+lines and no background `sleep`, an unsandboxed one 204 lines with it. The skill
+now says the task is invisible to a sandboxed `ps` only, and has the agent check
+with an unsandboxed one; `references/detectors.md` names the case the same way.
+The masks-follow-the-cwd fact gained a hub section and a description trigger,
+and its acts now run absolute paths or `git -C` first, a trailing `cd <root>`
+line next, and a subshell last, since a git inside one misses an honoured
+exclusion. The description also gained triggers for a `claude -p` run for a
+`SessionStart` side effect and for a slash command's context block, and the
+hub's node pointers became links the link check resolves.

@@ -8,16 +8,18 @@ reaches: the top-level segment is the recipe runner.
 
 A sandboxed `claude --print` turn never persists its transcript —
 `~/.claude/projects` is read-only inside the sandbox — so resuming it by id
-fails. The Agent SDK's `query()` resumes the same way.
+fails (CC version not recorded). The Agent SDK's `query()` resumes the same way.
 
 Any two-turn (or N-turn) flow relying on `--resume` must therefore run
 **unsandboxed**: `dangerouslyDisableSandbox`, the `claude:*` exclusion for a
 top-level call where honoured, or the human partner's own shell. A single-turn
 connectivity **probe cannot detect this** — it never resumes, so it passes
 sandboxed while the real flow cannot. gitlore's eval runner documents this in
-its header and beside its probe. The git directory is likewise write-blocked,
-which is why gitlore's memory-message IPC file lives in the parent worktree
-rather than under `.git/`.
+its header and beside its probe. gitlore keeps its memory-message IPC file in
+the parent worktree rather than under `.git/`, where the sandbox masks some
+paths: the project root's `.git/config.lock` showed as a character device on
+2026-09-25 (CC 2.1.281), while sandboxed commits in a scratch repository
+succeeded.
 
 **An eval harness run from a release recipe inherits this.** The `plugin-dev`
 toolkit's `just release` depends on the repository's own `just prerelease`;
@@ -35,7 +37,8 @@ cause:
 A third tell is upstream of the evals and visible on every trial: direnv failing
 to open a file on a read-only file system during the install step. Diagnose from
 these before suspecting a scenario — and note that piping the gate into `tail`
-reports the pipeline's exit status, so a failing run looks like exit 0.
+reports `tail`'s exit status (without `pipefail`), so a failing run looks like
+exit 0.
 
 ## A sandboxed `claude -p` silently drops every `SessionStart` hook
 
@@ -50,11 +53,11 @@ normal reply, so nothing in the visible output signals that every `SessionStart`
 side effect was skipped.
 
 Symptom: a fix that depends on a `SessionStart` hook's side effect appears to do
-nothing even after the documented remedy. Confirmed 2026-08-11: gitlore's
-`git config gitlore.hooksDir`, repointed to the current plugin version on every
-`SessionStart`, stayed pinned at the old version through two sandboxed
-`claude -p ping` calls in the target repository — the standard "start a session
-there" remedy — and only updated once retried with
+nothing even after the documented remedy. Confirmed 2026-08-11 (CC version not
+recorded): gitlore's `git config gitlore.hooksDir`, repointed to the current
+plugin version on every `SessionStart`, stayed pinned at the old version through
+two sandboxed `claude -p ping` calls in the target repository — the standard
+"start a session there" remedy — and only updated once retried with
 `dangerouslyDisableSandbox: true`.
 
 A `claude -p` inside a recipe or a script needs the whole call unsandboxed

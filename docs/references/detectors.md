@@ -388,9 +388,9 @@ must map before the file is deleted (FR-10); the audit that confirms it is Item
 
 ## Not detectors
 
-- **`ps` shows only the agent's shell.** Detectable only by reading the command
-  word, which the contract forbids, and an empty listing is not a symptom in the
-  output. Skill content.
+- **A sandboxed `ps` shows only the agent's shell.** Detectable only by reading
+  the command word, which the contract forbids, and an empty listing is not a
+  symptom in the output. Skill content.
 - **Sandboxed `claude -p` drops `SessionStart` hooks.** No output symptom (D-1).
   Skill content.
 - **`excludedCommands` semantics, the classifier refusing benign compounds,

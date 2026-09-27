@@ -2,23 +2,25 @@
 
 ## The mask shapes
 
-The sandbox hides deny-listed paths in the project root — shell rc files,
-`.gitconfig`, `.mcp.json`, entries under `.claude/` and the like — behind masks,
-which a listing or a `git status` then shows as if they were files in the
-repository. Two shapes occur:
+The sandbox hides deny-listed paths in the sandboxed call's working directory,
+normally the project root — shell rc files, `.gitconfig`, `.mcp.json`, entries
+under `.claude/` and the like — behind masks, which a listing or a `git status`
+then shows as if they were files in the repository. Two shapes occur:
 
 - `/dev/null` character devices bound over the path;
-- since 2026-07-20, also **zero-byte read-only regular files** (mode
-  `-r--r--r--`, size 0), a path that ought to be a directory getting a zero-byte
-  file too.
+- since 2026-07-20 (CC 2.1.215), also **zero-byte read-only regular files**
+  (mode `-r--r--r--`, size 0), a path that ought to be a directory getting a
+  zero-byte file too.
 
-The masks sit under the sandboxed call's working directory, not only under the
-project root. Seen on CC 2.1.281: the Bash tool's working directory persists
-between calls, so one `cd` into a submodule left later sandboxed calls masking
-`.claude/` and `.mcp.json` inside the submodule, and a sandboxed commit there
-then failed on them. A `cd` at the head of a call persists too. Give commands
-absolute paths or `git -C <dir>`, or put the `cd` in a subshell,
-`(cd <dir> && …)`, so the working directory never stays in a subdirectory.
+That directory is not always the project root. Seen on CC 2.1.281: the Bash
+tool's working directory persists between calls, so one `cd` into a submodule
+left later sandboxed calls masking `.claude/` and `.mcp.json` inside the
+submodule, and a sandboxed commit there then failed on them. A `cd` at the head
+of a call persists too. Give commands absolute paths or `git -C <dir>`;
+otherwise end the call with a `cd <root>` line. A subshell, `(cd <dir> && …)`,
+comes last: a git inside it misses an honoured `git:*` exclusion. Unsandboxed,
+`git -C`, a `cd` beside a git segment and a subshell each cost a classifier call
+([excluded-commands.md](excluded-commands.md)).
 
 This plugin annotates a listing or a status that shows them. What it cannot
 annotate is code that consumes such output without an agent reading it.
