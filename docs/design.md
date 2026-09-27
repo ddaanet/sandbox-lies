@@ -193,6 +193,7 @@ hooks/annotate.sh       payload → text → detect → probes → one JSON
 lib/matchers.sh         matchers + detect          (promoted from the pilot)
 lib/probes.sh           probe_<verdict> functions   (layer 3)
 lib/probes-readonly.sh  probe_readonly_path         (layer 3)
+lib/probes-readonly-*.sh its D-17 facts: -facts.sh, and -command.sh's scan
 lib/verdicts.sh         agent paragraph + human line per verdict
 skills/sandbox-lies/    the symptom-less knowledge
 .bin/claude             dev shim: `--plugin-dir` this checkout (D-16)

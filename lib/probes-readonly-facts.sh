@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
 # lib/probes-readonly-facts.sh — the readfile=/merge=1/target=/match= facts
 # _readonly_print_facts derives for probe_readonly_path under writable and
-# nopath (detectors.md's readonly-path Probe facts table, Item 8.0 slice 3).
-# Split out of lib/probes-readonly.sh to keep that file under the line cap;
-# lib/probes-readonly.sh sources this file, so no other caller needs a
-# source line of its own for it.
+# nopath (detectors.md's readonly-path Probe facts table), reading the
+# command through lib/probes-readonly-command.sh's scan. Split out of
+# lib/probes-readonly.sh to keep that file under the line cap;
+# lib/probes-readonly.sh sources both, so no other caller needs a source
+# line of its own for them.
 #
 # set -u as in lib/probes-readonly.sh; bats does not set it, so setting it
 # here keeps an unset variable an error when a caller sources this file
-# directly.
+# directly. Under set -u, bash before 4.4 (macOS's 3.2, NFR-2) calls an empty
+# array unbound, so every array that can be empty expands as
+# ${a[@]+"${a[@]}"} or behind a count check.
 set -u
 
 # _readonly_print_facts <text> <command> <path> <cwd> — the writable/nopath
@@ -20,29 +23,29 @@ set -u
 # directory, else the cwd's" — walking up from <path> reaches the same
 # first .git ancestor either way, since a check below a nonexistent
 # directory can never succeed, so no separate existence walk is needed).
+# _readonly_tokens and _readonly_tokens_cut are _readonly_tokenize's output.
 _readonly_print_facts() {
-    local text="$1" command="$2" path="$3" cwd="$4"
-    local readfile scan sub='' repo start line first=1 target
-    local -a cands=()
+    local text="$1" command="$2" path="$3" cwd="$4" readfile word sub=''
+    local start repo _readonly_tokens_cut=0
+    local -a _readonly_tokens=() cands=()
 
-    readfile=$(_readonly_readfile_arg "$command")
+    _readonly_tokenize "$command"
+    readfile=$(_readonly_readfile_arg "$_readonly_tokens_cut" \
+        ${_readonly_tokens[@]+"${_readonly_tokens[@]}"})
     [ -z "$readfile" ] || printf 'readfile=%s\n' "$readfile"
 
-    scan=$(_readonly_merge_segment "$command")
-    if [ -z "$scan" ] && ! _readonly_partial_checkout_text "$text"; then
+    while IFS= read -r -d '' word; do
+        if [ -z "$sub" ]; then
+            sub="$word"
+        else
+            cands+=("$word")
+        fi
+    done < <(_readonly_merge_segment \
+        ${_readonly_tokens[@]+"${_readonly_tokens[@]}"})
+    if [ -z "$sub" ] && ! _readonly_partial_checkout_text "$text"; then
         return 0
     fi
     printf 'merge=1\n'
-    [ -n "$scan" ] || return 0
-
-    while IFS= read -r line; do
-        if [ "$first" -eq 1 ]; then
-            sub="$line"
-            first=0
-        else
-            cands+=("$line")
-        fi
-    done < <(printf '%s\n' "$scan")
 
     # target= is only attempted after these three subcommands (detectors.md);
     # pull, rebase and cherry-pick still fire merge=1 above but name no ref.
@@ -50,197 +53,11 @@ _readonly_print_facts() {
         merge | checkout | switch) ;;
         *) return 0 ;;
     esac
-
+    [ "${#cands[@]}" -gt 0 ] || return 0
     start="$path"
     [ -n "$start" ] || start="$cwd"
     repo=$(_readonly_git_dir "$start") || return 0
-
-    target=$(_readonly_resolve_target "$repo" "${cands[@]}") || return 0
-    printf 'target=%s\n' "$target"
-    _readonly_print_matches "$repo" "$target"
-}
-
-# _readonly_readfile_arg <command> — the readfile= value: the first argument
-# shaped like a command-output name (*.log, *.output, *.out, *.err) once
-# every command in every pipeline and list of <command> is one of the reader
-# tools detectors.md names, with no output redirection and, for sed, no
-# in-place edit; empty otherwise.
-_readonly_readfile_arg() {
-    local cmd="$1" tok first_word='' seg_first=1 seg_ok=1 all_ok=1 in_seg=0
-    local candidate=''
-    while IFS= read -r tok; do
-        if [ "$tok" = $'\001' ]; then
-            [ "$in_seg" -eq 0 ] || [ "$seg_ok" -eq 1 ] || all_ok=0
-            seg_first=1
-            seg_ok=1
-            in_seg=0
-            first_word=''
-            continue
-        fi
-        in_seg=1
-        if [ "$seg_first" -eq 1 ]; then
-            seg_first=0
-            first_word="$tok"
-            case "$first_word" in
-                cat | head | tail | grep | sed | awk | cut | sort | uniq \
-                    | wc | tr | less) ;;
-                *) seg_ok=0 ;;
-            esac
-        fi
-        if [ "$first_word" = sed ]; then
-            case "$tok" in
-                -i*) seg_ok=0 ;;
-            esac
-        fi
-        case "$tok" in
-            *'>'*)
-                case "$tok" in
-                    [0-9]'>&'[0-9] | '>&'[0-9]) ;;
-                    *) all_ok=0 ;;
-                esac
-                ;;
-        esac
-        case "$tok" in
-            *.log | *.output | *.out | *.err)
-                [ -n "$candidate" ] || candidate="$tok"
-                ;;
-        esac
-    done < <(_readonly_tokenize "$cmd")
-    [ "$in_seg" -eq 0 ] || [ "$seg_ok" -eq 1 ] || all_ok=0
-    [ "$all_ok" -eq 1 ] && [ -n "$candidate" ] && printf '%s\n' "$candidate"
-    return 0
-}
-
-# _readonly_tokenize <command> — <command>'s words, one per line, single and
-# double quotes stripped and their content kept verbatim including blanks; a
-# line holding only \001 marks a boundary between pipeline or list segments
-# (an unquoted |, ; or &, except an & right after > or < in the same word,
-# which keeps a duplication form like 2>&1 or >&2 one word). Residual: a
-# reader behind a cd or a variable assignment is not recognised
-# (detectors.md); this scan does not model those either.
-_readonly_tokenize() {
-    local cmd="$1" i=0 len ch word='' invalue=0 quote=''
-    local -a out=()
-    len=${#cmd}
-    while [ "$i" -lt "$len" ]; do
-        ch="${cmd:$i:1}"
-        if [ -n "$quote" ]; then
-            if [ "$ch" = "$quote" ]; then
-                quote=''
-            else
-                word="$word$ch"
-            fi
-            i=$((i + 1))
-            continue
-        fi
-        case "$ch" in
-            "'" | '"')
-                quote="$ch"
-                invalue=1
-                ;;
-            ' ' | $'\t')
-                if [ -n "$word" ] || [ "$invalue" -eq 1 ]; then
-                    out+=("$word")
-                fi
-                word=''
-                invalue=0
-                ;;
-            '&')
-                case "$word" in
-                    *'>' | *'<')
-                        word="$word$ch"
-                        ;;
-                    *)
-                        if [ -n "$word" ] || [ "$invalue" -eq 1 ]; then
-                            out+=("$word")
-                        fi
-                        word=''
-                        invalue=0
-                        out+=($'\001')
-                        ;;
-                esac
-                ;;
-            '|' | ';')
-                if [ -n "$word" ] || [ "$invalue" -eq 1 ]; then
-                    out+=("$word")
-                fi
-                word=''
-                invalue=0
-                out+=($'\001')
-                ;;
-            *)
-                word="$word$ch"
-                invalue=1
-                ;;
-        esac
-        i=$((i + 1))
-    done
-    if [ -n "$word" ] || [ "$invalue" -eq 1 ]; then
-        out+=("$word")
-    fi
-    printf '%s\n' "${out[@]}"
-}
-
-# _readonly_merge_segment <command> — the first pipeline-or-list segment of
-# <command> that opens with `git`, after skipping its own global options,
-# and runs merge, pull, checkout, switch, rebase or cherry-pick: the
-# subcommand on line 1, then each following word up to a literal -- on its
-# own line (detectors.md's target= "before any --"); nothing, exit 1, when
-# no segment matches. A caller only needing merge=1 reads the exit status; a
-# caller resolving target= reads the candidate words after line 1.
-_readonly_merge_segment() {
-    local cmd="$1" tok state=start skip_next=0 sub=''
-    local -a cands=()
-    while IFS= read -r tok; do
-        if [ "$tok" = $'\001' ]; then
-            case "$state" in
-                collect | stop) break ;;
-            esac
-            state=start
-            skip_next=0
-            continue
-        fi
-        case "$state" in
-            stop) continue ;;
-            start)
-                if [ "$tok" = git ]; then
-                    state=skip
-                else
-                    state=skipseg
-                fi
-                ;;
-            skipseg) : ;;
-            skip)
-                if [ "$skip_next" -eq 1 ]; then
-                    skip_next=0
-                    continue
-                fi
-                case "$tok" in
-                    -C | -c | --git-dir | --work-tree | --namespace \
-                        | --super-prefix)
-                        skip_next=1
-                        ;;
-                    -*) : ;;
-                    merge | pull | checkout | switch | rebase | cherry-pick)
-                        sub="$tok"
-                        state=collect
-                        ;;
-                    *)
-                        state=skipseg
-                        ;;
-                esac
-                ;;
-            collect)
-                if [ "$tok" = -- ]; then
-                    state=stop
-                else
-                    cands+=("$tok")
-                fi
-                ;;
-        esac
-    done < <(_readonly_tokenize "$cmd")
-    [ -n "$sub" ] || return 1
-    printf '%s\n' "$sub" "${cands[@]}"
+    _readonly_repo_facts "$repo" "${cands[@]}"
 }
 
 # _readonly_partial_checkout_text <text> — true when <text> holds git's
@@ -267,10 +84,16 @@ _readonly_partial_checkout_text() {
 
 # _readonly_git_dir <dir> — the nearest ancestor of <dir>, <dir> included,
 # holding a .git entry (worktree or gitlink); empty, exit 1, when none
-# exists up to /. One `[ -e ]` per ancestor, no process.
+# exists up to /. A relative <dir> joins onto $PWD first, as
+# _probe_readonly_resolve joins a relative cwd: stripping /-suffixes from a
+# relative name would never reach /. One `[ -e ]` per ancestor, no process.
 _readonly_git_dir() {
     local dir="$1"
     [ -n "$dir" ] || return 1
+    case "$dir" in
+        /*) ;;
+        *) dir="$PWD/$dir" ;;
+    esac
     while :; do
         if [ -e "$dir/.git" ]; then
             printf '%s\n' "$dir"
@@ -282,55 +105,141 @@ _readonly_git_dir() {
     done
 }
 
-# _readonly_resolve_target <repo> <candidate...> — the first <candidate>
-# that resolves to a commit in <repo>, empty and exit 1 when none does
-# (detectors.md's target=). `--verify --quiet` alone, with no leading --,
-# is git's own idiom for testing a name that may itself look like an
-# option (`--ff-only^{commit}`): it fails quietly rather than being parsed
-# as a flag. GIT_OPTIONAL_LOCKS=0: the probe reads only (NFR-4).
-_readonly_resolve_target() {
-    local repo="$1" cand
+# _readonly_repo_facts <repo> <candidate...> — target= for the first
+# <candidate> naming a commit in <repo>, then match=<file> for each regular
+# file differing from HEAD in the working tree, staged or not, whose bytes
+# equal the target's blob (detectors.md's target= and match=); nothing when
+# no candidate resolves. A subshell, so the environment edits stay here:
+# repository variables inherited from the hook's own environment (a claude
+# started inside a git hook) would point every read at another repository.
+#
+# Bounded (NFR-3): four git processes whatever the file count, and past
+# 1000 modified files no target= either, so the verdict's generic "restore
+# them from HEAD" clause stands in for a list it could not build in time.
+# Writes nothing (NFR-4): optional locks off; diff-index compares stat data
+# without refreshing the index (a porcelain `git diff` refresh can rewrite
+# it) and with fsmonitor off (its daemon writes an IPC socket under .git);
+# hash-object runs without -w and without filters (an LFS clean filter
+# stores objects), comparing raw bytes as `cat-file blob | cmp` would.
+# stderr is discarded on each git call: git reports a repository it cannot
+# open (not a repository, a broken gitlink, dubious ownership, a corrupt
+# index) and an ambiguous short id there, each meaning no fact, and the
+# probe's stderr has no reader; each call's own output is checked instead.
+# A candidate git's revision syntax would not read as a plain name is
+# skipped: a leading -, a blank (no ref holds one, so a newline cannot forge
+# a key line), a : (a path), and @{ or ^{ (a reflog past its end kills
+# cat-file; ^{/re} walks history).
+_readonly_repo_facts() (
+    local repo="$1" cand type target='' meta file rec n=0 complete=0 wt
+    local i=0 j=0 out=''
+    local -a names=() files=() heads=() shas=() tpaths=() tshas=()
     shift
+    unset GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_CONFIG GIT_CONFIG_PARAMETERS \
+        GIT_CONFIG_COUNT GIT_OBJECT_DIRECTORY GIT_DIR GIT_WORK_TREE \
+        GIT_IMPLICIT_WORK_TREE GIT_GRAFT_FILE GIT_INDEX_FILE \
+        GIT_NO_REPLACE_OBJECTS GIT_REPLACE_REF_BASE GIT_PREFIX \
+        GIT_SHALLOW_FILE GIT_COMMON_DIR
+    export GIT_OPTIONAL_LOCKS=0 LC_ALL=C
     for cand in "$@"; do
-        if GIT_OPTIONAL_LOCKS=0 git -C "$repo" rev-parse --verify --quiet \
-            "$cand^{commit}" >/dev/null; then
-            printf '%s\n' "$cand"
-            return 0
-        fi
+        case "$cand" in
+            -* | *[[:space:]]* | *:* | *@\{* | *^\{*) ;;
+            *) names+=("$cand") ;;
+        esac
     done
-    return 1
-}
+    [ "${#names[@]}" -gt 0 ] || return 0
 
-# _readonly_print_matches <repo> <target> — match=<file> for each file that
-# differs from HEAD in <repo>'s working tree, staged or not, and whose
-# current bytes equal <target>'s blob for that file (detectors.md's
-# match=). The file list comes from one whole-repo `diff --name-only`,
-# never a per-file `git diff <ref> -- <file>` (which rewrites the index on
-# git 2.47 even under GIT_OPTIONAL_LOCKS=0); content is then compared
-# through `cat-file blob`, which touches only the object database.
-# GIT_OPTIONAL_LOCKS=0 throughout: the probe reads only (NFR-4).
-# NUL-delimited (`-z`, `read -r -d ''`): a blank in a name is safe; a name
-# holding a newline cannot appear in a match= line and is skipped
-# (detectors.md's residual).
-_readonly_print_matches() {
-    local repo="$1" target="$2" file
-    while IFS= read -r -d '' file; do
-        [ -n "$file" ] || continue
+    # HEAD first: an unborn HEAD answers missing, and diff-index needs one.
+    # ^{} rather than ^{commit}: a tree or blob answers its type, not an
+    # error.
+    {
+        IFS= read -r type && [ "$type" = commit ] || return 0
+        for cand in "${names[@]}"; do
+            IFS= read -r type || return 0
+            if [ "$type" = commit ]; then
+                target="$cand"
+                break
+            fi
+        done
+    } < <(printf '%s^{}\n' HEAD "${names[@]}" \
+        | git -C "$repo" cat-file --batch-check='%(objecttype)' 2>/dev/null)
+    [ -n "$target" ] || return 0
+
+    # diff-index's raw records, `:<mode> <mode> <HEAD sha> <sha> <status>`
+    # then the name, come in index order; the empty record after them, which
+    # git never prints, says the list is complete.
+    while IFS= read -r -d '' meta; do
+        if [ -z "$meta" ]; then
+            complete=1
+            break
+        fi
+        IFS= read -r -d '' file || break
+        n=$((n + 1))
+        [ "$n" -le 1000 ] || return 0
         case "$file" in
             *$'\n'*) continue ;;
         esac
-        [ -f "$repo/$file" ] || continue
-        # cat-file -e's exit status alone says whether <target>:<file>
-        # exists; its stderr on failure ("Not a valid object name") adds
-        # nothing the status does not already carry, so it is discarded
-        # here rather than reaching the probe's own stderr.
-        if ! GIT_OPTIONAL_LOCKS=0 git -C "$repo" cat-file -e \
-            "$target:$file" 2>/dev/null; then
-            continue
+        if [ -f "$repo/$file" ] && [ ! -L "$repo/$file" ] \
+            && [ -r "$repo/$file" ]; then
+            meta="${meta#* }"
+            meta="${meta#* }"
+            files+=("$file")
+            heads+=("${meta%% *}")
         fi
-        if GIT_OPTIONAL_LOCKS=0 git -C "$repo" cat-file blob \
-            "$target:$file" | cmp -s - "$repo/$file"; then
-            printf 'match=%s\n' "$file"
+    done < <(git -c core.fsmonitor=false -C "$repo" diff-index -z \
+        --ignore-submodules HEAD 2>/dev/null && printf '\0')
+    [ "$complete" -eq 1 ] || return 0
+
+    if [ "${#files[@]}" -gt 0 ]; then
+        # ./ keeps a name opening with " from being read C-quoted.
+        wt=$(printf './%s\n' "${files[@]}" | git -C "$repo" hash-object \
+            --no-filters --stdin-paths 2>/dev/null) || return 0
+        # Split on newlines alone, globbing off: a sha line is never empty.
+        set -f
+        IFS=$'\n'
+        # shellcheck disable=SC2206 # the split above is the intent
+        shas=($wt)
+        IFS=$' \t\n'
+        [ "${#shas[@]}" -eq "${#files[@]}" ] || return 0
+        # One ls-tree over the listed names, `<mode> <type> <sha>\t<name>`,
+        # rather than a `<target>:<name>` lookup each, which re-reads the
+        # name's whole directory every time. Its records come in tree
+        # order, which is the index's (byte order of the full name, as
+        # [[ < ]] compares under LC_ALL=C), so one merge pass pairs them;
+        # -r lists a name that is a directory at the target as its blobs,
+        # which the pass skips.
+        complete=0
+        while IFS= read -r -d '' rec; do
+            if [ -z "$rec" ]; then
+                complete=1
+                break
+            fi
+            case "$rec" in
+                *" blob "*) ;;
+                *) continue ;;
+            esac
+            tpaths+=("${rec#*$'\t'}")
+            rec="${rec%%$'\t'*}"
+            tshas+=("${rec##* }")
+        done < <(git --literal-pathspecs -C "$repo" ls-tree -r -z \
+            --full-tree "$target" -- "${files[@]}" 2>/dev/null \
+            && printf '\0')
+        [ "$complete" -eq 1 ] || return 0
+    fi
+    while [ "$i" -lt "${#files[@]}" ] && [ "$j" -lt "${#tpaths[@]}" ]; do
+        if [ "${tpaths[$j]}" = "${files[$i]}" ]; then
+            if [ "${shas[$i]}" = "${tshas[$j]}" ] \
+                && [ "${shas[$i]}" != "${heads[$i]}" ]; then
+                out="${out}match=${files[$i]}"$'\n'
+            fi
+            i=$((i + 1))
+            j=$((j + 1))
+        elif [[ "${tpaths[$j]}" < "${files[$i]}" ]]; then
+            j=$((j + 1))
+        else
+            i=$((i + 1))
         fi
-    done < <(GIT_OPTIONAL_LOCKS=0 git -C "$repo" diff --name-only -z HEAD)
-}
+    done
+    # target= waits for the match= lines: printed alone it says nothing
+    # sits at the target.
+    printf 'target=%s\n%s' "$target" "$out"
+)

@@ -179,8 +179,15 @@ The repository for `target=` and `match=` is the one holding the path's nearest
 existing directory, else the payload `cwd`'s. Git reads run with optional locks
 off, so the probe writes nothing (NFR-4). Word splitting is safe for `target=`,
 since a ref name holds no blank; `readfile=` honours single and double quotes.
-Residuals: a file whose name holds a newline is never a `match=`; a reader
-behind a `cd` or a variable assignment is not recognised.
+Residuals: a file whose name holds a newline is never a `match=` or a
+`readfile=`; a reader behind a `cd` or a variable assignment is not recognised.
+The scan does not parse `$( )`, backticks, subshells, braces or `$'…'`, so their
+contents read as words of the command around them; it stops at the end of a line
+holding `<<`, and after 16384 characters, and neither cut command yields
+`readfile=`. A `>` anywhere in a word counts as output redirection, as do
+`sort -o` and `awk -i`. A candidate ref holding `@{`, `^{`, `:` or a leading `-`
+is skipped. Past 1000 files modified against HEAD, no `target=` is printed. A
+file matches byte for byte, before any clean filter, and never as a symlink.
 
 **Live reproduction (2026-09-26): `writable`.** Scratch repo under
 `/tmp/claude/` with a linked worktree directly under `/tmp/`, outside the

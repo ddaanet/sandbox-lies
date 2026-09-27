@@ -5,7 +5,7 @@
 # and tool_input.command as $3, and prints an outcome token on its first
 # line, then a path= line, then — under writable and nopath only — the
 # readfile=/merge=1/target=/match= facts detectors.md's readonly-path Probe
-# facts table describes (Item 8.0 slice 3); exit 0. Split out of
+# facts table describes; exit 0. Split out of
 # lib/probes.sh to keep that file under the line cap; lib/probes.sh sources
 # this file, so hooks/annotate.sh needs no source line of its own for it.
 #
@@ -16,17 +16,20 @@ set -u
 
 # probe_readonly_path reuses lib/matchers.sh's own matching-line
 # discriminator (_readonly_path_line) rather than a second copy of the
-# pattern, and lib/probes-readonly-facts.sh's _readonly_print_facts for its
-# writable/nopath tail (kept in its own file to hold this one under the line
-# cap). hooks/annotate.sh already sources matchers.sh before lib/probes.sh
-# (which sources this file), so this re-source is only load-bearing where a
-# caller sources this file, or lib/probes.sh, on its own; sourcing twice just
-# redefines the same functions.
+# pattern, and lib/probes-readonly-facts.sh's _readonly_print_facts, with
+# lib/probes-readonly-command.sh's command scan, for its writable/nopath
+# tail (each kept in its own file to hold this one, and each other, under
+# the line cap). hooks/annotate.sh already sources matchers.sh before
+# lib/probes.sh (which sources this file), so this re-source is only
+# load-bearing where a caller sources this file, or lib/probes.sh, on its
+# own; sourcing twice just redefines the same functions.
 _probes_lib_dir=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd) || return 1
 # shellcheck disable=SC1091 # lib/ sits beside this file; path is dynamic
 . "$_probes_lib_dir/matchers.sh" || return 1
 # shellcheck disable=SC1091 # lib/ sits beside this file; path is dynamic
 . "$_probes_lib_dir/probes-readonly-facts.sh" || return 1
+# shellcheck disable=SC1091 # lib/ sits beside this file; path is dynamic
+. "$_probes_lib_dir/probes-readonly-command.sh" || return 1
 unset _probes_lib_dir
 
 # probe_readonly_path <flag> <cwd> <command> — A-3 contract for
