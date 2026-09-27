@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+# Dogfood shim (docs/design.md D-16): load this checkout as a plugin, then chain
+# to the next `claude` on PATH with this directory stripped from PATH, so the
+# next launcher in the chain cannot find the shim again.
+unset CDPATH # else `cd` may echo the target, corrupting the capture below
+self=$(cd "$(dirname "$0")" && pwd)
+root=$(dirname "$self")
+# explicit `-` operand: BSD paste has no implicit stdin, unlike GNU
+PATH=$(printf '%s' "$PATH" | tr ':' '\n' | grep -vxF "$self" | paste -sd: -)
+export PATH
+real=$(command -v claude) || {
+  echo "sandbox-lies: no other claude on PATH" >&2
+  exit 127
+}
+exec "$real" --plugin-dir "$root" "$@"

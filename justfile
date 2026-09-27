@@ -28,7 +28,7 @@ precommit:
     }
     report plugin.json jq empty .claude-plugin/plugin.json
     report hooks.json jq empty hooks/hooks.json
-    tracked '*.sh' '*.bash' '*.bats'
+    tracked '*.sh' '*.bash' '*.bats' '.bin/*'
     report shellcheck shellcheck "${files[@]}"
     tracked '*.sh'
     report 'bash -n' each_bash_n "${files[@]}"
