@@ -3,6 +3,7 @@
 
 load helpers/fixture-root
 load helpers/bsd-stubs
+load helpers/git-env
 
 SCRIPT="$ROOT/scripts/check-line-limits.sh"
 

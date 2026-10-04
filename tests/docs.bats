@@ -9,6 +9,7 @@ ROOT="${BATS_TEST_DIRNAME}/.."
 MATCHERS="$ROOT/lib/matchers.sh"
 
 load helpers/bsd-stubs
+load helpers/git-env
 
 EXEMPT=(
   plans/2026-09-02-sandbox-detector-replay.py

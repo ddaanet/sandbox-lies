@@ -16,6 +16,7 @@ ROOT="${BATS_TEST_DIRNAME}/.."
 bats_require_minimum_version 1.5.0
 
 load helpers/bsd-stubs
+load helpers/git-env
 load helpers/probes
 
 setup() {
@@ -154,6 +155,7 @@ partial_checkout_mkdir_error() {
 # and a probe that runs git there must keep git's refusal off stderr.
 @test "merge=1 fires for a git merge-style command segment" {
   local text cmd
+  assert_no_git_above "$BATS_TEST_TMPDIR"
   text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
 
   for cmd in 'git merge --ff-only feat' 'git -C /r/repo checkout feat' \

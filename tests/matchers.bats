@@ -19,6 +19,7 @@ FIXTURES="$ROOT/tests/fixtures"
 bats_require_minimum_version 1.5.0
 
 load helpers/bsd-stubs
+load helpers/git-env
 load helpers/spy
 
 # fixture name -> expected verdicts, newline-separated, empty for quiet.
