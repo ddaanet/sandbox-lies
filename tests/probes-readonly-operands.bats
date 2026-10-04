@@ -299,12 +299,14 @@ setup() {
 # writer (outline D4), as sort -o is. uniq in.log is the positive run, and
 # uniq in.log out.txt differs from it only in the second operand: in.log is
 # withheld because the segment writes, not because out.txt is skipped. An
-# option is no operand, so uniq -c in.log is still a reader.
+# option is no operand, so uniq -c in.log is still a reader, and so is
+# uniq -c in.log 2>&1, a descriptor duplication being no operand. A lone -
+# (stdin), the text ahead of a <, and a word after -- are operands.
 @test "uniq with a second operand is a writer, uniq in.log is not" {
   local text cmd
   text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
 
-  for cmd in 'uniq in.log' 'uniq -c in.log'; do
+  for cmd in 'uniq in.log' 'uniq -c in.log' 'uniq -c in.log 2>&1'; do
     run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
       "$cmd" "$text"
     [ "$status" -eq 0 ]
@@ -313,7 +315,8 @@ setup() {
     printf '%s\n' "$output" | grep -qxF 'readfile=in.log'
   done
 
-  for cmd in 'uniq in.log out.txt' 'uniq in.txt out.log'; do
+  for cmd in 'uniq in.log out.txt' 'uniq in.txt out.log' 'uniq - out.log' \
+    'uniq x<in.log out.log' 'uniq -- -x.txt out.log'; do
     run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
       "$cmd" "$text"
     assert_no_readfile
