@@ -46,3 +46,16 @@ All new cases green on the real tree.
 ## Gate
 
 precommit passed: plugin.json, hooks.json, shellcheck, bash -n, rumdl, line limits, links, tests (258 passed, 0 failed)
+
+## Addendum: shellcheck fix
+
+The committed `tests/hook-writes.bats` failed shellcheck SC2030/SC2031
+(`PAYLOAD_FILE` assigned in a @test body, read later). Fixed by assigning
+`PAYLOAD_FILE` once in `setup()` and having the helper and cases only read it;
+case bodies and fault behaviour are unchanged (shellcheck on the file is clean).
+
+Why the earlier gate passed: the justfile's shellcheck step takes its file list
+from `git ls-files`, and `tests/hook-writes.bats` was still untracked when I ran
+`just precommit` (I staged it only in the commit step), so the new file was not
+linted. It was not a sandboxed or stale run; `probes-edges.bats` was tracked and
+lint-clean. The gate is run again below with the file tracked.

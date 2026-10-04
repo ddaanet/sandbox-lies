@@ -17,15 +17,15 @@ load helpers/probes
 
 setup() {
   hook_copy_tree
+  PAYLOAD_FILE="$BATS_TEST_TMPDIR/payload.json"
 }
 
 # readonly_payload_file <repo> — writes the payload for a writable refusal of
 # <repo>/a under `git merge feat` (so _readonly_print_facts runs its git
-# reads, flag absent) to $BATS_TEST_TMPDIR/payload.json and sets PAYLOAD_FILE.
+# reads, flag absent) to $PAYLOAD_FILE (set in setup).
 readonly_payload_file() {
   local repo="$1" text
   text=$(readonly_path_text fire-readonly-path-cp-tmp "'$repo/a'")
-  PAYLOAD_FILE="$BATS_TEST_TMPDIR/payload.json"
   failure_payload "$text" |
     jq --arg c "$repo" '.cwd = $c | .tool_input.command = "git merge feat"
       | del(.tool_input.dangerouslyDisableSandbox)' >"$PAYLOAD_FILE"
@@ -72,8 +72,7 @@ run_spied() {
   mkdir -p "$scratch/.git"
   text="$(git_lock_error "$scratch/.git/index.lock")"$'\n'"$follow"
   failure_payload "$text" |
-    jq --arg c "$scratch" '.cwd = $c' >"$BATS_TEST_TMPDIR/payload.json"
-  PAYLOAD_FILE="$BATS_TEST_TMPDIR/payload.json"
+    jq --arg c "$scratch" '.cwd = $c' >"$PAYLOAD_FILE"
 
   run bash "$HOOK_COPY/hooks/annotate.sh" <"$PAYLOAD_FILE"
   [ "$status" -eq 0 ]
