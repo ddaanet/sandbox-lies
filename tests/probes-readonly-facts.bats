@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 # lib/probes-readonly.sh's probe_readonly_path: the readfile=/merge=1/
 # target=/match= facts it prints after path=, under writable and nopath only
-# (Item 8.0 slice 3, docs/references/detectors.md readonly-path Probe facts
+# (Item 8.0 slice 3, docs/references/readonly-path.md readonly-path Probe facts
 # table and the paragraph after it). tests/probes-readonly.bats already sits
 # at the line cap, so this is a new file; it reuses that file's fixtures and
 # helpers rather than duplicating them.

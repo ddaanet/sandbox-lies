@@ -4,7 +4,7 @@
 # result text on stdin, takes the sandbox flag as $1, the payload cwd as $2
 # and tool_input.command as $3, and prints an outcome token on its first
 # line, then a path= line, then — under writable and nopath only — the
-# readfile=/merge=1/partial=1/target=/match= facts detectors.md's
+# readfile=/merge=1/partial=1/target=/match= facts readonly-path.md's
 # readonly-path Probe facts table describes; exit 0. Split out of
 # lib/probes.sh to keep that file under the line cap; lib/probes.sh sources
 # this file, so hooks/annotate.sh needs no source line of its own for it.
@@ -38,7 +38,7 @@ unset _probes_lib_dir
 # the facts _readonly_print_facts derives from the result text and
 # <command>. <flag> is part of the interface but unread here: whether the
 # hook calls this probe at all is the candidate's flag policy
-# (docs/references/detectors.md), decided before the probe runs, not inside
+# (docs/references/readonly-path.md), decided before the probe runs, not inside
 # it.
 probe_readonly_path() {
     local cwd="${2-}" command="${3-}" text path target outcome

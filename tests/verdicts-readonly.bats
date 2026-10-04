@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 # lib/verdicts.sh's verdict_readonly_path: the writable/nopath tail composed
 # from the probe's key=value facts on stdin (readfile=, path=, merge=1,
-# target=, match=), transcribed from docs/references/detectors.md's
+# target=, match=), transcribed from docs/references/readonly-path.md's
 # readonly-path Verdicts tail and merge-clause composition (Item 8.0 slice
 # 2). New file: tests/verdicts.bats and tests/hook-locks.bats already sit at
 # the 400-line cap.
@@ -204,7 +204,7 @@ $n" "$MATCHERS"
 }
 
 @test "readonly-path merge match list caps at five names then and N more" {
-  # detectors.md fixes the five names, `and N more` after them and the rest
+  # readonly-path.md fixes the five names, `and N more` after them and the rest
   # of the clause, but not whether a comma precedes `and`: both joins pass.
   local text line1 head tail
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion

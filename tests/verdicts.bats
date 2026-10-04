@@ -98,8 +98,8 @@ load helpers/verdicts
   [ "$line2" = 'sandbox init failed — transient, retry' ]
 }
 
-@test "readonly-path writable verdict text matches detectors.md" {
-  # Transcribed from docs/references/detectors.md's readonly-path Verdicts
+@test "readonly-path writable verdict text matches readonly-path.md" {
+  # Transcribed from docs/references/readonly-path.md's readonly-path Verdicts
   # list, <path> substituted by the probe's path= stdin line. The path holds
   # a blank and the characters a sed replacement or an eval would act on, as
   # an extracted path may. The path renders in backticks, as the doc writes
@@ -118,8 +118,8 @@ load helpers/verdicts
   [ "$line1" = "The path$rest" ]
 }
 
-@test "readonly-path readonly verdict text matches detectors.md" {
-  # Transcribed from docs/references/detectors.md's readonly-path Verdicts
+@test "readonly-path readonly verdict text matches readonly-path.md" {
+  # Transcribed from docs/references/readonly-path.md's readonly-path Verdicts
   # list, <path> interpolated in backticks as the writable case does, and
   # "The path" with no path= line (outside the probe contract, as the
   # row-driven cases call it), so no subjectless sentence.
@@ -137,8 +137,8 @@ load helpers/verdicts
   [ "$line1" = 'The path is not writable outside the sandbox either; this is not a sandbox effect. Unsandboxing will not help: write somewhere writable, or ask before changing its permissions.' ]
 }
 
-@test "readonly-path nopath verdict text matches detectors.md" {
-  # Transcribed from docs/references/detectors.md's readonly-path Verdicts
+@test "readonly-path nopath verdict text matches readonly-path.md" {
+  # Transcribed from docs/references/readonly-path.md's readonly-path Verdicts
   # list: nopath's opening sentence, then the tail, which with no facts on
   # stdin is the whole-call re-run alone. No path= line: the probe contract
   # gives none for nopath.

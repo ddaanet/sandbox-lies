@@ -88,7 +88,7 @@ text_lacks() {
   [ "$status" -eq 1 ]
 }
 
-# readonly_path_tail — detectors.md's readonly-path tail with no facts on
+# readonly_path_tail — readonly-path.md's readonly-path tail with no facts on
 # stdin: the act alone (no readfile=, path= settings.json, or merge=1), which
 # is the whole-call re-run, capitalised and leading with a blank, as the
 # writable and nopath paragraphs both open onto it. The fact-driven

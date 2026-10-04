@@ -158,7 +158,7 @@ _readonly_path_line() {
 # Anchoring at line start is what the corpus needed (99% precision, 162
 # hits): the memory store and this suite's own index/heredoc lines quote
 # both messages mid-line or mid-word, never as a bare refusal starting a
-# line of their own. See docs/references/detectors.md's `### readonly-path`
+# line of their own. See docs/references/readonly-path.md's `## readonly-path`
 # entry for the corpus figures this discriminator was measured against.
 match_readonly_path() {
     _readonly_path_line >/dev/null

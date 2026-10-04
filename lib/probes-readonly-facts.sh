@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # lib/probes-readonly-facts.sh — the readfile=/merge=1/partial=1/target=/
 # match= facts _readonly_print_facts derives for probe_readonly_path under
-# writable and nopath (detectors.md's readonly-path Probe facts table),
+# writable and nopath (readonly-path.md's readonly-path Probe facts table),
 # reading the command through lib/probes-readonly-command.sh's scan. Split
 # out of lib/probes-readonly.sh to keep that file under the line cap;
 # lib/probes-readonly.sh sources both, so no other caller needs a source
@@ -15,11 +15,11 @@
 set -u
 
 # _readonly_print_facts <text> <command> <path> <cwd> — the writable/nopath
-# tail of the A-3 contract (detectors.md's readonly-path Probe facts table):
+# tail of the A-3 contract (readonly-path.md's readonly-path Probe facts table):
 # readfile=, merge=1, partial=1, target= and match= lines, derived from
 # <text> and <command> only — never from the outcome (D-1). <path> is the
 # extracted refusal path, empty under nopath; the repository search starts
-# there, or at <cwd> when there is none (detectors.md: "the path's nearest
+# there, or at <cwd> when there is none (readonly-path.md: "the path's nearest
 # existing directory, else the cwd's" — walking up from <path> reaches the
 # same first .git ancestor either way, since a check below a nonexistent
 # directory can never succeed, so no separate existence walk is needed).
@@ -51,7 +51,7 @@ _readonly_print_facts() {
     printf 'merge=1\n'
     [ "$partial" -eq 0 ] || printf 'partial=1\n'
 
-    # target= is only attempted after these three subcommands (detectors.md);
+    # target= is only attempted after these three subcommands (readonly-path.md);
     # pull, rebase and cherry-pick still fire merge=1 above but name no ref.
     case "$sub" in
         merge | checkout | switch) ;;
@@ -118,7 +118,7 @@ _readonly_git_dir() {
 # _readonly_repo_facts <repo> <candidate...> — target= for the first
 # <candidate> naming a commit in <repo>, then match=<file> for each regular
 # file differing from HEAD in the working tree, staged or not, whose bytes
-# equal the target's blob (detectors.md's target= and match=); nothing when
+# equal the target's blob (readonly-path.md's target= and match=); nothing when
 # no candidate resolves. A subshell, so the environment edits stay here:
 # repository variables inherited from the hook's own environment (a claude
 # started inside a git hook) would point every read at another repository.

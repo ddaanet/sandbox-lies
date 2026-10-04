@@ -7,7 +7,8 @@
 # reads false, and it words the mask/orphan/unknown re-run/retry clause per
 # lock-detectors.md's flag table. Text from docs/references/detectors.md,
 # except git_lock and config_lock, whose text comes from
-# docs/references/lock-detectors.md.
+# docs/references/lock-detectors.md, and readonly_path, whose text comes from
+# docs/references/readonly-path.md.
 set -u
 
 verdict_phantom_chardev() {
@@ -143,7 +144,7 @@ _verdict_lock_present() {
 # code span early, bytes intact. nopath has no path= line under the contract
 # and opens with its own sentence.
 #
-# writable and nopath then carry the tail detectors.md's readonly-path
+# writable and nopath then carry the tail readonly-path.md's readonly-path
 # Verdicts compose from the probe's other stdin facts (readfile=, merge=1,
 # partial=1, target=, match=): one act, capitalised alone or lowercase after
 # a merge clause, each spelled twice since bash 3.2 has no case conversion.
@@ -220,7 +221,7 @@ verdict_readonly_path() {
 
 # _readonly_match_list <name...> — the restore clause's file list: each name
 # in backticks, comma-joined, capped at the first five with "and N more"
-# appended past that (detectors.md leaves the comma before "and" open).
+# appended past that (readonly-path.md leaves the comma before "and" open).
 _readonly_match_list() {
   local names='' extra=0 i=0 m
   for m in "$@"; do

@@ -127,7 +127,7 @@ SPEC = [
      "git checkout -q display-golden-tests && git branch -f softwrapcolumn2",
      "could not write config file", "short", 40, 4000),
     # git's partial-checkout error for a new directory, from the live
-    # reproduction in docs/references/detectors.md (Item 8.0 slice 5)
+    # reproduction in docs/references/readonly-path.md (Item 8.0 slice 5)
     ("fire-readonly-path-git-mkdir", "-Users-david-code-sandbox-lies",
      "2026-09-27", "git -C /tmp/sl8c-wt checkout feat2 2>&1",
      "cannot create directory at", "short", 40, 4000),

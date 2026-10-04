@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # lib/probes-readonly-command.sh — the shell-command scan behind
-# _readonly_print_facts' readfile= and merge=1/target= facts (detectors.md's
+# _readonly_print_facts' readfile= and merge=1/target= facts (readonly-path.md's
 # readonly-path Probe facts table): _readonly_tokenize splits
 # tool_input.command into words and segments, _readonly_readfile_arg and
 # _readonly_merge_segment read them. Split out of
@@ -29,7 +29,7 @@ set -u
 # subshells and braces are not parsed, so their contents read as words of
 # the enclosing command; any << ends the scan at its line, arithmetic's
 # included; a reader behind a cd, or a reader or git behind a variable
-# assignment or another prefix word, is not recognised (detectors.md).
+# assignment or another prefix word, is not recognised (readonly-path.md).
 _readonly_tokenize() {
     local ch word='' invalue=0 quote='' esc=0 lts=0 heredoc=0 sep
     local nl=$'\n' tab=$'\t' max=16384
@@ -122,7 +122,7 @@ _readonly_tokenize() {
 # _readonly_readfile_arg <cut> <token...> — the readfile= value: the first
 # argument shaped like a command-output name (*.log, *.output, *.out, *.err;
 # a leading < redirection stripped) once every command in every segment is
-# one of the reader tools detectors.md names, with no output redirection and
+# one of the reader tools readonly-path.md names, with no output redirection and
 # no in-place edit (sed -i/-I/--in-place, and sort -o and gawk -i inplace,
 # which write as well); empty when <cut> is 1, since the unscanned rest may
 # hold a writer. A `>` anywhere in a word counts as a redirection, quoted or
@@ -179,7 +179,7 @@ _readonly_readfile_arg() {
 # _readonly_merge_segment <token...> — for the first segment that opens with
 # `git`, after skipping its own global options, and runs merge, pull,
 # checkout, switch, rebase or cherry-pick: the subcommand, then each
-# following word up to a literal -- (detectors.md's target= "before any
+# following word up to a literal -- (readonly-path.md's target= "before any
 # --"), each NUL-terminated; nothing when no segment matches.
 _readonly_merge_segment() {
     local tok word state=start skip_next=0 sub=''
