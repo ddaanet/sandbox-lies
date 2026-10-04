@@ -273,3 +273,102 @@ run_hook() {
   # shellcheck disable=SC2016 # $TMPDIR is literal prose, not expansion
   [ "$sys" = '$TMPDIR — expanded empty, path collapsed to /' ]
 }
+
+# The sweeps below follow hook-locks.bats's "every lock fixture yields its
+# verdict": a fixture whose first line is an Exit code line goes into a failure
+# payload's error, any other into a success payload's tool_response.stdout;
+# misses collect across every fixture and flag value into one string asserted
+# empty, so one red names every broken fixture.
+
+# flag_payload <text> [flag] — the payload for a fixture's text per the sweep
+# rule above.
+flag_payload() {
+  case "$1" in
+    "Exit code"*) failure_payload "$1" "${2:-}" ;;
+    *)            post_payload "$1" "" "${2:-}" ;;
+  esac
+}
+
+@test "every tmpdir-unset fixture is silent unflagged and fires flagged" {
+  local f text payload sys flag misses="" count=0 expected
+  # shellcheck disable=SC2016 # $TMPDIR is literal prose, not expansion
+  expected='$TMPDIR — expanded empty, path collapsed to /'
+  for f in "$FIXTURES"/fire-tmpdir-unset-*.txt; do
+    count=$((count + 1))
+    text=$(cat "$f")
+    for flag in '' true; do
+      payload=$(flag_payload "$text" "$flag")
+      run_hook "$payload"
+      if [ "$status" -ne 0 ]; then
+        misses="${misses}$(basename "$f") (flag ${flag:-absent}): exit $status"$'\n'
+        continue
+      fi
+      if [ -z "$flag" ]; then
+        [ -z "$output" ] \
+          || misses="${misses}$(basename "$f") (flag absent): not silent"$'\n'
+      else
+        sys=$(printf '%s' "$output" | jq -r '.systemMessage')
+        [ "$sys" = "$expected" ] \
+          || misses="${misses}$(basename "$f") (flag true): got '${sys}'"$'\n'
+      fi
+    done
+  done
+  [ "$count" -gt 0 ]
+  [ -z "$misses" ] || { printf '%s' "$misses" >&2; return 1; }
+}
+
+@test "every readonly-path fixture fires unflagged with the probe and is silent flagged without it" {
+  # The stub answers writable, so the unflagged run must reach it; the flagged
+  # run is silent and must not.
+  local f text payload sys flag misses="" count=0 expected
+  expected='read-only — sandbox allowlist, writable outside'
+  stub_probe readonly_path writable
+  for f in "$FIXTURES"/fire-readonly-path-*.txt; do
+    count=$((count + 1))
+    text=$(cat "$f")
+    for flag in '' true; do
+      payload=$(flag_payload "$text" "$flag")
+      rm -f "$PROBE_CALLED"
+      run_hook "$payload"
+      if [ "$status" -ne 0 ]; then
+        misses="${misses}$(basename "$f") (flag ${flag:-absent}): exit $status"$'\n'
+        continue
+      fi
+      if [ -z "$flag" ]; then
+        [ -f "$PROBE_CALLED" ] \
+          || misses="${misses}$(basename "$f") (flag absent): probe not reached"$'\n'
+        sys=$(printf '%s' "$output" | jq -r '.systemMessage')
+        [ "$sys" = "$expected" ] \
+          || misses="${misses}$(basename "$f") (flag absent): got '${sys}'"$'\n'
+      else
+        [ ! -f "$PROBE_CALLED" ] \
+          || misses="${misses}$(basename "$f") (flag true): probe reached"$'\n'
+        [ -z "$output" ] \
+          || misses="${misses}$(basename "$f") (flag true): not silent"$'\n'
+      fi
+    done
+  done
+  [ "$count" -gt 0 ]
+  [ -z "$misses" ] || { printf '%s' "$misses" >&2; return 1; }
+}
+
+@test "dangerouslyDisableSandbox as the string true reads as false" {
+  # FR-5: only the boolean true counts. The same text fires with the boolean
+  # and is silent with the string, which the tmpdir-unset policy reads as an
+  # unflagged call.
+  local text payload sys
+  text=$(cat "$FIXTURES/fire-tmpdir-unset-redirect.txt")
+
+  payload=$(failure_payload "$text" true)
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  sys=$(printf '%s' "$output" | jq -r '.systemMessage')
+  # shellcheck disable=SC2016 # $TMPDIR is literal prose, not expansion
+  [ "$sys" = '$TMPDIR — expanded empty, path collapsed to /' ]
+
+  payload=$(failure_payload "$text" | jq \
+    '.tool_input.dangerouslyDisableSandbox = "true"')
+  run_hook "$payload"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
