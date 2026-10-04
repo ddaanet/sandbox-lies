@@ -48,6 +48,12 @@ check_fires() {
     || failures+="$label: positive did not fire: status $status, stderr [$stderr]"$'\n'
 }
 
+# check_reached <label> <marker> — appends a line to $failures when the stub
+# marker file is absent, so a stub the hook never reached cannot pass.
+check_reached() {
+  [ -e "$2" ] || failures+="$1: stub was never reached"$'\n'
+}
+
 # assert_no_failures — the one assertion each test makes, printing every
 # collected miss.
 assert_no_failures() {
@@ -152,6 +158,59 @@ assert_no_failures() {
   object_event=$(printf '%s' "$literal_event" \
     | jq '.hook_event_name = {name: "PostToolUse"}')
   check_quiet "event is an object" "$object_event"
+
+  assert_no_failures
+}
+
+# FR-3, runtime-failure path: a probe or verdict that has already printed and
+# then returns non-zero must leave the hook wholly quiet, not emit the
+# partial output it printed. Each case stubs the same function twice: first
+# returning 0, for the paired check_fires, then returning 1, for check_quiet,
+# since a later definition wins (stub_lib). Without the pair a hook that
+# exits early on everything would pass.
+@test "probe dying after output stays quiet" {
+  local text called
+  text=$(cat "$FIXTURES/fire-readonly-path-cp-tmp.txt")
+  called="$BATS_TEST_TMPDIR/probe-readonly-called"
+  stub_lib probes.sh "probe_readonly_path() { cat >/dev/null; : >'$called'; printf '%s\n' writable path=/r/x; return 0; }"
+  check_fires "probe returning 0" "$(failure_payload "$text")"
+  rm -f "$called"
+
+  stub_lib probes.sh "probe_readonly_path() { cat >/dev/null; : >'$called'; printf '%s\n' writable path=/r/x; return 1; }"
+  check_quiet "probe returning 1 after output" "$(failure_payload "$text")"
+  check_reached "probe" "$called"
+
+  assert_no_failures
+}
+
+@test "verdict dying after a probe stays quiet" {
+  local text
+  text=$(cat "$FIXTURES/fire-lock-add-commit.txt")
+  stub_probe git_lock mask
+  stub_lib verdicts.sh \
+    'verdict_git_lock() { cat >/dev/null; printf "%s\n" "stub lock paragraph" "stub — lock"; return 0; }'
+  check_fires "verdict returning 0" "$(failure_payload "$text")"
+  check_reached "paired probe" "$PROBE_CALLED"
+  rm -f "$PROBE_CALLED"
+
+  stub_lib verdicts.sh \
+    'verdict_git_lock() { cat >/dev/null; printf "%s\n" "stub lock paragraph" "stub — lock"; return 1; }'
+  check_quiet "verdict returning 1 after output" "$(failure_payload "$text")"
+  check_reached "probe" "$PROBE_CALLED"
+
+  assert_no_failures
+}
+
+@test "probe-less verdict dying stays quiet" {
+  local text
+  text=$(cat "$FIXTURES/fire-masks-gitadd-refused.txt")
+  stub_lib verdicts.sh \
+    'verdict_phantom_gitadd() { printf "%s\n" "stub paragraph" "stub human line"; return 0; }'
+  check_fires "verdict returning 0" "$(failure_payload "$text")"
+
+  stub_lib verdicts.sh \
+    'verdict_phantom_gitadd() { printf "%s\n" "stub paragraph" "stub human line"; return 1; }'
+  check_quiet "verdict returning 1 after output" "$(failure_payload "$text")"
 
   assert_no_failures
 }
