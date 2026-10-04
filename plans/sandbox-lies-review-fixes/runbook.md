@@ -234,14 +234,23 @@ Same D5 rule as Phase 2.
        unconsumed at the segment's end (the slice-2 code review found no case
        does).
     4. `uniq` with an output operand is a writer: `uniq in.txt out.log` prints
-       no `readfile=` line; `uniq in.log` prints `readfile=in.log`.
+       no `readfile=` line; `uniq in.log` prints `readfile=in.log`. List
+       revision after slice 3: a pin for a `<` redirection in a separate
+       `-e`/`-f` argument slot — `grep -e <in.log pat.log` prints
+       `readfile=in.log` and no `readfile=pat.log` (the slice-3 code review's
+       fix, unpinned; proven by mutation).
   - List revision after slice 2: slices 3 and 4's tests go in
     `tests/probes-readonly-operands.bats` (the operand-rule section moved there
     by the slice-2 refactor, `probes-readonly-members.bats` being near its
     cap).
   - Docs (same item, after GREEN): `docs/references/readonly-path.md` Probe
     facts table `readfile=` row and residuals (other options' separate arguments
-    stay unrecognised); the function's header comment.
+    stay unrecognised); the function's header comment. List revision after
+    slice 3: the residuals also name clustered short (`-ne`, `-nf`) and long
+    (`--regexp=`, `--expression=`, `--file=`) forms of the `-e`/`-f` family,
+    left unrecognised; sed's `w` command and `s///w` flag, which write but are
+    not counted as writers; and a descriptor duplication such as `2>&1` taken
+    as the operand in a pattern or argument slot.
 - Item 4.2: `lib/probes-readonly-facts.sh` — outline D3's absolute `match=`
   names (code m-3). The site is `_readonly_repo_facts`'s merge pass that appends
   `out="${out}match=${files[$i]}"`; the name becomes `<repo>/<name>` with the

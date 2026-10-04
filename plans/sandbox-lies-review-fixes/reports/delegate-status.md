@@ -22,8 +22,11 @@ baseline lives under `.git/`).
   review each; `reports/item-4-1-s{1,2}-*.md`), slice-2 refactor
   (`reports/item-4-1-s2-refactor.md`: the operand-rule cases moved to
   `tests/probes-readonly-operands.bats`), list revision committed in
-  `runbook.md`. Slices 3, 4 and the item's docs step remain; then Items 4.2,
-  4.3, the Phase 4 corrector, Phase 5, and the finish (review gate, tdd-audit).
+  `runbook.md`. Slice 3 done (`reports/item-4-1-s3-*.md`; the code review
+  fixed a `<`-in-argument-slot regression), list revision committed in
+  `runbook.md` (a pin for it in slice 4; four docs-step residuals). Slice 4
+  and the item's docs step remain; then Items 4.2, 4.3, the Phase 4
+  corrector, Phase 5, and the finish (review gate, tdd-audit).
 
 ## Build decisions
 
