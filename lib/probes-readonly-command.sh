@@ -131,20 +131,23 @@ _readonly_tokenize() {
 # key line's value and is passed over.
 _readonly_readfile_arg() {
     local cut="$1" tok word first='' seg_first=1 seg_ok=1 all_ok=1 in_seg=0
-    local candidate='' nl=$'\n'
+    local candidate='' nl=$'\n' pat=0 is_cmd
     shift
     [ "$cut" -eq 0 ] || return 0
     for tok in ${1+"$@"} '|'; do
         if [ "$tok" = '|' ]; then
             [ "$in_seg" -eq 0 ] || [ "$seg_ok" -eq 1 ] || all_ok=0
-            seg_first=1 seg_ok=1 in_seg=0
+            seg_first=1 seg_ok=1 in_seg=0 pat=0
             continue
         fi
         word="${tok#w}"
-        in_seg=1
+        in_seg=1 is_cmd=0
         if [ "$seg_first" -eq 1 ]; then
-            seg_first=0
+            seg_first=0 is_cmd=1
             first="$word"
+            case "$first" in
+                grep | sed | awk) pat=1 ;;
+            esac
             case "$first" in
                 cat | head | tail | grep | sed | awk | cut | sort | uniq \
                     | wc | tr | less) ;;
@@ -170,6 +173,17 @@ _readonly_readfile_arg() {
         case "$word" in
             *"$nl"*) ;;
             [!-]* | *'<'*)
+                # The first operand of grep, sed or awk is the pattern or
+                # program; a word holding < is a redirection, not an operand.
+                case "$word" in
+                    *'<'*) ;;
+                    *)
+                        if [ "$is_cmd" -eq 0 ] && [ "$pat" -eq 1 ]; then
+                            pat=0
+                            continue
+                        fi
+                        ;;
+                esac
                 case "$word" in
                     *.log | *.output | *.out | *.err)
                         [ -n "$candidate" ] || candidate="${word##*<}"

@@ -208,6 +208,109 @@ assert_no_readfile() {
   printf '%s\n' "$output" | grep -qxF 'readfile=build.log'
 }
 
+# The first non-option operand of grep is its pattern, not an input file, even
+# when it is shaped like a log name.
+@test "grep x.log y.out gives the input, never the pattern" {
+  local text
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
+
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'grep x.log y.out' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=y.out'
+  run ! grep -qxF 'readfile=x.log' <<<"$output"
+}
+
+# sed's first non-option operand is its program; s/a/b/x.log ends in .log but
+# is a substitution, not a file.
+@test "sed s/a/b/x.log in.out gives the input, never the program" {
+  local text
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
+
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'sed s/a/b/x.log in.out' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=in.out'
+  run ! grep -qxF 'readfile=s/a/b/x.log' <<<"$output"
+}
+
+# awk's first non-option operand is its program.
+@test "awk x.log in.err gives the input, never the program" {
+  local text
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
+
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'awk x.log in.err' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=in.err'
+  run ! grep -qxF 'readfile=x.log' <<<"$output"
+}
+
+# Guard, passes before the rule: the program s/a/b/ is no log name, so in.log
+# is the candidate with or without skipping the program operand.
+@test "sed s/a/b/ in.log still gives the input" {
+  local text
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
+
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'sed s/a/b/ in.log' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=in.log'
+}
+
+# The pattern is the first non-option operand, not the word after grep: an
+# option ahead of it leaves x.log in the pattern's place.
+@test "grep -i x.log y.out gives the input, never the pattern after an option" {
+  local text
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
+
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'grep -i x.log y.out' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=y.out'
+  run ! grep -qxF 'readfile=x.log' <<<"$output"
+}
+
+# Only the pattern is skipped: of two inputs after it, the first is the
+# candidate, so taking the last log-shaped word is not the rule.
+@test "grep x.log a.out b.err gives the first input after the pattern" {
+  local text
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
+
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'grep x.log a.out b.err' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=a.out'
+  run ! grep -qxF 'readfile=b.err' <<<"$output"
+}
+
+# The pattern is per segment: sed's program in the first segment does not use
+# up grep's pattern in the second.
+@test "sed s/a/b/ in.txt | grep x.log y.out gives grep's input" {
+  local text
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
+
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'sed s/a/b/ in.txt | grep x.log y.out' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=y.out'
+  run ! grep -qxF 'readfile=x.log' <<<"$output"
+}
+
 # --- BSD tools -------------------------------------------------------------
 
 # One case per kind of fact above through BSD grep, sed, stat and wc (NFR-2).
