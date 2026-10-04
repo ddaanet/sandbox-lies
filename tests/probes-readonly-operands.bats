@@ -295,6 +295,57 @@ setup() {
   printf '%s\n' "$output" | grep -qxF 'readfile=run.log'
 }
 
+# uniq's second operand is the file it writes, so a segment holding one is a
+# writer (outline D4), as sort -o is. uniq in.log is the positive run, and
+# uniq in.log out.txt differs from it only in the second operand: in.log is
+# withheld because the segment writes, not because out.txt is skipped. An
+# option is no operand, so uniq -c in.log is still a reader.
+@test "uniq with a second operand is a writer, uniq in.log is not" {
+  local text cmd
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
+
+  for cmd in 'uniq in.log' 'uniq -c in.log'; do
+    run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+      "$cmd" "$text"
+    [ "$status" -eq 0 ]
+    [ -z "$stderr" ]
+    [ "${output%%$'\n'*}" = writable ]
+    printf '%s\n' "$output" | grep -qxF 'readfile=in.log'
+  done
+
+  for cmd in 'uniq in.log out.txt' 'uniq in.txt out.log'; do
+    run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+      "$cmd" "$text"
+    assert_no_readfile
+  done
+}
+
+# A < redirection in the argument slot of a separate -e is still a redirection:
+# in.log is read, and pat.log, the word after it, is -e's pattern, not input.
+@test "grep -e <in.log pat.log gives the redirected name, never the pattern" {
+  local text
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
+
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'grep -e <in.log pat.log' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=in.log'
+  run ! grep -qxF 'readfile=pat.log' <<<"$output"
+
+  # in.log above is the first candidate, so a < word that ended -e's argument
+  # role would leave pat.log as input unseen. With no log name behind the <,
+  # y.out is the input only while pat.log stays -e's argument.
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'grep -e <in.txt pat.log y.out' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=y.out'
+  run ! grep -qxF 'readfile=pat.log' <<<"$output"
+}
+
 # --- BSD tools -------------------------------------------------------------
 
 # A slice-1 and a slice-2 case through BSD grep, sed, stat and wc (NFR-2).

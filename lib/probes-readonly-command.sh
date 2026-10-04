@@ -131,13 +131,13 @@ _readonly_tokenize() {
 # key line's value and is passed over.
 _readonly_readfile_arg() {
     local cut="$1" tok word first='' seg_first=1 seg_ok=1 all_ok=1 in_seg=0
-    local candidate='' nl=$'\n' pat=0 lt=0 not_op
+    local candidate='' nl=$'\n' pat=0 lt=0 not_op uops=0
     shift
     [ "$cut" -eq 0 ] || return 0
     for tok in ${1+"$@"} '|'; do
         if [ "$tok" = '|' ]; then
             [ "$in_seg" -eq 0 ] || [ "$seg_ok" -eq 1 ] || all_ok=0
-            seg_first=1 seg_ok=1 in_seg=0 pat=0 lt=0
+            seg_first=1 seg_ok=1 in_seg=0 pat=0 lt=0 uops=0
             continue
         fi
         word="${tok#w}"
@@ -161,6 +161,13 @@ _readonly_readfile_arg() {
                 seg_ok=0
                 ;;
         esac
+        # uniq's second operand is the file it writes.
+        if [ "$not_op" -eq 0 ] && [ "$first" = uniq ]; then
+            case "$word" in
+                -* | *'<'*) ;;
+                *) [ $((uops += 1)) -lt 2 ] || seg_ok=0 ;;
+            esac
+        fi
         case "$word" in
             *'>'*)
                 case "$word" in
