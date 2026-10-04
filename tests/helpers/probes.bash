@@ -1,6 +1,7 @@
 # Shared helpers for tests/probes.bats, tests/probes-edges.bats,
 # tests/probes-tools.bats, tests/probes-config.bats, tests/probes-readonly.bats,
-# tests/probes-readonly-facts.bats and tests/probes-readonly-pins.bats: the
+# tests/probes-readonly-facts.bats, tests/probes-readonly-pins.bats,
+# tests/probes-readonly-members.bats and tests/probes-readonly-operands.bats: the
 # error builders, the `run` wrappers, the tools-only PATH, the lock holder,
 # the no-.git precondition, the readonly-path scratch repo and the index
 # mtime reader their probe cases use.
@@ -235,4 +236,14 @@ run_probe_bounded() {
   output=$(cat "$out")
   # shellcheck disable=SC2034 # read by the calling test, not here
   stderr=$(cat "$err")
+}
+
+# assert_no_readfile — the last probe run exited 0 with nothing on stderr,
+# answered writable (so an empty output cannot pass) and printed no readfile=
+# line.
+assert_no_readfile() {
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  run ! grep -q '^readfile=' <<<"$output"
 }
