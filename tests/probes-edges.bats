@@ -309,3 +309,33 @@ STUB
   [ ! -e "$calls" ]
   [ "$(find "$repo" "$cwd" | LC_ALL=C sort)" = "$before" ]
 }
+
+# The same check on the readonly-path probe, whose _readonly_print_facts runs
+# git reads on a refusal of a writable path: line 1 `writable` and a merge=1
+# line show the facts ran, so a write there is inside what the listing, the
+# spy and the nonexistent TMPDIR watch. Proven by mutation (a mktemp call at
+# the top of _readonly_print_facts), not by a red against unimplemented
+# behaviour.
+@test "readonly-path probe writes nothing" {
+  local repo="$BATS_TEST_TMPDIR/r" cwd="$BATS_TEST_TMPDIR/elsewhere" text before
+  local spy="$BATS_TEST_TMPDIR/spy" calls="$BATS_TEST_TMPDIR/spy-calls"
+  local nonexistent="$BATS_TEST_TMPDIR/does-not-exist"
+  make_scratch_repo "$repo"
+  mkdir -p "$cwd"
+  make_spy "$spy" "$calls" mktemp
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'$repo/a'")
+  cd "$cwd"
+
+  before=$(find "$repo" "$cwd" | LC_ALL=C sort)
+  # shellcheck disable=SC2016 # $1..$3 are the inner bash -c's own args, expanded there
+  run --separate-stderr env PATH="$spy:$PATH" TMPDIR="$nonexistent" \
+    bash -c 'source "$1"; probe_readonly_path false "$2" "$3"' \
+    _ "$ROOT/lib/probes.sh" "$repo" 'git merge feat' <<<"$text"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | command grep -qxF 'merge=1'
+  [ ! -e "$calls" ]
+  [ "$(find "$repo" "$cwd" | LC_ALL=C sort)" = "$before" ]
+}
