@@ -229,9 +229,16 @@ Same D5 rule as Phase 2.
        prints `readfile=x.log` (an earlier `-e` makes the first operand input);
        `sed -e s/a/b/ -e s/c/d/x.log in.out` prints `readfile=in.out` (the word
        after a separate `-e` is its argument); `awk -f prog.log in.err` prints
-       `readfile=in.err`.
+       `readfile=in.err`. List revision after slice 2: a case pinning the
+       per-segment reset of the pattern role, in a form this slice leaves
+       unconsumed at the segment's end (the slice-2 code review found no case
+       does).
     4. `uniq` with an output operand is a writer: `uniq in.txt out.log` prints
        no `readfile=` line; `uniq in.log` prints `readfile=in.log`.
+  - List revision after slice 2: slices 3 and 4's tests go in
+    `tests/probes-readonly-operands.bats` (the operand-rule section moved there
+    by the slice-2 refactor, `probes-readonly-members.bats` being near its
+    cap).
   - Docs (same item, after GREEN): `docs/references/readonly-path.md` Probe
     facts table `readfile=` row and residuals (other options' separate arguments
     stay unrecognised); the function's header comment.
