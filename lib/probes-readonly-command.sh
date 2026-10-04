@@ -131,13 +131,13 @@ _readonly_tokenize() {
 # key line's value and is passed over.
 _readonly_readfile_arg() {
     local cut="$1" tok word first='' seg_first=1 seg_ok=1 all_ok=1 in_seg=0
-    local candidate='' nl=$'\n' pat=0 lt=0 not_op uops=0
+    local candidate='' nl=$'\n' pat=0 lt=0 not_op uops=0 uend=0
     shift
     [ "$cut" -eq 0 ] || return 0
     for tok in ${1+"$@"} '|'; do
         if [ "$tok" = '|' ]; then
             [ "$in_seg" -eq 0 ] || [ "$seg_ok" -eq 1 ] || all_ok=0
-            seg_first=1 seg_ok=1 in_seg=0 pat=0 lt=0 uops=0
+            seg_first=1 seg_ok=1 in_seg=0 pat=0 lt=0 uops=0 uend=0
             continue
         fi
         word="${tok#w}"
@@ -161,12 +161,22 @@ _readonly_readfile_arg() {
                 seg_ok=0
                 ;;
         esac
-        # uniq's second operand is the file it writes.
+        # uniq's second operand is the file it writes. A lone - (stdin) is an
+        # operand, and so is every word after --; a word holding > is a
+        # redirection; in a word holding <, only text ahead of the first <
+        # that is not a descriptor number is an operand (x in x<in.log).
         if [ "$not_op" -eq 0 ] && [ "$first" = uniq ]; then
-            case "$word" in
-                -* | *'<'*) ;;
-                *) [ $((uops += 1)) -lt 2 ] || seg_ok=0 ;;
+            case "$uend:$word" in
+                0:--) uend=1 ;;
+                *'>'* | 0:-?*) ;;
+                *'<'*)
+                    case "${word%%<*}" in
+                        *[!0-9]*) uops=$((uops + 1)) ;;
+                    esac
+                    ;;
+                *) uops=$((uops + 1)) ;;
             esac
+            [ "$uops" -lt 2 ] || seg_ok=0
         fi
         case "$word" in
             *'>'*)
