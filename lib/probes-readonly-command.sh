@@ -131,13 +131,13 @@ _readonly_tokenize() {
 # key line's value and is passed over.
 _readonly_readfile_arg() {
     local cut="$1" tok word first='' seg_first=1 seg_ok=1 all_ok=1 in_seg=0
-    local candidate='' nl=$'\n' pat=0 lt=0 not_op
+    local candidate='' nl=$'\n' pat=0 lt=0 not_op arg=0
     shift
     [ "$cut" -eq 0 ] || return 0
     for tok in ${1+"$@"} '|'; do
         if [ "$tok" = '|' ]; then
             [ "$in_seg" -eq 0 ] || [ "$seg_ok" -eq 1 ] || all_ok=0
-            seg_first=1 seg_ok=1 in_seg=0 pat=0 lt=0
+            seg_first=1 seg_ok=1 in_seg=0 pat=0 lt=0 arg=0
             continue
         fi
         word="${tok#w}"
@@ -169,6 +169,20 @@ _readonly_readfile_arg() {
                 esac
                 ;;
         esac
+        # A separate -e or -f takes the next word as its argument, never input;
+        # either option, glued or not, supplies the pattern, so the first
+        # operand after it is input. Clustered (-ne) and long forms are not
+        # recognised.
+        if [ "$arg" -eq 1 ]; then
+            arg=0
+            continue
+        fi
+        if [ "$not_op" -eq 0 ]; then
+            case "$first:$word" in
+                grep:-[ef] | sed:-[ef] | awk:-[ef]) pat=0 arg=1 ;;
+                grep:-[ef]?* | sed:-[ef]?* | awk:-[ef]?*) pat=0 ;;
+            esac
+        fi
         # The first operand of grep, sed or awk is the pattern or program,
         # never input. In a word holding <, only text ahead of the first <
         # that is not a descriptor number is an operand (x in x<in.log); a

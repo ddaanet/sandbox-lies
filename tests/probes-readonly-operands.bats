@@ -216,6 +216,85 @@ setup() {
   printf '%s\n' "$output" | grep -qxF 'readfile=y.out'
 }
 
+# -e carries the pattern in its own word (-epat), so the first operand is
+# input; x.log is that input and not a pattern.
+@test "grep -epat x.log gives the input, the -e word being the pattern" {
+  local text
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
+
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'grep -epat x.log' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=x.log'
+}
+
+# A separate -e takes the next word as its argument, so s/c/d/x.log is a
+# program, not a log, and in.out after the options is the input.
+@test "sed -e s/a/b/ -e s/c/d/x.log in.out gives the input, never an -e argument" {
+  local text
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
+
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'sed -e s/a/b/ -e s/c/d/x.log in.out' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=in.out'
+  run ! grep -qxF 'readfile=s/c/d/x.log' <<<"$output"
+}
+
+# -f names the program file, so prog.log is awk's program and in.err, the
+# first operand, is the input.
+@test "awk -f prog.log in.err gives the input, never the program file" {
+  local text
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
+
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'awk -f prog.log in.err' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=in.err'
+  run ! grep -qxF 'readfile=prog.log' <<<"$output"
+
+  # The separate form above passes on a pattern skip that eats prog.log; the
+  # glued form leaves nothing for that skip to eat but the input.
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'awk -fprog.log in.err' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=in.err'
+  run ! grep -qxF 'readfile=prog.log' <<<"$output"
+
+  # A second separate -f: that skip eats lib.awk only, so prog.log is withheld
+  # only when the word after each -f is its argument.
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'awk -f lib.awk -f prog.log in.err' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=in.err'
+  run ! grep -qxF 'readfile=prog.log' <<<"$output"
+}
+
+# The pattern role is per segment. grep -i has no operand, so its role is
+# still unconsumed when the segment ends (-i is neither -e nor -f); the
+# reset keeps it from taking tail's run.log. Passes before the slice's code.
+@test "grep -i | tail run.log leaves the pattern role behind in its segment" {
+  local text
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
+
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'grep -i | tail run.log' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=run.log'
+}
+
 # --- BSD tools -------------------------------------------------------------
 
 # A slice-1 and a slice-2 case through BSD grep, sed, stat and wc (NFR-2).
