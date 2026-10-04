@@ -11,6 +11,9 @@ baseline lives under `.git/`).
 
 - Phase 1 — Item 1.1 done (`reports/item-1-1.md`); phase-1 corrector
   `reports/phase-1-corrector.md`.
+- Phase 2 — Items 2.1–2.5 done (`reports/item-2-{1..5}.md`); phase-2
+  corrector `reports/phase-2-corrector.md` (Ready; it ran faults for the
+  assertions the item reports left unrecorded, fixed three minors).
 
 ## Build decisions
 
@@ -35,7 +38,20 @@ baseline lives under `.git/`).
 - Item 3.1 adds a BSD `paste` stub and a shim case to `tests/shim.bats`; the
   saved `.bin/claude` patch re-applied after the build must keep it green.
 
+## RCA follow-ups
+
+- Item 2.2 first committed a shellcheck failure: `just precommit`'s
+  `tracked()` lists files with `git ls-files`, so a new untracked `.bats` or
+  `.sh` skips shellcheck and `bash -n` (bats still runs it). Remedied by a
+  follow-up commit; every later dispatch is told to `git add` new files before
+  the gate. The gate gap itself (`--others --exclude-standard`) is out of this
+  job's scope — proposed for my human partner.
+
 ## Carry list
+
+- Precommit lints only tracked files (RCA above) — not fixed here.
+- `tests/hook-candidates.bats` is at 374 lines; Item 4.2's hook case goes in
+  `tests/hook-writes.bats` if it runs past ~24 lines.
 
 - The outline's OUT list (above).
 - Simplifier note: `readonly-path.md`, `hook.md`, `detectors.md` and

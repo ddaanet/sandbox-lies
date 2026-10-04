@@ -19,11 +19,13 @@ setup() {
   source "$ROOT/lib/probes.sh"
 }
 
-# assert_no_readfile — the last probe run exited 0 with nothing on stderr and
-# printed no readfile= line.
+# assert_no_readfile — the last probe run exited 0 with nothing on stderr,
+# answered writable (so an empty output cannot pass) and printed no readfile=
+# line.
 assert_no_readfile() {
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
   run ! grep -q '^readfile=' <<<"$output"
 }
 

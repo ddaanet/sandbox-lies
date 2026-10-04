@@ -117,8 +117,8 @@ tmpdir_unset_quoted_words_pair() {
 @test "tmpdir-unset fires on a GNU refusal with the path in curly quotes" {
   # GNU coreutils quotes the path U+2018 ... U+2019 after the tool's own
   # words. The bytes are spelled out so the file holds no locale-dependent
-  # literal. Dropping both curly quotes from the alternation leaves only the
-  # bare alternative, whose root slash follows the prefix directly.
+  # literal. Dropping both curly quotes from the alternation leaves the
+  # straight-quoted and bare alternatives, neither of which matches here.
   local lq rq enoent
   lq=$'\xe2\x80\x98'
   rq=$'\xe2\x80\x99'

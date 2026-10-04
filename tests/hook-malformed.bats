@@ -169,14 +169,15 @@ assert_no_failures() {
 # since a later definition wins (stub_lib). Without the pair a hook that
 # exits early on everything would pass.
 @test "probe dying after output stays quiet" {
-  local text called
+  local text called q
   text=$(cat "$FIXTURES/fire-readonly-path-cp-tmp.txt")
   called="$BATS_TEST_TMPDIR/probe-readonly-called"
-  stub_lib probes.sh "probe_readonly_path() { cat >/dev/null; : >'$called'; printf '%s\n' writable path=/r/x; return 0; }"
+  q=$(printf '%q' "$called")
+  stub_lib probes.sh "probe_readonly_path() { cat >/dev/null; : >$q; printf '%s\n' writable path=/r/x; return 0; }"
   check_fires "probe returning 0" "$(failure_payload "$text")"
   rm -f "$called"
 
-  stub_lib probes.sh "probe_readonly_path() { cat >/dev/null; : >'$called'; printf '%s\n' writable path=/r/x; return 1; }"
+  stub_lib probes.sh "probe_readonly_path() { cat >/dev/null; : >$q; printf '%s\n' writable path=/r/x; return 1; }"
   check_quiet "probe returning 1 after output" "$(failure_payload "$text")"
   check_reached "probe" "$called"
 
