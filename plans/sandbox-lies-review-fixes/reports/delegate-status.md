@@ -14,6 +14,10 @@ baseline lives under `.git/`).
 - Phase 2 — Items 2.1–2.5 done (`reports/item-2-{1..5}.md`); phase-2
   corrector `reports/phase-2-corrector.md` (Ready; it ran faults for the
   assertions the item reports left unrecorded, fixed three minors).
+- Phase 3 — Items 3.1–3.4 done (`reports/item-3-{1..4}.md`); phase-3
+  corrector `reports/phase-3-corrector.md` (Ready; ran the missing faults for
+  3.4's `path=` positives, fixed the paste stub's missing-argument message and
+  `git-env.bash`'s `setup_file` fallback).
 
 ## Build decisions
 
@@ -52,7 +56,6 @@ baseline lives under `.git/`).
 - Precommit lints only tracked files (RCA above) — not fixed here.
 - `tests/hook-candidates.bats` is at 374 lines; Item 4.2's hook case goes in
   `tests/hook-writes.bats` if it runs past ~24 lines.
-
 - The outline's OUT list (above).
 - Simplifier note: `readonly-path.md`, `hook.md`, `detectors.md` and
   `lib/matchers.sh` are each edited by more than one item (accepted at runbook

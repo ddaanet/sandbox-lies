@@ -165,7 +165,11 @@ operands() {
   while getopts ':sd:' o; do
     case "\$o" in
       s|d) ;;
-      :|'?')
+      :)
+        echo "paste: option requires an argument -- \$OPTARG" >&2
+        echo "usage: paste [-s] [-d delimiters] file ..." >&2
+        exit 1 ;;
+      '?')
         echo "paste: illegal option -- \$OPTARG" >&2
         echo "usage: paste [-s] [-d delimiters] file ..." >&2
         exit 1 ;;
