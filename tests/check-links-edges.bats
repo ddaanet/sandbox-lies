@@ -299,3 +299,24 @@ broken-link: docs/s p/a b.md -> missing.md" ]
   [ "$status" -eq 1 ]
   [ "$output" = "broken-link: docs/a.md -> missing.md" ]
 }
+
+@test "git ls-files failure exits 2" {
+  local dir stub
+  dir=$(make_fixture_root ls-files-fails)
+  mkdir -p "$dir/docs"
+  # A broken link, so a walk that swallowed the failure and read an empty
+  # list would exit 0; a stub on PATH rather than a non-repository root,
+  # which a repository above $BATS_TEST_TMPDIR would answer.
+  printf '[m](missing.md)\n' >"$dir/docs/a.md"
+  git -C "$dir" add docs/a.md
+
+  stub="$BATS_TEST_TMPDIR/gitfail"
+  mkdir -p "$stub"
+  printf '#!/bin/sh\nexit 128\n' >"$stub/git"
+  chmod 755 "$stub/git"
+
+  PATH="$stub:$PATH" run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [ "$stderr" = "check-links: git ls-files failed under $dir" ]
+}

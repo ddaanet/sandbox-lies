@@ -306,3 +306,44 @@ oversized-file: docs/a b.md: 401 lines > 400" ]
   [ "$status" -eq 1 ]
   [ "$output" = "oversized-file: docs/a.md: 401 lines > 400" ]
 }
+
+@test "git ls-files failure exits 2" {
+  local dir stub
+  dir=$(make_fixture_root ls-files-fails)
+  mkdir -p "$dir/docs"
+  # Oversized, so a walk that swallowed the failure and read an empty list
+  # would exit 0 or print nothing; a stub on PATH rather than a non-repository
+  # root, which a repository above $BATS_TEST_TMPDIR would answer.
+  seq 401 >"$dir/docs/a.md"
+  git -C "$dir" add docs/a.md
+
+  stub="$BATS_TEST_TMPDIR/gitfail"
+  mkdir -p "$stub"
+  printf '#!/bin/sh\nexit 128\n' >"$stub/git"
+  chmod 755 "$stub/git"
+
+  PATH="$stub:$PATH" run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [ "$stderr" = "check-line-limits: git ls-files failed under $dir" ]
+}
+
+@test "unreadable file exits 2" {
+  if [ "$(id -u)" -eq 0 ]; then
+    skip "running as root: chmod 000 does not block reads"
+  fi
+  local dir
+  dir=$(make_fixture_root unreadable)
+  mkdir -p "$dir/docs"
+  seq 401 >"$dir/docs/a.md"
+  git -C "$dir" add docs/a.md
+  chmod 000 "$dir/docs/a.md"
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  # The shell's own "Permission denied" line for the failed redirect comes
+  # first, carrying a script line number; the script's line is the last.
+  [ "$(printf '%s\n' "$stderr" | tail -n 1)" = \
+    "check-line-limits: cannot read docs/a.md" ]
+}
