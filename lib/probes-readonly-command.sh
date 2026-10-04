@@ -166,7 +166,7 @@ _readonly_readfile_arg() {
                 ;;
         esac
         case "$word" in
-            *"$nl"*) ;;
+            *"$nl"* | -*) ;;
             *.log | *.output | *.out | *.err)
                 [ -n "$candidate" ] || candidate="${word##*<}"
                 ;;

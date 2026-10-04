@@ -6,7 +6,8 @@
 # and asserts exact lines. A negative assertion is paired, in the same case,
 # with the positive form that proves the fault under test is the only thing
 # withholding the line. Sections: merge subcommands, target= and match= for
-# switch, readfile names, readfile exclusions.
+# switch, readfile names, readfile exclusions, and the readfile operand rule
+# (outline D4, review code m-2).
 
 ROOT="${BATS_TEST_DIRNAME}/.."
 
@@ -145,6 +146,50 @@ assert_no_readfile() {
 
   run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
     'awk --include=lib.awk 1 x.log' "$text"
+  assert_no_readfile
+}
+
+# --- readfile operand rule -------------------------------------------------
+
+# A word opening with - is an option, never an input file: the --include glob
+# matches *.log but is not the file grep reads.
+@test "grep --include=*.log gives the operand, never the option" {
+  local text
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
+
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'grep --include=*.log pat build.log' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=build.log'
+  run ! grep -q '^readfile=-' <<<"$output"
+}
+
+# The single-dash form: -vout=run.log is awk's assignment option, not its
+# input, so in.err is the candidate. 1 is awk's program and not a log name,
+# so this holds with or without the pattern-operand rule.
+@test "awk -vout=run.log gives the operand, never the short option" {
+  local text
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
+
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'awk -vout=run.log 1 in.err' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=in.err'
+  run ! grep -q '^readfile=-' <<<"$output"
+}
+
+# The same option with no log-named operand: pat and . (the tree grep -r
+# walks) are not output names, so the option word was the only candidate.
+@test "grep -r --include=*.log pat . gives no readfile" {
+  local text
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
+
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'grep -r --include=*.log pat .' "$text"
   assert_no_readfile
 }
 
