@@ -120,15 +120,23 @@ _readonly_tokenize() {
 }
 
 # _readonly_readfile_arg <cut> <token...> — the readfile= value: the first
-# argument shaped like a command-output name (*.log, *.output, *.out, *.err;
-# a leading < redirection stripped) once every command in every segment is
-# one of the reader tools readonly-path.md names, with no output redirection and
-# no in-place edit (sed -i/-I/--in-place, and sort -o and gawk -i inplace,
-# which write as well); empty when <cut> is 1, since the unscanned rest may
-# hold a writer. A `>` anywhere in a word counts as a redirection, quoted or
-# not: awk's own `print > "f"` writes, so a quoted `>` in a grep pattern
-# costing readfile= is the safe side. A name holding a newline cannot be a
-# key line's value and is passed over.
+# input operand or < target shaped like a command-output name (*.log,
+# *.output, *.out, *.err; text through the last < stripped), once every
+# command in every segment is one of the reader tools readonly-path.md names,
+# with no output redirection and no writer form (sed -i/-I/--in-place,
+# sort -o/--output, awk -i/--include, uniq with a second operand); empty when
+# <cut> is 1, since the unscanned rest may hold a writer. Never an input
+# operand (outline D4): a word opening with -, unless a < in it redirects; the
+# first operand of grep, sed or awk, its pattern or program, unless an -e or
+# -f came earlier in the segment; the word after a separate -e or -f, its
+# argument. The name after a lone < is input, never the pattern. A `>`
+# anywhere in a word counts as a redirection, quoted or not, except a
+# descriptor duplication (2>&1, >&2): awk's own `print > "f"` writes, so a
+# quoted `>` in a grep pattern costing readfile= is the safe side. A name
+# holding a newline cannot be a key line's value and is passed over. The
+# rule's residuals (other options' separate arguments, clustered and long
+# -e/-f forms, sed's w, a descriptor duplication in an operand slot, and
+# more) are listed in readonly-path.md after its Probe facts table.
 _readonly_readfile_arg() {
     local cut="$1" tok word first='' seg_first=1 seg_ok=1 all_ok=1 in_seg=0
     local candidate='' nl=$'\n' pat=0 lt=0 not_op uops=0 uend=0

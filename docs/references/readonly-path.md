@@ -58,7 +58,7 @@ on. The command shapes the wording only; detection never reads it (D-1).
 | `partial=1` | the text holds git's partial-checkout error, `unable to unlink old`, `unable to create file` or `cannot create directory at`, under any command |
 | `target=<ref>` | with `merge=1`: the first word after a `merge`, `checkout` or `switch` subcommand, before any `--`, that resolves to a commit |
 | `match=<file>` | with `target=`: one line per file modified against HEAD, staged or not, whose working-tree content equals the target's |
-| `readfile=<path>` | every command in the call's pipelines and lists is a reader — `cat`, `head`, `tail`, `grep`, `sed` without in-place editing, `awk`, `cut`, `sort`, `uniq`, `wc`, `tr`, `less` — with no output redirection, and an argument has a command-output name: `*.log`, `*.output`, `*.out`, `*.err` |
+| `readfile=<path>` | every command in the call's pipelines and lists is a reader — `cat`, `head`, `tail`, `grep`, `sed` without in-place editing, `awk`, `cut`, `sort`, `uniq` without a second operand, `wc`, `tr`, `less` — with no output redirection, and an input-file operand or `<` target has a command-output name: `*.log`, `*.output`, `*.out`, `*.err`; the first such. Never an input operand: a word opening with `-`; the first operand of `grep`, `sed` or `awk`, the pattern or program, unless an `-e` or `-f` came earlier in the segment; the word after a separate `-e` or `-f` |
 
 The repository for `target=` and `match=` is the one holding the path's nearest
 existing directory, else the payload `cwd`'s. Git reads run with optional locks
@@ -81,6 +81,36 @@ holding `<<`, and after 16384 characters, and neither cut command yields
 is skipped. With an unborn HEAD, or past 1000 files modified against HEAD, no
 `target=` is printed. A file matches byte for byte, before any clean filter, and
 never as a symlink.
+
+The `readfile=` operand rule leaves these residuals, each shown by what the
+probe prints:
+
+- Other options' separate arguments (`-n 5`, `-d ,`) read as operands. A
+  log-named one is the candidate (`sort -T t.log in.txt` gives `t.log`); under
+  `grep`, `sed` or `awk` one takes the pattern role, so the pattern is taken as
+  input (`grep -m 5 x.log y.out` gives `x.log`); under `uniq` one counts as an
+  operand, so `uniq -f 1 in.log` reads as a writer and gives no line.
+- Clustered short (`-ne`, `-nf`) and long (`--regexp=`, `--expression=`,
+  `--file=`) forms of the `-e`/`-f` family are not recognised. Glued, the
+  pattern role stays open and takes the input (`grep -nepat x.log` and
+  `grep --regexp=pat x.log` give no line); a separate clustered form after an
+  earlier `-e` leaves its argument as input (`grep -e a -ve x.log y.out` gives
+  `x.log`).
+- sed's `w` command and the `s///w` flag write a file but are not counted as
+  writers: `sed 's/a/b/w out.log' in.log` gives `in.log`.
+- A descriptor duplication such as `2>&1` standing in the pattern slot or an
+  `-e`/`-f` argument slot is taken as that operand, so the word after it is read
+  as input: `grep 2>&1 x.log y.out` gives `x.log`, and
+  `grep -e 2>&1 pat.log x.log` gives `pat.log`.
+- `--` is honoured only in `uniq`'s operand count. A file named `-x.log` after
+  it is never a candidate (`cat -- -x.log` gives no line), and a pattern opening
+  with `-` after it is passed over as an option, so `grep -- -x.log y.out` gives
+  no line.
+- A `<` anywhere in a word reads as an input redirection, quoted or not:
+  `grep '<div' y.out` gives no line, and `cat 'a<x.log'` gives `x.log`. A
+  here-string's word is a candidate too: `grep pat <<<x.log` gives `x.log`.
+- In `uniq`, a lone `-` glued to a redirection is skipped as an option:
+  `uniq -<in.log out.log` writes `out.log` and gives `in.log`.
 
 **Live reproduction (2026-09-26): `writable`.** Scratch repo under
 `/tmp/claude/` with a linked worktree directly under `/tmp/`, outside the
