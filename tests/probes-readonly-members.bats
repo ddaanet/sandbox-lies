@@ -193,6 +193,21 @@ assert_no_readfile() {
   assert_no_readfile
 }
 
+# An option word glued to an input redirection: the tokenizer keeps -l<build.log
+# one word, and the < still reads build.log, so the option rule must not drop
+# it.
+@test "wc -l<build.log gives the redirected name despite the leading option" {
+  local text
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
+
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'wc -l<build.log' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=build.log'
+}
+
 # --- BSD tools -------------------------------------------------------------
 
 # One case per kind of fact above through BSD grep, sed, stat and wc (NFR-2).

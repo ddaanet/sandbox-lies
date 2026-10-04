@@ -165,10 +165,16 @@ _readonly_readfile_arg() {
                 esac
                 ;;
         esac
+        # A word opening with - is an option, never input (outline D4), unless
+        # a < in it redirects from the name after it, as wc -l<x.log does.
         case "$word" in
-            *"$nl"* | -*) ;;
-            *.log | *.output | *.out | *.err)
-                [ -n "$candidate" ] || candidate="${word##*<}"
+            *"$nl"*) ;;
+            [!-]* | *'<'*)
+                case "$word" in
+                    *.log | *.output | *.out | *.err)
+                        [ -n "$candidate" ] || candidate="${word##*<}"
+                        ;;
+                esac
                 ;;
         esac
     done
