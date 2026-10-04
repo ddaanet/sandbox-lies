@@ -67,3 +67,40 @@ STUB
   [ "$status" -eq 127 ]
   [ "$stderr" = "sandbox-lies: no other claude on PATH" ]
 }
+
+@test "the stub refuses paste -s with no file operand, alone or bundled" {
+  local bsd="$BATS_TEST_TMPDIR/bsd"
+  make_bsd_stubs "$bsd" paste
+  local args
+  for args in -s -sd: "-sd :" "-d: -s"; do
+    # shellcheck disable=SC2086 # word-splitting the option list is the point
+    PATH="$bsd:$PATH" run --separate-stderr -1 paste $args </dev/null
+    [ "$status" -eq 1 ]
+    [[ "$stderr" == "usage: paste "* ]]
+  done
+}
+
+@test "the stub passes paste with a file operand, including - for stdin" {
+  local bsd="$BATS_TEST_TMPDIR/bsd"
+  make_bsd_stubs "$bsd" paste
+  printf 'a\nb\n' >"$BATS_TEST_TMPDIR/two"
+  PATH="$bsd:$PATH" run paste -sd: "$BATS_TEST_TMPDIR/two"
+  [ "$status" -eq 0 ]
+  [ "$output" = "a:b" ]
+  PATH="$bsd:$PATH" run bash -c "printf 'a\nb\n' | paste -sd: -"
+  [ "$status" -eq 0 ]
+  [ "$output" = "a:b" ]
+}
+
+@test "the shim strips its directory under a BSD paste, which reads no implicit stdin" {
+  local bsd="$BATS_TEST_TMPDIR/bsd"
+  make_bsd_stubs "$bsd" paste
+  PATH="$bsd:$ROOT/.bin:$NEXT:$PATH" run --separate-stderr "$SHIM" -p 'a b'
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  printf '%s\n' --plugin-dir "$ROOT" -p 'a b' >"$BATS_TEST_TMPDIR/want"
+  diff "$BATS_TEST_TMPDIR/want" "$BATS_TEST_TMPDIR/argv"
+  tr ':' '\n' <"$BATS_TEST_TMPDIR/path" >"$BATS_TEST_TMPDIR/entries"
+  grep -qxF "$NEXT" "$BATS_TEST_TMPDIR/entries"
+  run ! grep -qxF "$ROOT/.bin" "$BATS_TEST_TMPDIR/entries"
+}
