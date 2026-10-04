@@ -3,12 +3,14 @@
 ## Phase reached
 
 Outline approved at `/proof` (2026-10-04: approve all, D3 absolute paths, D4
-as written); D1 updated with the CC 2.1.289 observation. Next: `/edify:runbook`,
-then `/edify:build`.
+as written); D1 updated with the CC 2.1.289 observation. `/edify:runbook`:
+`runbook.md` written and checkpointed; runbook-corrector running; then
+simplifier, then the runbook `/proof` gate.
 
 ## Commits
 
-None yet.
+- `d2a53e5` outline + classification, approved at proof
+- `9d1a587` runbook pre-review checkpoint
 
 ## Gates hit
 
