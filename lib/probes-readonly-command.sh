@@ -131,13 +131,13 @@ _readonly_tokenize() {
 # key line's value and is passed over.
 _readonly_readfile_arg() {
     local cut="$1" tok word first='' seg_first=1 seg_ok=1 all_ok=1 in_seg=0
-    local candidate='' nl=$'\n' pat=0 lt=0 not_op arg=0
+    local candidate='' nl=$'\n' pat=0 lt=0 not_op
     shift
     [ "$cut" -eq 0 ] || return 0
     for tok in ${1+"$@"} '|'; do
         if [ "$tok" = '|' ]; then
             [ "$in_seg" -eq 0 ] || [ "$seg_ok" -eq 1 ] || all_ok=0
-            seg_first=1 seg_ok=1 in_seg=0 pat=0 lt=0 arg=0
+            seg_first=1 seg_ok=1 in_seg=0 pat=0 lt=0
             continue
         fi
         word="${tok#w}"
@@ -169,28 +169,16 @@ _readonly_readfile_arg() {
                 esac
                 ;;
         esac
-        # A separate -e or -f takes the next word as its argument, never input;
-        # either option, glued or not, supplies the pattern, so the first
-        # operand after it is input. Clustered (-ne) and long forms are not
-        # recognised.
-        if [ "$arg" -eq 1 ]; then
-            arg=0
-            continue
-        fi
-        if [ "$not_op" -eq 0 ]; then
-            case "$first:$word" in
-                grep:-[ef] | sed:-[ef] | awk:-[ef]) pat=0 arg=1 ;;
-                grep:-[ef]?* | sed:-[ef]?* | awk:-[ef]?*) pat=0 ;;
-            esac
-        fi
-        # The first operand of grep, sed or awk is the pattern or program,
-        # never input. In a word holding <, only text ahead of the first <
-        # that is not a descriptor number is an operand (x in x<in.log); a
-        # quoted < reads as a redirection too, so '<div' is not taken as the
-        # pattern and the input after it is lost, the safe side.
-        if [ "$not_op" -eq 0 ] && [ "$pat" -eq 1 ]; then
-            case "$word" in
-                -*) ;;
+        # pat 1: the first operand of grep, sed or awk is the pattern or
+        # program, never input. pat 2: the word after a separate -e or -f is
+        # that option's argument, even one opening with -. In a word holding
+        # <, only text ahead of the first < that is not a descriptor number is
+        # an operand (x in x<in.log); a quoted < reads as a redirection too,
+        # so '<div' is not taken as the pattern and the input after it is
+        # lost, the safe side.
+        if [ "$not_op" -eq 0 ] && [ "$pat" -ne 0 ]; then
+            case "$pat:$word" in
+                1:-*) ;;
                 *'<'*)
                     case "${word%%<*}" in
                         *[!0-9]*) pat=0 ;;
@@ -200,6 +188,15 @@ _readonly_readfile_arg() {
                     pat=0
                     continue
                     ;;
+            esac
+        fi
+        # -e or -f, glued or not, supplies the pattern, so the first operand
+        # after it is input. Clustered (-ne) and long forms are not
+        # recognised.
+        if [ "$not_op" -eq 0 ]; then
+            case "$first:$word" in
+                grep:-[ef] | sed:-[ef] | awk:-[ef]) pat=2 ;;
+                grep:-[ef]?* | sed:-[ef]?* | awk:-[ef]?*) pat=0 ;;
             esac
         fi
         # A word opening with - is an option, never input (outline D4), unless
