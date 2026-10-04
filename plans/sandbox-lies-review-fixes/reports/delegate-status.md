@@ -25,8 +25,12 @@ baseline lives under `.git/`).
   `runbook.md`. Slice 3 done (`reports/item-4-1-s3-*.md`; the code review
   fixed a `<`-in-argument-slot regression), list revision committed in
   `runbook.md` (a pin for it in slice 4; four docs-step residuals). Slice 4
-  and the item's docs step remain; then Items 4.2, 4.3, the Phase 4
-  corrector, Phase 5, and the finish (review gate, tdd-audit).
+  done (`reports/item-4-1-s4-*.md`; the code review fixed four missed uniq
+  operands, pinned afterwards by a test-only dispatch with one mutation per
+  run, `reports/item-4-1-s4-pins.md`); list revision after slice 4: none.
+  Docs step done (`reports/item-4-1-docs.md`). Item 4.1 complete. Items 4.2,
+  4.3, the Phase 4 corrector, Phase 5 and the finish (review gate, tdd-audit)
+  remain.
 
 ## Build decisions
 
@@ -44,12 +48,13 @@ baseline lives under `.git/`).
   REPORT` when refused, and the orchestrator saves it to the assigned path
   (noting so at its top) and commits it with the slice. A GREEN refused its
   report commits without it.
-- Item 4.1's docs step (readonly-path.md `readfile=` row and residuals, the
-  function header comment) runs as one dispatch after slice 4 — prose, so
-  opus. Carry into it: a file named `-x` after `--` is never taken (slice-1
-  review); a `<` anywhere in a word reads as a redirection, quoted or not
-  (slice-1 and slice-2 reviews); a here-string's word is still a candidate
-  (pre-existing).
+- Item 4.1's docs step ran as one opus dispatch after slice 4.
+- Slice 3: GREEN implemented only the tested `-e`/`-f` forms; clustered and
+  long forms became docs-step residuals (orchestrator's call, recorded in the
+  test-review report).
+- A code-review fix with no test is pinned before the next step: by the next
+  slice's list revision where one remains (slice 3), else by a test-only
+  dispatch proving each pin by mutation (slice 4, `item-4-1-s4-pins`).
 
 ## Deferrals (in the outline's OUT list)
 
