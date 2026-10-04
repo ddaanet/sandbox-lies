@@ -311,6 +311,42 @@ assert_no_readfile() {
   run ! grep -qxF 'readfile=x.log' <<<"$output"
 }
 
+# The word after a lone < is the name grep reads on stdin, never the pattern:
+# y.out is the pattern here.
+@test "grep < x.log y.out gives the redirected name, never the pattern" {
+  local text
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
+
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'grep < x.log y.out' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=x.log'
+  run ! grep -qxF 'readfile=y.out' <<<"$output"
+}
+
+# A pattern holding a quoted newline, or a < past its first character, is
+# still the pattern, so y.out after it is the input.
+@test "a pattern holding a newline or an inner < is still the pattern" {
+  local text
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
+
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    $'grep \'a\nb\' y.out' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=y.out'
+
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    "grep 'a<b' y.out" "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=y.out'
+}
+
 # --- BSD tools -------------------------------------------------------------
 
 # One case per kind of fact above through BSD grep, sed, stat and wc (NFR-2).

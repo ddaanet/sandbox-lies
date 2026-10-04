@@ -131,26 +131,27 @@ _readonly_tokenize() {
 # key line's value and is passed over.
 _readonly_readfile_arg() {
     local cut="$1" tok word first='' seg_first=1 seg_ok=1 all_ok=1 in_seg=0
-    local candidate='' nl=$'\n' pat=0 is_cmd
+    local candidate='' nl=$'\n' pat=0 lt=0 not_op
     shift
     [ "$cut" -eq 0 ] || return 0
     for tok in ${1+"$@"} '|'; do
         if [ "$tok" = '|' ]; then
             [ "$in_seg" -eq 0 ] || [ "$seg_ok" -eq 1 ] || all_ok=0
-            seg_first=1 seg_ok=1 in_seg=0 pat=0
+            seg_first=1 seg_ok=1 in_seg=0 pat=0 lt=0
             continue
         fi
         word="${tok#w}"
-        in_seg=1 is_cmd=0
+        # not_op: the command word, or the name after a lone < (or 0<).
+        in_seg=1 not_op=$lt lt=0
+        case "$word" in
+            *'<') lt=1 ;;
+        esac
         if [ "$seg_first" -eq 1 ]; then
-            seg_first=0 is_cmd=1
+            seg_first=0 not_op=1
             first="$word"
             case "$first" in
                 grep | sed | awk) pat=1 ;;
-            esac
-            case "$first" in
-                cat | head | tail | grep | sed | awk | cut | sort | uniq \
-                    | wc | tr | less) ;;
+                cat | head | tail | cut | sort | uniq | wc | tr | less) ;;
                 *) seg_ok=0 ;;
             esac
         fi
@@ -168,22 +169,30 @@ _readonly_readfile_arg() {
                 esac
                 ;;
         esac
+        # The first operand of grep, sed or awk is the pattern or program,
+        # never input. In a word holding <, only text ahead of the first <
+        # that is not a descriptor number is an operand (x in x<in.log); a
+        # quoted < reads as a redirection too, so '<div' is not taken as the
+        # pattern and the input after it is lost, the safe side.
+        if [ "$not_op" -eq 0 ] && [ "$pat" -eq 1 ]; then
+            case "$word" in
+                -*) ;;
+                *'<'*)
+                    case "${word%%<*}" in
+                        *[!0-9]*) pat=0 ;;
+                    esac
+                    ;;
+                *)
+                    pat=0
+                    continue
+                    ;;
+            esac
+        fi
         # A word opening with - is an option, never input (outline D4), unless
         # a < in it redirects from the name after it, as wc -l<x.log does.
         case "$word" in
             *"$nl"*) ;;
             [!-]* | *'<'*)
-                # The first operand of grep, sed or awk is the pattern or
-                # program; a word holding < is a redirection, not an operand.
-                case "$word" in
-                    *'<'*) ;;
-                    *)
-                        if [ "$is_cmd" -eq 0 ] && [ "$pat" -eq 1 ]; then
-                            pat=0
-                            continue
-                        fi
-                        ;;
-                esac
                 case "$word" in
                     *.log | *.output | *.out | *.err)
                         [ -n "$candidate" ] || candidate="${word##*<}"
