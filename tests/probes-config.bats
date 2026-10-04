@@ -96,6 +96,8 @@ setup() {
   run_probe probe_config_lock false "$cwd" "$(git_lock_error "$index")"
 
   [ "$status" -eq 0 ]
+  [ "${output%%$'\n'*}" = mask ]
+  printf '%s\n' "$output" | grep -qxF "path="
   [ "${output%%$'\n'*}" != orphan ]
   [ "${output%%$'\n'*}" != held ]
   [ "$(printf '%s\n' "$output" | grep -cxF "path=$index")" -eq 0 ]
@@ -137,6 +139,8 @@ setup() {
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = mask ]
+  printf '%s\n' "$output" | grep -qxF "path="
   [ "${output%%$'\n'*}" != held ]
   [ "${output%%$'\n'*}" != orphan ]
   [ "$(printf '%s\n' "$output" | grep -c '^pid=')" -eq 0 ]
@@ -145,6 +149,8 @@ setup() {
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = gone ]
+  printf '%s\n' "$output" | grep -qxF "path="
   [ "${output%%$'\n'*}" != held ]
   [ "${output%%$'\n'*}" != orphan ]
   [ "$(printf '%s\n' "$output" | grep -c '^pid=')" -eq 0 ]
