@@ -4,7 +4,7 @@ How `hooks/annotate.sh` runs on each Bash call, why it can see what the tool
 could not, and how a probe finds the path it checks; the arguments for D-1
 (output over command), D-6 (probes in the hook) and D-13 (the two events).
 `docs/design.md` §Architecture keeps the component map and one line for each
-conclusion here; the per-detector mechanism is in [detectors.md](detectors.md)
+conclusion here; the per-detector mechanism is in [detectors.md](detectors.md),
 [lock-detectors.md](lock-detectors.md) and [readonly-path.md](readonly-path.md).
 Read this node before changing `annotate.sh`'s call sequence or a probe's path
 handling.

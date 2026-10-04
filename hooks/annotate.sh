@@ -87,9 +87,10 @@ while IFS= read -r name; do
   if [ "$name" = "phantom-chardev" ]; then
     case "$nl$names$nl" in *"${nl}phantom-untracked$nl"*) continue ;; esac
   fi
-  # detectors.md's candidate flag policies (FR-5): gating lives here, never
-  # in the matcher. tmpdir-unset fires only when the flag is true; resume-lost,
-  # seccomp-init and readonly-path are silent when it is.
+  # The candidate flag policies in detectors.md and readonly-path.md
+  # (FR-5): gating lives here, never in the matcher. tmpdir-unset fires
+  # only when the flag is true; resume-lost, seccomp-init and readonly-path
+  # are silent when it is.
   case "$name:$flag" in
     tmpdir-unset:false | resume-lost:true | seccomp-init:true | \
       readonly-path:true) continue ;;

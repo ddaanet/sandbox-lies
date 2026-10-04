@@ -80,7 +80,8 @@ SPEC = [
      "claude -p ping)", None, "long", 200, 4000),
 
     # --- candidates shipping under D-15 (Item 3.2), each a fire and a
-    # near-miss the discriminator in docs/references/detectors.md rejects ---
+    # near-miss the discriminator in docs/references/detectors.md (for
+    # readonly-path, docs/references/readonly-path.md) rejects ---
     ("fire-tmpdir-unset-redirect", "-Users-david-code-devddaanet", "2026-09-02",
      '> "$TMPDIR/live.conf"', "/live.conf: Permission denied",
      "short", 40, 4000),

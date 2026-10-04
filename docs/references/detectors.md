@@ -135,19 +135,20 @@ Replaces `Harness-mounted config paths are busy/read-only`,
 `Sibling worktree writes`, and cost 3 of `Leaving the sandbox` (a recipe's
 `inter-device move failed`). Fires on a tool's own-prefix error line; the probe
 checks the named path outside the sandbox. Matcher, probe, flag policy, Probe
-facts, verdicts, corpus and decision:
+facts, verdicts, live reproductions, corpus and decision:
 [readonly-path.md](readonly-path.md#readonly-path).
 
 ### tmpdir-unset
 
 Replaces cost 1 of `Leaving the sandbox`.
 
-**Matcher.** A line that begins with a tool's own prefix (as `readonly-path`),
-optionally bash's `line N` locator, naming a path of one component directly
-under `/` — bare, or in straight or GNU curly quotes after the tool's own words
-— and ends in a colon, a space and the permission-denied or missing-file
-message, trailing blanks allowed. That is the shape an empty `$TMPDIR` expansion
-produces; a refusal on a deeper path is the near-miss.
+**Matcher.** A line that begins with a tool's own prefix (as
+[`readonly-path`](readonly-path.md#readonly-path)), optionally bash's `line N`
+locator, naming a path of one component directly under `/` — bare, or in
+straight or GNU curly quotes after the tool's own words — and ends in a colon, a
+space and the permission-denied or missing-file message, trailing blanks
+allowed. That is the shape an empty `$TMPDIR` expansion produces; a refusal on a
+deeper path is the near-miss.
 
 **Flag policy.** Fires only when the flag is true; silent otherwise.
 

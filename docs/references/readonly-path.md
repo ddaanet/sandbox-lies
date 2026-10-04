@@ -1,12 +1,12 @@
 # readonly-path
 
 The `readonly-path` detector: matcher, probe and outcomes, flag policy, Probe
-facts, verdict text per outcome, corpus figure and the decision. The catalogue
-entry is a stub in [detectors.md](detectors.md), whose conventions — what a
-matcher, probe and flag are, the verdict-text format, the corpus the figures
-come from — apply here unchanged. No entry here quotes a diagnostic together
-with its follow-on sentence, so that this file stays quiet under the detectors
-it specifies.
+facts, verdict text per outcome, live reproductions, corpus figure and the
+decision. The catalogue entry is a stub in [detectors.md](detectors.md), whose
+conventions — what a matcher, probe and flag are, the verdict-text format, the
+corpus the figures come from — apply here unchanged. No entry here quotes a
+diagnostic together with its follow-on sentence, so that this file stays quiet
+under the detectors it specifies.
 
 ## readonly-path
 
