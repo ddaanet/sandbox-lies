@@ -112,6 +112,40 @@ tmpdir_unset_quoted_words_pair() {
   assert_verdict readonly-path "$text"
 }
 
+# ------------------------------------- FR-7: curly quotes, tab-indented names
+
+@test "tmpdir-unset fires on a GNU refusal with the path in curly quotes" {
+  # GNU coreutils quotes the path U+2018 ... U+2019 after the tool's own
+  # words. The bytes are spelled out so the file holds no locale-dependent
+  # literal. Dropping both curly quotes from the alternation leaves only the
+  # bare alternative, whose root slash follows the prefix directly.
+  local lq rq enoent
+  lq=$'\xe2\x80\x98'
+  rq=$'\xe2\x80\x99'
+  enoent='No such file'
+  enoent="$enoent or directory"
+  assert_verdict tmpdir-unset \
+    "cp: cannot stat ${lq}/a${rq}: ${enoent}"
+  # The same refusal on a deeper path is the near-miss and stays quiet.
+  assert_verdict '' \
+    "cp: cannot stat ${lq}/a/b${rq}: ${enoent}"
+}
+
+@test "phantom-untracked fires on a long-format status block, tab-indented" {
+  # Long-format `git status` indents each untracked name with a tab and
+  # prints a directory with a trailing slash; only the porcelain form
+  # carries the two-character prefix. Dropping the whitespace alternative
+  # leaves the porcelain form alone.
+  local block
+  block=$(printf '%s\n' 'On branch main' 'Untracked files:')
+  block="$block"$'\n'"  (use \"git add <file>...\" to include in what will be committed)"
+  block="$block"$'\n'$(printf '\t%s\n' .bashrc .claude/skills/ .gitconfig)
+  [ "$(command grep -c $'^\t' <<< "$block")" -eq 3 ]
+  assert_verdict phantom-untracked "$block"
+  # One masked name alone stays under the threshold of two.
+  assert_verdict '' "$(printf 'Untracked files:\n\t%s\n' .bashrc)"
+}
+
 # --------------------------------------------------------------- portability
 
 @test "a near-miss pair survives BSD grep and sed" {
