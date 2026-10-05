@@ -57,6 +57,22 @@ Production).
   `"git *"` in `sandbox.excludedCommands`, `git init -q /tmp/sl-exclprobe-289`
   ran sandboxed the same way (2026-10-04, CC 2.1.289). Exclusions are observed
   not honoured under either syntax.
+  - **Revised by my human partner, 2026-10-05, at the Item 5.1 gate.** On CC
+    2.1.289 an `excludedCommands` entry is honoured for a call whose every
+    command it covers. The exception is git with an absolute, `~`-led or
+    `..`-bearing path argument (`git init`, `git clone`, `git worktree
+    add/move`, `git bundle create`, among others; `git config --file /tmp/...`
+    was also observed sandboxed), which stays sandboxed. Evidence:
+    `reports/item-5-1.md` probes 2–4 — a covered `find -fprint /tmp/...` ran
+    unsandboxed, a bare covered `git status --porcelain` showed no masks,
+    `true && git status --porcelain` showed 20 — and the main session
+    re-confirmed the bare `git status` case. The 2.288 and 2.289
+    `git init -q /tmp/...` probes above are confounded by that absolute-path
+    rule. The re-probe becomes a bare covered `git status` from the project root
+    that shows no masks. Every "where honoured" / "not honoured" qualifier in the
+    skill and references follows this, as listed in `reports/item-5-1.md` §What
+    depends on the answer, and so does Item 5.2's `lock-detectors.md` text. This
+    supersedes the "not honoured" sentence and the single-writer re-probe above.
 - **D2 — Major 2 mechanism (taken).** A README §Install prerequisite note and a
   `SessionStart` hook that speaks only when `jq` is not on `PATH`: a
   `systemMessage` for the user and `additionalContext` for the agent, both

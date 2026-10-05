@@ -310,6 +310,16 @@ Same D5 rule as Phase 2.
 
 ## Phase 5: prose (type: general)
 
+D1 was revised by my human partner on 2026-10-05 (outline D1, revision bullet):
+exclusions are honoured on CC 2.1.289 for a fully covered call, except git with
+an absolute, `~`-led or `..`-bearing path argument; the 2.288/2.289
+`git init -q /tmp/...` probes are confounded by that rule; the re-probe is a
+bare covered `git status` from the project root showing no masks. Where Items
+5.1 and 5.2 below say "the 2.288/2.289 observations", "single-writer re-probe"
+or "single-writer probe and its 2.288/2.289 results", read them under that
+revision: the runs are recorded as confounded, and the `git status` re-probe and
+`reports/item-5-1.md` probes 2–4 are the observation.
+
 - Item 5.1: `skills/sandbox-lies/SKILL.md` and its four `references/` nodes —
   Major 1 per outline D1, and the skill-side Minors. One item: the skill is
   edited as a whole. `SKILL.md` is at 173 of its 200-line cap; move detail to a
@@ -402,3 +412,25 @@ Same D5 rule as Phase 2.
   - `justfile`: `just --list` describes `precommit` as
     `Checks that run before every commit.` (the comment block reordered, or a
     `[doc(...)]` attribute; just 1.46 supports both).
+- Item 5.4 (added 2026-10-05 by my human partner's decision at the Item 5.1
+  gate; a tdd item inside this general phase, run by its `Slices:`):
+  `lib/probes-readonly.sh` `probe_readonly_path` — a resolved refused path
+  holding a newline is reported as `nopath`, never printed into a `path=` line
+  (`reports/item-4-2-s1-code-review.md` Recommendations 1: a relative refused
+  path joined onto a newline-bearing payload cwd forges `readfile=` and other
+  key lines). Tests in `tests/probes-readonly-members.bats` beside the
+  repository-root newline case. Requirements: FR-4. Depends on: Item 4.2.
+  - Slices:
+    1. A relative refused path `a` with cwd `<tmp>/r⏎readfile=x` (a scratch
+       directory whose name holds a newline) prints `nopath` as line 1 and no
+       `path=` or `readfile=` line — whole-output equality against the nopath
+       facts the command yields; the paired positive, cwd `<tmp>/r readfile=x`
+       (a blank where the newline was), prints `writable` and
+       `path=<tmp>/r readfile=x/a`, so the case cannot pass on a guard that also
+       drops blanks.
+  - Docs (same item): `docs/references/readonly-path.md` outcome table's
+    `nopath` row also covers a resolved path holding a newline (the A-3
+    contract line); `probe_readonly_path`'s header comment says the same.
+  - The code review checks whether the lock probes' `path=` (`lib/probes.sh`,
+    `_probe_resolve_path` joining onto the payload cwd) share the defect and
+    reports it; a lock-probe fix is not in this item.

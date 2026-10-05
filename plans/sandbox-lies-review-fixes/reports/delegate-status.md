@@ -64,6 +64,14 @@ baseline lives under `.git/`).
   slice's list revision where one remains (slice 3), else by a test-only
   dispatch proving each pin by mutation (slice 4, `item-4-1-s4-pins`).
 
+- From the 2026-10-05 resume on, the main session's tracked
+  `.claude/handoff-task.md` and `.claude/handoff-todo.md` edits and an untracked
+  `inbox/` sit in the tree and are not this build's. The gates run
+  `verify-step.sh`'s two checks by hand: `git status --porcelain` under the
+  env-only exclude (now `/.claude/gitlore-memory-message` and `/inbox/`, file
+  under `$TMPDIR`), filtered of ` M memory` and those two handoff lines and
+  required empty, then `just precommit` with its exit status read.
+
 ## Deferrals (in the outline's OUT list)
 
 - m-1 quadratic tokenizer, m-7 line-cap gate coverage, m-8 corpus-eval
@@ -86,19 +94,33 @@ baseline lives under `.git/`).
   the gate. The gate gap itself (`--others --exclude-standard`) is out of this
   job's scope — proposed for my human partner.
 
-## Open question for my human partner
+## Decisions given
 
-- Pre-existing, same class as the `match=` newline finding: a relative
-  refused path joined onto a newline-bearing payload cwd makes the probe's
-  `path=` line forge key lines (`reports/item-4-2-s1-code-review.md`,
-  Recommendations 1, verified there). The fix must choose what the probe
-  reports for a path it cannot print (`nopath`, or an outcome with no `path=`
-  line), which changes the A-3 contract. Not fixed; to be asked before the
-  finish.
+- Runbook approved as committed at `/proof` (2026-10-04).
+- The main session's `match=` newline finding folded into Item 4.2 (done).
+- 2026-10-05, at the Item 5.1 gate, by my human partner:
+  1. **D1 revised.** On CC 2.1.289 an `excludedCommands` entry is honoured for
+     a call whose every command it covers. The exception is git with an
+     absolute, `~`-led or `..`-bearing path argument (`git init`, `git clone`,
+     `git worktree add/move`, `git bundle create`, among others;
+     `git config --file /tmp/...` also observed sandboxed), which stays
+     sandboxed. Evidence: `reports/item-5-1.md` probes 2–4; the main session
+     re-confirmed the bare `git status` case. The 2.288 and 2.289
+     `git init -q /tmp/...` probes are recorded as confounded by that rule.
+     The re-probe becomes a bare covered `git status` from the project root
+     showing no masks. Every "where honoured" / "not honoured" qualifier in
+     the skill and references follows, per `reports/item-5-1.md` §What depends
+     on the answer; Item 5.2's `lock-detectors.md` text too. Recorded in
+     `outline.md` D1 (revision bullet) and `runbook.md` Phase 5 preamble.
+  2. **The `path=` newline forgery is fixed in this job**, as Item 5.4 (tdd,
+     one slice) in `runbook.md`: a resolved refused path holding a newline is
+     reported as `nopath`, and the A-3 contract (`readonly-path.md` outcome
+     table) gets a matching line.
 
 ## Carry list
 
-- Precommit lints only tracked files (RCA above) — not fixed here.
+- Precommit lints only tracked files (RCA above) — since fixed outside this
+  job (the `justfile`'s `tracked()` now lists `--others --exclude-standard`).
 - `tests/hook-candidates.bats` is at 374 lines; Item 4.2's hook case goes in
   `tests/hook-writes.bats` if it runs past ~24 lines.
 - The outline's OUT list (above).
@@ -108,24 +130,12 @@ baseline lives under `.git/`).
 
 ## Resume
 
-- **Last commit:** the one adding this section (after `43c1711`, Phase 4
-  checkpoint).
-- **Exact step:** `/edify:build` §4, Phase 5, Item 5.1 — stopped before any
-  skill edit. The Item 5.1 dispatch returned an error: CC's settings reference
-  lists an absolute-path `git init` among calls that stay sandboxed even when
-  covered, so D1's 2.288/2.289 `git init -q /tmp/...` probes are confounded;
-  on 2.1.289 a bare covered `git status --porcelain` showed no masks
-  (unsandboxed) while `true && git status --porcelain` showed them
-  (`reports/item-5-1.md`, untracked findings report committed with this
-  section). The orchestrator re-ran the bare and compound `git status` and saw
-  the same split. D1 ("exclusions are observed not honoured") is my human
-  partner's decision, so the build waits on it.
-- **Why stopped:** approval gate — two questions to my human partner (D1
-  revision; the pre-existing `path=` newline forgery).
-- **Decisions given:** runbook approved as committed at `/proof` (2026-10-04);
-  the main session's `match=` newline finding folded into Item 4.2 (done).
-- **Next after the answer:** re-dispatch Item 5.1 (opus artisan) with the D1
-  answer; Items 5.2 (its `lock-detectors.md` text follows the same answer) and
-  5.3; the `path=` item if taken; the Phase 5 checkpoint; then the finish
-  (review gate, tdd-audit).
+- **Last commit:** the one recording the 2026-10-05 decisions (D1 revision,
+  Item 5.4) in this file, `outline.md` and `runbook.md`.
+- **Exact step:** `/edify:build` §4, Phase 5, Item 5.1 — about to be
+  re-dispatched (opus artisan) under the revised D1.
+- **Why stopped:** not stopped; build running.
+- **Decisions given:** see §Decisions given.
+- **Next:** Item 5.1; Item 5.2; Item 5.3; Item 5.4 (tdd, one slice); Phase 5
+  checkpoint; finish (review gate, tdd-audit).
 - **Carry list:** as above.
