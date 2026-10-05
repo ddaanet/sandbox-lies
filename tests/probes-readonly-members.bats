@@ -82,6 +82,25 @@ setup() {
   done
 }
 
+# A cwd with a trailing slash still gives <repo>/<name>, never <repo>//<name>:
+# _readonly_git_dir strips the slashes before its .git walk. Under nopath the
+# search starts at the cwd, so <repo>/ is the start. The match= lines are
+# compared whole, so a doubled slash on any of them fails.
+@test "match= names carry no doubled slash from a cwd with a trailing slash" {
+  local repo="$BATS_TEST_TMPDIR/scratch repo" text expected
+  make_scratch_repo "$repo"
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "")
+  expected=$(printf 'match=%s\n' "$repo/a" "$repo/b" "$repo/e f")
+
+  run_probe_command probe_readonly_path false "$repo/" 'git merge feat' \
+    "$text"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = nopath ]
+  [ "$(printf '%s\n' "$output" | grep '^match=')" = "$expected" ]
+}
+
 # A match= line carries the repository root, so a newline in the root's name
 # would split it and forge the key line after the newline (here readfile=).
 # Under nopath the root is the cwd's: a refused path comes off one line of
