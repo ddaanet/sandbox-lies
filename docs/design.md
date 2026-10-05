@@ -46,14 +46,21 @@ Where the memory file it replaces could only teach a discriminator, the hook
 runs it: the hook process is started by the harness outside the sandbox, so it
 can stat the lock the tool could not see.
 
+Every symptom, discriminator and corpus figure here was recorded on Linux, where
+the sandbox is bubblewrap. NFR-2 makes the scripts portable to macOS tools, but
+the macOS sandbox's messages and masks are unverified.
+
 ## Functional requirements
 
 **FR-1 — Annotate, never intervene.** One hook script, registered on
 `PostToolUse` and `PostToolUseFailure` with matcher `Bash`. No `PreToolUse`, no
 `permissionDecision`, no `updatedInput`, no `updatedToolOutput`. The original
-result stays in context beside the verdict. Where · pinned by:
-`hooks/hooks.json` · `tests/hook.bats` asserts the emitted JSON carries only
-`hookSpecificOutput.additionalContext` and `systemMessage`. Done.
+result stays in context beside the verdict. A second script, `hooks/check-jq.sh`
+on `SessionStart`, annotates nothing: it speaks only when `jq` is missing
+(D-12). Where · pinned by: `hooks/hooks.json` · `tests/hook.bats` asserts the
+three event keys and that the emitted JSON carries only
+`hookSpecificOutput.additionalContext` and `systemMessage`;
+`tests/check-jq.bats` runs the `SessionStart` command. Done.
 
 **FR-2 — Matcher contract.** A matcher is a shell function that reads one Bash
 tool result on stdin and exits 0 when its symptom is present, 1 when it is not.
@@ -84,9 +91,11 @@ Each probe is proved once against a live reproduction before it ships; the
 reproduction is recorded in `references/`. Where · pinned by: `lib/probes.sh`,
 `lib/probes-readonly*.sh` · `tests/probes*.bats` over synthetic trees, with a
 character device at the lock path and no holder tool on `PATH`, and
-`tests/probes-readonly.bats` over each path-extraction form;
-`tests/hook-locks.bats` and `tests/hook-candidates.bats` over the hook's calls.
-Done.
+`tests/probes-readonly.bats` over each path-extraction form,
+`tests/probes-readonly-members.bats` and `tests/probes-readonly-operands.bats`
+over the Probe facts members and the `readfile=` operand rule;
+`tests/hook-locks.bats`, `tests/hook-candidates.bats` and
+`tests/hook-writes.bats` over the hook's calls. Done.
 
 **FR-5 — Sandbox-state awareness.** The payload's
 `tool_input.dangerouslyDisableSandbox` (absent means false) decides wording: a
@@ -125,15 +134,18 @@ tool result cut by `tests/extract-fixtures.py` from `~/.claude/projects`; every
 `quiet-*` fixture is a recorded near-miss. Hand writing a fixture encodes what
 the output was expected to look like. Where · pinned by:
 `tests/extract-fixtures.py` · the `fire-*` and `quiet-*` set is reproducible
-from the script. Done.
+from the script in part: re-run at the 2026-09-28 review, it re-cut 25 of the 34
+byte for byte; two undated entries picked other calls, as the script warns, and
+seven were not found in the corpus, cause not established. Done.
 
-**FR-9 — The symptom-less knowledge is a skill.** `excludedCommands` whole-call
-semantics, the two escapes and their costs, strict mode, `$TMPDIR` scoping, a
-`claude` or `git` inside a recipe, and how to write a cleanliness gate that
-survives the masks fire while an agent is *writing* something, not while reading
-output. That is the plugin's one skill, `skills/sandbox-lies/SKILL.md`,
-triggered on those authoring moments. Where · pinned by: the skill file ·
-`tests/docs.bats` runs `detect` over it. Done.
+**FR-9 — The symptom-less knowledge is a skill.** Which calls an
+`excludedCommands` entry unsandboxes (only one whose every command it covers),
+the two escapes and their costs, strict mode, `$TMPDIR` scoping, a `claude` or
+`git` inside a recipe, and how to write a cleanliness gate that survives the
+masks fire while an agent is *writing* something, not while reading output. That
+is the plugin's one skill, `skills/sandbox-lies/SKILL.md`, triggered on those
+authoring moments. Where · pinned by: the skill file · `tests/docs.bats` runs
+`detect` over it. Done.
 
 **FR-10 — Memory retirement, per section.** The commit that lands a detector or
 a skill section deletes the memory section it translates from
@@ -173,26 +185,33 @@ The suite re-runs itself with BSD-strict stubs on `PATH`. Where · pinned by:
 **NFR-3 — Cost.** No verdict, no output: the hook exits 0 silently, and that
 path runs after every Bash call, so its wall time on a quiet result is recorded
 in the changelog at each release. With a verdict and no probe, under 100 ms.
-Probes are bounded: no recursive `du`, no network, hook timeout 10 s. Where ·
-pinned by: `hooks/hooks.json` timeout · `tests/hook.bats` asserts empty stdout
-on quiet fixtures. Done (100 ms bound measured, not gated).
+Probes are bounded: no recursive `du`, no network, hook timeout 10 s, the
+`SessionStart` check's too. Where · pinned by: `hooks/hooks.json` timeout ·
+`tests/hook.bats` asserts empty stdout on quiet fixtures. Done (100 ms bound
+measured, not gated).
+
+**NFR-4 — Hermetic.** The hook writes nothing (it runs outside the sandbox,
+where `$TMPDIR` may be unset). It reads only what the result names: the
+repository holding a refused path, which can be a sibling worktree rather than
+the call's (else the payload `cwd`'s), and the lock paths the error text names.
+Where · pinned by: `tests/hook.bats` and `tests/matchers.bats` run the hook and
+`detect` with `TMPDIR` naming a missing directory, `tests/hook-writes.bats` the
+hook through a real readonly-path and git-lock probe, `tests/probes-edges.bats`
+those two probes, `tests/check-jq.bats` the `SessionStart` check. Done (read
+scope: review, not gated).
 
 **NFR-5 — Size and links.** Every document and script is at most 400 lines (a
 `SKILL.md` at most 200), and every inline relative link resolves (reference
 style unchecked). Where · pinned by: `scripts/check-line-limits.sh`,
 `scripts/check-links.sh` · both run in `just precommit`. Done.
 
-**NFR-4 — Hermetic.** The hook writes nothing (it runs outside the sandbox,
-where `$TMPDIR` may be unset) and reads only the repository the call ran in.
-Where · pinned by: `tests/hook.bats` and `tests/matchers.bats` run the hook and
-`detect` with `TMPDIR` naming a missing directory. Done (read scope: review, not
-gated).
-
 ## Architecture
 
 ```
-hooks/hooks.json        PostToolUse + PostToolUseFailure · "Bash" · timeout 10
+hooks/hooks.json        PostToolUse + PostToolUseFailure · "Bash" · timeout 10;
+                        SessionStart · no matcher · timeout 10
 hooks/annotate.sh       payload → text → detect → probes → one JSON
+hooks/check-jq.sh       SessionStart: a notice when jq is missing; annotates nothing
 lib/matchers.sh         matchers + detect          (promoted from the pilot)
 lib/probes.sh           probe_<verdict> functions   (layer 3)
 lib/probes-readonly*.sh probe_readonly_path, its D-17 facts and command scan
@@ -230,10 +249,10 @@ text reaches the model on the next API call, so a sibling call issued in the
 same batch as the failing one runs before the verdict lands.
 
 **D-3 — One hook, one process, one JSON.** Parallel hooks do not see each
-other's output, so eleven separate hooks could not compose a single
-`additionalContext` under the 2 KB spill. One script, registered on both
-post-tool events, runs all matchers over one in-memory copy of the text; each
-call fires exactly one of the two events.
+other's output, so nine separate hooks, one per shipped detector, could not
+compose a single `additionalContext` under the 2 KB spill. One script,
+registered on both post-tool events, runs all matchers over one in-memory copy
+of the text; each call fires exactly one of the two events.
 
 **D-4 — Exit status is not a gate.** A `git commit … | tail -20` reports
 `tail`'s status. Two real lock failures in the corpus have exit 0. The
@@ -241,10 +260,11 @@ discriminator for `git-lock` is git's follow-on sentence, including its final
 clause; the store's own quotations of the error truncate before it.
 
 **D-5 — Line-shape anchoring buys precision, not vocabulary.** The 22 masked
-names anywhere in output give 207 corpus hits; the same names standing alone on
-a `git status` line give 57 with one false positive. `config-lock` and
-`phantom-gitadd` anchor at line start for the same reason: the pilot's own
-reports echo the strings behind a `> ` marker.
+names anywhere in output gave 207 hits in the pilot's layer-1 replay
+(2026-09-02); the same names standing alone on a `git status` line give 57 with
+one false positive over the 2026-09-03 corpus `references/detectors.md` names.
+`config-lock` and `phantom-gitadd` anchor at line start for the same reason: the
+pilot's own reports echo the strings behind a `> ` marker.
 
 **D-6 — Probes run in the hook and inject the verdict, not the test.** Each
 probe is proved once live before it ships. Argued in
@@ -262,15 +282,10 @@ lowercase clause with an em-dash, no instruction. Neither channel spells a
 diagnostic and its follow-on on one line — the corpus eval report fires
 `git-lock` on itself for exactly that.
 
-**D-8 — Sandbox state from the payload.** `tool_input.dangerouslyDisableSandbox`
-is on stdin. A lock error on an unsandboxed call is a real lock or the hook-env
-leak, not a mask; a `No conversation found` on an unsandboxed call is not the
-transcript-persistence failure. Detectors read the flag and either change
-wording or stay silent. Accepted tradeoff: a call unsandboxed by
-`excludedCommands` carries no flag and nothing in the payload records it, so
-that case is indistinguishable from a sandboxed one; the probes cover the
-verdicts where it matters (a lock that exists outside the sandbox is reported as
-such whichever way the call ran).
+**D-8 — Sandbox state from the payload.** Detectors read
+`tool_input.dangerouslyDisableSandbox` and either change wording or stay silent.
+Accepted tradeoff: a call an exclusion unsandboxed carries no flag. Argued in
+[references/sandbox-state.md](references/sandbox-state.md).
 
 **D-9 — The skill lives here and carries the plugin's name.** `craft`'s premise
 is facts that fire on a design moment with no token to match; the escapes
@@ -279,6 +294,10 @@ sandbox-specific, and this repository is the one place that knowledge is
 maintained. Sending it to `craft` would split the retirement across two repos,
 one of which is read-only from here. As the plugin's only skill it is
 `sandbox-lies:sandbox-lies`; a second name would add nothing.
+
+*Rejected:* a home in `craft` or `prohibitions` — the wrong trigger axis, and
+`prohibitions` forbids actions where this enriches results; `sandbox-gotchas` or
+`sandbox-effects` as names — a catalogue, and the memory file's own name.
 
 **D-10 — Self-reference is handled at the document, not the matcher.** Every
 false positive in the corpus is this project reading its own artefacts back. The
@@ -299,6 +318,9 @@ fact before it gains the hook, until the plugin is released and installed there.
 
 **D-12 — `jq` is a dependency.** Parsing the payload by hand in bash 3.2 is
 where hooks go wrong; the release toolkit's version guard already requires it.
+Without `jq` every annotation is lost and nothing would say so, so
+`hooks/check-jq.sh` tells the user and the agent at each session start, built
+with no `jq` itself. Argued in [references/hook.md](references/hook.md).
 
 **D-13 — Failures arrive on `PostToolUseFailure`.** A non-zero exit fires
 `PostToolUseFailure` with the text in `error`, a success `PostToolUse`; the hook
@@ -339,39 +361,18 @@ each fact.
 
 ## Rejected alternatives
 
-**A `PreToolUse` matcher that unsandboxes the call.** The retired
-`unsandbox-git-status` plugin pre-approved anything chained beside the
-`git status` it rewrote; the `git:*` exclusion covers every git shape without a
-hook.
+See [references/rejected-alternatives.md](references/rejected-alternatives.md)
+for each argument; D-9 names two more.
 
-**Prompt-based hooks.** Non-deterministic, a model call per Bash result, and the
-discriminators are exact strings a regex settles for free.
-
-**A home in `craft` or `prohibitions`.** `craft` is the wrong trigger axis
-(D-9). Every `prohibitions` item forbids an action the agent is about to take;
-an annotator enriches a result instead.
-
-**Splitting `sandbox-effects` into hub and siblings first.** The content
-survives either route; the file layout would be thrown away. It remains the
-fallback if dogfooding shows the hook not firing.
-
-**Filtering phantom names out of a cleanliness gate.** The mask set is
-version-dependent and a filter hides real untracked files with those names. The
-gate runs unsandboxed or scopes to tracked paths; that is skill content, not a
-hook.
-
-**`PostToolBatch`.** A batch carries several results; the verdict must attach to
-the one call it explains.
-
-**A `tmp-full` detector.** The one observed event — `/tmp` at 100% with `du`
-accounting for a fraction — was read as other sandboxes pinning the tmpfs, but
-it cannot be reproduced on demand, and a small tmpfs fills on its own often
-enough to explain it. Not a sandbox lie; the memory section retires
-untranslated.
-
-**`sandbox-gotchas`, `sandbox-effects` as names.** The first promises a
-catalogue, which is what moving this knowledge into hooks stops it being; the
-second is the memory file's name and both would exist during the transition.
+- **A `PreToolUse` matcher that unsandboxes the call** — it pre-approves
+  whatever is chained beside the command; a `git *` exclusion needs no hook.
+- **Prompt-based hooks** — non-deterministic; a model call per Bash result.
+- **Splitting `sandbox-effects` into hub and siblings first** — the layout would
+  be thrown away; the fallback if the hook does not fire.
+- **Filtering phantom names out of a cleanliness gate** — the mask set is
+  version-dependent and the filter hides real files; skill content instead.
+- **`PostToolBatch`** — the verdict must attach to the one call it explains.
+- **A `tmp-full` detector** — not reproducible and not a sandbox lie.
 
 ## Limitations
 
@@ -379,8 +380,8 @@ second is the memory file's name and both would exist during the transition.
   executor calls the shell tool directly, below the hook dispatcher. A `/commit`
   `## Context` listing phantom dotfiles is permanently out of reach and stays
   prose.
-- **L-2** A call unsandboxed by `excludedCommands` leaves no trace in the
-  payload (D-8).
+- **L-2** A call unsandboxed by `excludedCommands`, one whose every command an
+  entry covers, leaves no trace in the payload (D-8).
 - **L-3** A symptom with no output — `SessionStart` hooks dropped under a
   sandboxed `claude -p`, the classifier refusing a benign compound — cannot be
   annotated.

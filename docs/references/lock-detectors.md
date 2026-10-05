@@ -92,13 +92,24 @@ its hook's staging included, as a 2026-09-23 attempt had. A script run as
 paths and `git status` in the scratch repo and in the project root: no
 `index.lock` in either, only the project root's `.git/config.lock` as a
 character device. With no index lock masked, the error could not arise. Git did
-run sandboxed there, the `git:*` exclusion unhonoured on CC 2.1.281, the version
-both days ran: in the main session on 2026-09-26,
+run sandboxed there, by the shape of both calls rather than by an exclusion
+being ignored: an `sh` heads each, and CC applies an `excludedCommands` entry
+only to a call whose every command it covers, so the `git:*` entry then
+configured could not reach either. The probe recorded at the time as showing
+that entry unhonoured on CC 2.1.281 (main session, 2026-09-26:
 `git --version && touch /tmp/sbx-probe-git` failed with the read-only-filesystem
-error, and the same `touch` with the sandbox disabled succeeded. A write to
-`/tmp/<name>` fails that way only inside the sandbox. A mask proves nothing
-about the call that sees it, since masks are visible from every process while
-any sandboxed command runs.
+error, and the same `touch` with the sandbox disabled succeeded) is confounded:
+its uncovered `touch` keeps the call sandboxed whether or not the entry is
+honoured, so it shows only that this call ran sandboxed. A write to
+`/tmp/<name>` fails that way only inside the sandbox. The later single-command
+probes `git init -q /tmp/<name>` (CC 2.1.288 with `git:*`, 2026-10-03; CC
+2.1.289 with `git *`, 2026-10-04) ran sandboxed too, and are confounded the same
+way: git with an absolute, `~`-led or `..`-bearing path argument stays sandboxed
+under any entry. What was observed, on CC 2.1.289 on 2026-10-05, is an entry
+honoured: a bare covered `git status --porcelain` from the project root listed
+no masks, while `true && git status --porcelain` listed them. That bare
+`git status` is the re-probe. A mask proves nothing about the call that sees it,
+since masks are visible from every process while any sandboxed command runs.
 
 ## config-lock
 
@@ -148,8 +159,10 @@ line, gave the same error and the same probe output; a visible
 `cd <root> && git config` and a bare `git -C <root> config` gave the same error
 too. These ran in a delegated agent's session; the bare form did the same, key
 unwritten, in the main session that dispatched it. That they ran sandboxed
-despite `git:*` in the user settings' `sandbox.excludedCommands` rests on the
-`/tmp` write test under `git-lock`'s owed `mask` reproduction, not on the mask
-they hit.
+despite `git:*` in the user settings' `sandbox.excludedCommands` needs no
+exclusion to have been ignored: an `sh` head, a `cd` and `git -C` each keep a
+call sandboxed under CC's every-command rule. The `/tmp` write test once cited
+for it is confounded (`git-lock`'s owed `mask` reproduction), and the mask they
+hit proves nothing about the call either.
 
 **Corpus.** 4 hits, 4 true. 100%, 2026-09-03.

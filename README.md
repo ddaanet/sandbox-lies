@@ -29,8 +29,17 @@ need the `memory` submodule. A marketplace install clones submodules too, and
 that submodule's url is a local placeholder such a clone cannot resolve, so the
 install aborts until the url is fixed.
 
+The hook needs `jq` on `PATH`: without it, it stays silent and every Bash result
+goes unannotated. A `SessionStart` check then says so at each session start, to
+you and to the agent, and stays silent once `jq` is found.
+
 The hooks load at session start: restart Claude Code after installing or
 updating the plugin.
+
+The symptoms, discriminators and corpus figures were recorded on Linux, where
+the command sandbox is bubblewrap. The scripts are written to run under macOS's
+bash 3.2 and BSD tools as well, but the macOS sandbox's messages and masks have
+not been verified.
 
 ## Detectors
 
@@ -56,11 +65,11 @@ detector was measured at are in
 ## The skill
 
 What the sandbox does without any symptom in the output cannot be annotated:
-which calls `excludedCommands` really unsandboxes, what each escape costs, why
-`$TMPDIR` does not survive a call, how masks break a cleanliness gate. The
-`sandbox-lies:sandbox-lies` skill carries that knowledge and triggers while an
-agent is writing an exclusion, a recipe, a cleanliness gate or a directive with
-a scratch path, before any output exists.
+that an `excludedCommands` entry unsandboxes only a call whose every command it
+covers, what each escape costs, why `$TMPDIR` does not survive a call, how masks
+break a cleanliness gate. The `sandbox-lies:sandbox-lies` skill carries that
+knowledge and triggers while an agent is writing an exclusion, a recipe, a
+cleanliness gate or a directive with a scratch path, before any output exists.
 
 ## Design
 

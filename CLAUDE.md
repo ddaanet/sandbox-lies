@@ -10,9 +10,10 @@ output. Design and per-detector mechanism: `docs/design.md`, `docs/references/`.
   re-wraps markdown. After an `.envrc` edit, run it as
   `direnv exec . just precommit` until direnv is re-allowed.
 - **No live file may fire a detector.** `tests/docs.bats` runs the matchers over
-  every tracked file outside `tests/fixtures/` and three dated pilot files under
-  `plans/`. Describe a diagnostic instead of quoting it with its follow-on text;
-  a test that needs the text builds it from fragments at run time.
+  every tracked file except two exemptions: `tests/fixtures/`, and three dated
+  pilot files under `plans/`. Describe a diagnostic instead of quoting it with
+  its follow-on text; a test that needs the text builds it from fragments at run
+  time.
 - **Fixtures come from the cutter, never by hand.** Every `fire-*` and `quiet-*`
   file under `tests/fixtures/` is a recorded tool result cut by
   `tests/extract-fixtures.py` from the transcript corpus; add a `SPEC` entry and

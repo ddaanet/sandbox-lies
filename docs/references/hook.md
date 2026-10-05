@@ -79,13 +79,14 @@ seen masks while another session's sandbox was live.
 
 **Output annotation, not command matching (D-1).** The pilot's one `PreToolUse`
 command matcher (sandboxed `claude -p` dropping `SessionStart` hooks) found zero
-true positives over 21,453 calls: every real invocation was already unsandboxed
-by the `claude:*` exclusion, and the one uncovered case sat inside a `just`
-recipe whose command text held no `claude` token. That failure does not
-generalise to the output annotators — it was the only detector whose target
-produces no output — and it is why the plugin exists at all: the pilot's rule
-was "all three hold"; two held decisively and the third died for a reason
-specific to its shape.
+true positives over 21,453 calls. The pilot read every real invocation as
+already unsandboxed by the `claude:*` exclusion. That is what the configuration
+implied, not an observed run, and an entry frees only a call whose every command
+it covers. The one uncovered case sat inside a `just` recipe whose command text
+held no `claude` token. That failure does not generalise to the output
+annotators — it was the only detector whose target produces no output — and it
+is why the plugin exists at all: the pilot's rule was "all three hold"; two held
+decisively and the third died for a reason specific to its shape.
 
 **Probes run in the hook and inject the verdict, not the test (D-6).** The
 memory's longest section taught a three-way test for the lock error whose first

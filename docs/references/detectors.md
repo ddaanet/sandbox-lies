@@ -18,18 +18,23 @@ alike: the Bash tool merges stderr into stdout in emission order, so
 by that merged output — byte-identical to the tool result the model sees. Both
 events carry `hook_event_name` and a `cwd`, which was the session's working
 directory; no recorded call changed directory, so where a `cd` inside the call
-leaves `cwd` is unrecorded. A sandboxed write refused by the allowlist carried
-no harness sandbox-violation annotation in the payload or in the model's tool
-result (L-5). A **probe** runs in the hook process, outside the sandbox, reads
-the same text on stdin with the flag, the payload `cwd` and `tool_input.command`
-as its arguments, and prints an outcome token on its first line followed by
-`key=value` lines. The **flag** is `tool_input.dangerouslyDisableSandbox` from
-the payload, absent from `tool_input` when unset (read as false) and `true` when
-set (recorded 2026-09-23); every detector states its **flag policy** — what
-happens when the call ran unsandboxed. Verdict text is given as the agent
-paragraph, then the human line. No entry here quotes a diagnostic together with
-its follow-on sentence, and candidate strings are described rather than quoted,
-so that this file stays quiet under the detectors it specifies.
+leaves `cwd` is unrecorded. Open with it: in the main session the Bash tool
+keeps a top-level `cd` between calls (seen on CC 2.1.281), and whether the
+payload `cwd` then follows the persisted directory or stays the session's is not
+recorded. The lock probes and `readonly-path`'s probe resolve a relative path
+against that `cwd`, so the answer decides where they look. A sandboxed write
+refused by the allowlist carried no harness sandbox-violation annotation in the
+payload or in the model's tool result (L-5). A **probe** runs in the hook
+process, outside the sandbox, reads the same text on stdin with the flag, the
+payload `cwd` and `tool_input.command` as its arguments, and prints an outcome
+token on its first line followed by `key=value` lines. The **flag** is
+`tool_input.dangerouslyDisableSandbox` from the payload, absent from
+`tool_input` when unset (read as false) and `true` when set (recorded
+2026-09-23); every detector states its **flag policy** — what happens when the
+call ran unsandboxed. Verdict text is given as the agent paragraph, then the
+human line. No entry here quotes a diagnostic together with its follow-on
+sentence, and candidate strings are described rather than quoted, so that this
+file stays quiet under the detectors it specifies.
 
 Corpus: 21,453 Bash tool-use/result pairs, 1,682 JSONL files, 35 projects,
 measured 2026-09-03 with the shell matchers as arbiter
@@ -87,8 +92,12 @@ Replaces the `git status` half of the same section.
 **Matcher.** At least two distinct names from the masked set standing alone on a
 status-shaped line (`??` prefix or leading whitespace, optional trailing slash).
 The masked set is the 22 paths measured 2026-08-15. Threshold 2 buys nothing
-above it (≥2 gives 41 hits, ≥5 gives 40) and is kept for the one real listing
-with only two names.
+above it and is kept for the one real listing with only two names: in the
+pilot's layer-1 replay (2026-09-02, 21,272 Bash pairs,
+`plans/2026-09-02-sandbox-detector-replay-results.md`), ≥2 gave 41 hits and ≥5
+gave 40. That replay's Python form required four or more blanks before a name,
+so it missed the tab-indented long-format block; its 41 is an undercount of the
+57 below.
 
 **Probe.** None.
 
@@ -99,7 +108,8 @@ not the tree. · `phantom dotfiles — masks listed as untracked`
 
 **Flag policy.** As `phantom-chardev`.
 
-**Corpus.** 57 hits, 56 true, 1 fixture read. 98%, 2026-09-03.
+**Corpus.** 57 hits, 56 true, 1 fixture read. 98%, 2026-09-03, over the
+21,453-pair corpus above with the shell matcher as arbiter.
 
 ### phantom-gitadd
 
@@ -127,7 +137,10 @@ Each needs a layer-1 replay, a shape discriminator the replay selects (line
 start, the tool's own prefix, a follow-on), and its fixtures cut before it ships
 under D-15. A candidate with a probe builds it only once the detector ships.
 Measured 2026-09-25 by that replay, then `tests/corpus-eval.py` over 55,896 Bash
-pairs, a scratch shell matcher as arbiter; a hit is a match the flag lets fire.
+pairs; a hit is a match the flag lets fire. Each shipped candidate's figure was
+then re-measured over the same extraction with its shipped matcher as arbiter,
+and none moved (`plans/sandbox-lies/reports/item-4-2-s1-code-review.md`,
+`plans/sandbox-lies/reports/item-4-3-s1-green.md`).
 
 ### readonly-path
 
@@ -250,7 +263,7 @@ must map before the file is deleted (FR-10); the audit that confirms it is Item
 | cost 1, `$TMPDIR` collapse and instability | `tmpdir-unset`; instability → skill; its top-level-classifier note moved to cost 3 |
 | cost 2, classifier and compounds | skill |
 | cost 3, recipes entirely unsandboxed | `readonly-path`; skill |
-| `excludedCommands` whole-call semantics | skill |
+| `excludedCommands` whole-call semantics | skill, corrected: an entry frees only a call whose every command it covers |
 | `ps` cannot see background tasks | skill |
 | `--resume` transcript never persisted | `resume-lost`; eval-harness consequence → skill |
 | zellij socket | `zellij-socket` |
@@ -265,7 +278,9 @@ must map before the file is deleted (FR-10); the audit that confirms it is Item
   symptom in the output. Skill content.
 - **Sandboxed `claude -p` drops `SessionStart` hooks.** No output symptom (D-1).
   Skill content.
-- **`excludedCommands` semantics, the classifier refusing benign compounds,
-  strict mode.** No symptom in a tool result. Skill content.
+- **Which calls an `excludedCommands` entry unsandboxes, the classifier refusing
+  benign compounds, strict mode.** No symptom in a tool result: an entry frees
+  only a call whose every command it covers, and nothing records that it did.
+  Skill content.
 - **A slash command's `## Context` listing masks.** No hook runs on the
   `!`-expansion path (L-1). One line in the shared conventions file.

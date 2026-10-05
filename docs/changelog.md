@@ -240,3 +240,30 @@ got no permission verdict at all, so edits had to be routed through scripts.
 D-16 now names the toolkit's shim. The precommit lint now covers untracked,
 unignored files too: a new bats file had reached a commit failing shellcheck,
 because the gate listed tracked files only.
+
+## 2026-10-05 — review fixes: exclusions, the `jq` notice, readonly facts
+
+The deliverable review found the skill's `excludedCommands` model wrong. CC
+applies an entry only to a call whose every command it covers; a `cd`, a
+subshell, a command substitution, a redirection other than a descriptor
+duplication, or a command name from a variable keeps the call sandboxed, as does
+git with `-C` or an absolute, `~`-led or `..`-bearing path argument. The skill
+now says so, writes entries as `git *` (`git:*` is legacy), drops the decoy
+escalation, and re-ranks the working-directory acts, since a trailing `cd` and a
+subshell both forfeit an exclusion; the persisted `cd` holds in the main session
+only. On CC 2.1.289 a bare covered `git status` from the project root listed no
+masks while `true && git status` listed them, so entries are honoured for a
+fully covered call, and that bare `git status` is the re-probe. The earlier
+probes read as "not honoured" — CC 2.1.281's `git --version` and `touch` pair,
+the 2.288 and 2.289 `git init -q /tmp/<name>` runs — are each confounded under
+the documented rule; `references/lock-detectors.md` restates them. A missing
+`jq` had silenced every annotation unseen: `hooks/check-jq.sh` on `SessionStart`
+now tells the user and the agent, and README §Install names `jq` as a
+prerequisite. The `readonly-path` probe's `match=` names are absolute, so the
+restore clause is right from any directory of the repository, and `readfile=`
+takes only input operands: never an option word, a `grep`, `sed` or `awk`
+pattern or program, or the output operand that makes `uniq` a writer. The docs
+now say the symptoms and figures were recorded on Linux with macOS unverified,
+which repositories the hook reads (NFR-4), how far the fixtures re-cut from the
+script (FR-8), and which corpus each `phantom-untracked` figure comes from. The
+suite gained pins for the review's verification gaps.
