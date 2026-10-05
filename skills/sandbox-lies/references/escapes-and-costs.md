@@ -1,31 +1,35 @@
 # Leaving the sandbox: the two escapes and what they cost
 
 **Per call:** `dangerouslyDisableSandbox: true` on the Bash tool. **Standing:**
-`sandbox.excludedCommands` in `~/.claude/settings.json`
-([excluded-commands.md](excluded-commands.md)), honoured in strict mode too —
-where it is honoured at all, which CC 2.1.281 does not do.
+`sandbox.excludedCommands` in `~/.claude/settings.json`, for a call whose every
+command an entry covers ([excluded-commands.md](excluded-commands.md)), honoured
+in strict mode too.
 
 ## Strict mode blocks the per-call flag
 
-With `/sandbox` set to *Strict sandbox mode*, `dangerouslyDisableSandbox` is
-refused and git writes fail with the read-only-filesystem error on
-`.git/index.lock`; the exclusions still apply where honoured (recorded by
-2026-07-16, CC version not recorded). Ask the human partner to run the command
-via `! git …` or to toggle the mode — do not retry the same sandboxed command.
-Strict mode is a user setting: check rather than assume.
+Strict mode is `sandbox.allowUnsandboxedCommands: false`, shown in the
+`/sandbox` Overrides tab as *Strict sandbox mode*. Under it,
+`dangerouslyDisableSandbox` is refused and git writes fail with the
+read-only-filesystem error on `.git/index.lock` (recorded by 2026-07-16, CC
+version not recorded). Commands stay sandboxed unless they match an
+`excludedCommands` entry, so a fully covered call still runs unsandboxed. Ask
+the human partner to run the command via `! git …` or to toggle the mode — do
+not retry the same sandboxed command. Strict mode is a user setting: check the
+key rather than assume.
 
 ## The read-only-inspection default
 
 Reaching for `dangerouslyDisableSandbox` to read local git state or a masked
 path is a read-only inspection. Where the human partner has set it as a standing
 default, it is not a per-case approval to seek: call it directly, without
-pre-announcing or asking. Under an honoured `git:*`/`ls:*`/`find:*` baseline it
-has little left to do, and it fires on a symptom rather than while composing: a
-phantom dotfile in a listing, an empty `cat` of a `.claude/` path, a
-`git status` that ran inside `( … )`, `$( … )`, `sh -c` or a recipe, or a
-segment the matcher missed (a quoted argument, a double space, `/bin/ls`).
-Mutating operations (`git commit`, `push`, `reset`, `checkout -- …`, anything
-that writes) are not covered and follow normal confirmation rules.
+pre-announcing or asking. A `git *`/`ls *`/`find *` baseline frees only a call
+made of covered commands alone, so the default still has work, and it fires on a
+symptom rather than while composing: a phantom dotfile in a listing, an empty
+`cat` of a `.claude/` path, a `git status` that ran beside an uncovered command,
+after a `cd`, inside `( … )`, `$( … )`, `sh -c` or a recipe, or a command the
+matcher missed (a quoted argument, a double space, `/bin/ls`). Mutating
+operations (`git commit`, `push`, `reset`, `checkout -- …`, anything that
+writes) are not covered and follow normal confirmation rules.
 
 ## The observed `$TMPDIR` collapse
 
@@ -39,20 +43,23 @@ success while the original is never put back.
 ## Cost: the classifier denies benign compounds unpredictably
 
 Sandboxed commands are auto-allowed (`autoAllowBashIfSandboxed`) with no
-classifier call. Leaving the sandbox by either escape moves the command *into*
-classifier evaluation unless the read-only validator
-([excluded-commands.md](excluded-commands.md)) clears it. Observed 2026-08-16
-(CC version not recorded), after the exclusions were written:
-`ls -a | wc -l; echo …`, `find … | wc -l; echo …` and `claude --version; echo …`
-were each refused, while `ls -a; echo …`, `find …; echo …`, `git log …; echo …`
-and a bare `claude --version` passed. No stable rule separates them — the pipe
-is not it.
+classifier call, except where the sandboxing doc lists otherwise: in plan mode;
+for an auto-mode command carrying per-command allowed domains; and in auto mode
+where the session has server-side classifier review of sandboxed commands. The
+permission-modes doc's decision order puts read-only commands behind that
+server-side review too, where the session has it. Leaving the sandbox by either
+escape moves the command *into* classifier evaluation unless the read-only
+validator ([excluded-commands.md](excluded-commands.md)) clears it. Observed
+2026-08-16 (CC version not recorded; how each call left the sandbox, by flag or
+by exclusion, was not recorded): `ls -a | wc -l; echo …`,
+`find … | wc -l; echo …` and `claude --version; echo …` were each refused, while
+`ls -a; echo …`, `find …; echo …`, `git log …; echo …` and a bare
+`claude --version` passed. No stable rule separates them — the pipe is not it.
 
 Mitigation is shape, not settings: keep an escaped command in its own call
-rather than appending a compound to it. A classifier call is one model call over
-cached context with no generation, cheaper than an agent turn, so batching
-`git -C <dir> log …; git -C <dir> status` into one call still beats splitting
-it.
+rather than appending a compound to it, even where batching would save a call. A
+classifier call is a model call that generates a verdict; a denied compound
+costs that call and a reshaped retry besides.
 
 The classifier does let through the unsandboxed retry of a write the user's own
 prompt asked for (CC version not recorded). Routing around a sandbox write
@@ -73,7 +80,8 @@ version not recorded). `just resume-release` (plugin-dev 0.5.0 and later)
 recovers a half-landed release, but only unsandboxed: it runs that `mv`
 unconditionally, before comparing local and remote heads.
 
-`git:*` does not reach a git call inside a recipe — `just` is the top-level
-segment. The classifier likewise judges an unsandboxed recipe by its top-level
-command: an unsandboxed `just release minor` went through whole, its
-cross-repository `git -C "$MARKETPLACE_DIR" push` included.
+A `git *` entry does not reach a git call inside a recipe: the call's own
+command is `just`, which only an entry covering the recipe, such as
+`just release *`, frees. The classifier likewise judges an unsandboxed recipe by
+its top-level command: an unsandboxed `just release minor` went through whole,
+its cross-repository `git -C "$MARKETPLACE_DIR" push` included.

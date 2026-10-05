@@ -15,10 +15,14 @@ the recipe, the gate or the directive, before any output exists.
 
 ## Tell a sandboxed call from an unsandboxed one
 
-- **Treat every call as sandboxed unless it carries
-  `dangerouslyDisableSandbox: true`.** On CC 2.1.281 the `excludedCommands`
-  entries are not honoured: with `git:*` in user settings, a git call ran
-  sandboxed (2026-09-26). Re-probe before relying on an exclusion.
+- **A call runs unsandboxed only when it carries
+  `dangerouslyDisableSandbox: true` or an `excludedCommands` entry covers every
+  command in it.** Any uncovered command, or a forfeiting shape listed below —
+  git's absolute, `~`-led or `..`-bearing path arguments among them — keeps the
+  call sandboxed. Observed on CC 2.1.289: a bare covered `git status` from the
+  project root listed no masks, `true && git status` listed them. Re-probe with
+  that bare `git status` before relying on an exclusion; earlier "not honoured"
+  probes were confounded.
 - **A visible mask proves nothing about the call that saw it.** Mask paths are
   visible from every process while any sandboxed command runs, this session's or
   a parallel agent's. The evidence runs one way: no mask in a listing of the
@@ -33,34 +37,41 @@ the recipe, the gate or the directive, before any output exists.
 
 ## Writing an `excludedCommands` entry
 
-Where honoured — not on CC 2.1.281; re-probe with the `/tmp` write first — an
-entry is a permission-rule pattern, and one matching segment unsandboxes the
-*whole* call. Before writing one:
+An entry is a permission-rule pattern, and CC applies it only when it covers
+every command in the call. Before writing one:
 
-- `foo bar` is exact and `foo bar:*` a prefix. A plain `"git status"` covers
-  only the bare literal; only `git:*` reaches `git -C <dir> status`.
-- Nesting fails closed: `( … )`, `$( … )`, `sh -c '…'` and a git inside a recipe
-  or script never match.
-- The match is static: `false && git status; <payload>` frees the whole call
-  while the decoy never runs.
+- Write `git *`, a prefix; `git:*` is the legacy form. A plain `"git status"`
+  covers only the bare literal.
+- A covered call still stays sandboxed with a `cd`, `pushd` or `popd` anywhere,
+  a subshell, a command substitution, an `if` or `for` block, a redirection
+  other than a descriptor duplication, or a command name from a variable. Nested
+  commands never match: `sh -c '…'` and a git inside a recipe or script.
+- Git stays sandboxed under any entry with `-C <dir>`, and with an absolute,
+  `~`-led or `..`-bearing path argument (`git init`, `git clone`,
+  `git worktree add`, among others).
 - It does not grant approval: the rest of the permission pipeline still judges
   the command, clearing a bare read-only command from the original working
   directory before any classifier call.
 
-Splitting rules, wrapper unwrapping, the read-only validator's refusals and why
-an exclusion beats a rewriting hook:
+The full list of forfeiting shapes, what was observed beyond the documented
+ones, the confounded probes, wrapper unwrapping, the read-only validator's
+refusals and why an exclusion beats a rewriting hook:
 [references/excluded-commands.md](references/excluded-commands.md).
 
 ## Leaving the sandbox for one call
 
 - **Per call:** `dangerouslyDisableSandbox: true`. **Standing:**
-  `sandbox.excludedCommands`, honoured in strict mode too where honoured at all.
-- **Strict mode refuses the per-call flag.** Ask the human partner to run the
-  command as `! <command>` or to change the mode; never retry the same sandboxed
-  command.
-- **An unsandboxed command reaches the permission classifier**, which denies
-  benign compounds unpredictably. Keep an escaped command in its own call rather
-  than appending a compound to it.
+  `sandbox.excludedCommands`, for a call whose every command an entry covers,
+  honoured in strict mode too.
+- **Strict mode refuses the per-call flag.** It is
+  `sandbox.allowUnsandboxedCommands: false`, shown in `/sandbox` as Strict
+  sandbox mode; check it rather than assume. Under it, ask the human partner to
+  run the command as `! <command>` or to change the mode; never retry the same
+  sandboxed command.
+- **An unsandboxed command reaches the permission classifier** unless the
+  read-only validator clears it, and the classifier denies benign compounds
+  unpredictably. Keep an escaped command in its own call rather than appending a
+  compound to it, even where batching would save a call.
 - **Read-only inspection is not mutation.** Where the human partner has made
   reading local git state or a masked path unsandboxed a standing default, call
   it directly, without asking. Anything that writes follows normal confirmation.
@@ -70,17 +81,18 @@ Detail and observed refusals:
 
 ## Keeping the working directory at the project root
 
-Masks sit under the sandboxed call's working directory, and the Bash tool keeps
-a `cd` between calls (CC 2.1.281): one `cd` into a submodule leaves every later
-sandboxed call masking inside it. In order of preference:
+Masks sit under the sandboxed call's working directory. In the main session the
+Bash tool keeps a top-level `cd` between calls (CC 2.1.281), so one `cd` into a
+submodule leaves every later sandboxed call masking inside it; a subagent's
+working directory resets per call. In order of preference:
 
 - Give a command absolute paths; give git `-C <dir>`.
-- Otherwise end the call with a `cd <root>` line.
-- A subshell, `(cd <dir> && …)`, comes last: a git inside it misses an honoured
-  `git:*` exclusion.
+- Otherwise use a subshell, `(cd <dir> && …)`, whose `cd` cannot persist.
+- Or end the call with a `cd <root>` line.
 
-Unsandboxed, `git -C`, a `cd` beside a git segment and a subshell each forfeit
-the read-only auto-allow and cost a classifier call:
+`git -C`, a `cd` and a subshell each keep the call sandboxed under any
+`excludedCommands` entry. Run with `dangerouslyDisableSandbox`, each forfeits
+the read-only auto-allow and costs a classifier call:
 [references/excluded-commands.md](references/excluded-commands.md).
 
 ## Writing a recipe or script that must run unsandboxed

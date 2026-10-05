@@ -1,8 +1,9 @@
 # `claude` inside the sandbox: resumed flows and `SessionStart`
 
 Two effects of running `claude` sandboxed leave the visible reply intact. Both
-bite hardest inside a recipe or script, where a `claude:*` exclusion never
-reaches: the top-level segment is the recipe runner.
+bite hardest inside a recipe or script, where a `claude *` exclusion never
+reaches: an entry must cover every command in the call, and the call's own
+command is the recipe runner.
 
 ## Multi-turn `claude` flows must run unsandboxed
 
@@ -11,8 +12,8 @@ A sandboxed `claude --print` turn never persists its transcript —
 fails (CC version not recorded). The Agent SDK's `query()` resumes the same way.
 
 Any two-turn (or N-turn) flow relying on `--resume` must therefore run
-**unsandboxed**: `dangerouslyDisableSandbox`, the `claude:*` exclusion for a
-top-level call where honoured, or the human partner's own shell. A single-turn
+**unsandboxed**: `dangerouslyDisableSandbox`, a `claude *` exclusion for a call
+whose every command it covers, or the human partner's own shell. A single-turn
 connectivity **probe cannot detect this** — it never resumes, so it passes
 sandboxed while the real flow cannot. gitlore's eval runner documents this in
 its header and beside its probe. gitlore keeps its memory-message IPC file in
