@@ -2,12 +2,13 @@
 
 How `hooks/annotate.sh` runs on each Bash call, why it can see what the tool
 could not, and how a probe finds the path it checks; the arguments for D-1
-(output over command), D-6 (probes in the hook) and D-13 (the two events).
-`docs/design.md` §Architecture keeps the component map and one line for each
-conclusion here; the per-detector mechanism is in [detectors.md](detectors.md),
-[lock-detectors.md](lock-detectors.md) and [readonly-path.md](readonly-path.md).
-Read this node before changing `annotate.sh`'s call sequence or a probe's path
-handling.
+(output over command), D-6 (probes in the hook) and D-13 (the two events); and
+the registration in `hooks/hooks.json`, with the `SessionStart` check that says
+when `jq` (D-12) is missing. `docs/design.md` §Architecture keeps the component
+map and one line for each conclusion here; the per-detector mechanism is in
+[detectors.md](detectors.md), [lock-detectors.md](lock-detectors.md) and
+[readonly-path.md](readonly-path.md). Read this node before changing
+`annotate.sh`'s call sequence, a probe's path handling, or `hooks/hooks.json`.
 
 **Flow.** The harness starts `annotate.sh` after every Bash call with the
 payload on stdin: `PostToolUseFailure` when the command exited non-zero,
@@ -20,6 +21,54 @@ arguments, which prints an outcome token and its values; `verdict_<name>`, given
 the outcome and the flag, prints the agent paragraph and the human line. The
 paragraphs concatenate into `additionalContext`, the human lines into
 `systemMessage` joined by `; `, and one JSON object goes to stdout with exit 0.
+
+**Registration.** `hooks/hooks.json` holds three entries, each a single command
+hook of the form `bash "${CLAUDE_PLUGIN_ROOT}/hooks/<script>"` with a 10 s
+`timeout`: `annotate.sh` on `PostToolUse` and on `PostToolUseFailure`, both with
+matcher `Bash`, and `check-jq.sh` on `SessionStart` with no matcher. Running the
+script through `bash`, with the root quoted inside the command string, makes the
+executable bit and a space in the plugin root irrelevant. On `SessionStart` a
+matcher filters the start source (`startup`, `resume`, `clear`, `compact`); with
+none the check fires on all four, so the notice is issued again after a `clear`
+or a `compact`, either of which can leave the conversation without the first
+one. The `SessionStart` entry takes the annotate entries' 10 s bound (NFR-3)
+rather than the harness default. Pinned by `tests/hook.bats` "hooks.json names
+the three events": exactly these three event keys (FR-1: no `PreToolUse`), one
+entry each, the `Bash` matcher on the two annotate entries and no matcher key on
+the `SessionStart` one, each `timeout` and each command string.
+
+**When `jq` is missing (D-12).** `annotate.sh` parses the payload with `jq`;
+without it that first call fails and the script exits 0 with nothing on stdout
+(FR-3), so every Bash result goes unannotated and nothing says so.
+`hooks/check-jq.sh` says so at each session start. It ignores stdin and tests
+`command -v jq`, which resolves `jq` as `annotate.sh`'s own bare call will, an
+exported function of that name included. When `jq` resolves, it prints nothing.
+Otherwise it prints one fixed JSON object with a single `printf`, with no
+interpolation and no external tool, so the notice needs no `jq` to be emitted.
+The object carries two channels:
+
+- `systemMessage`, for the user: one line naming the plugin, that `jq` was not
+  found on `PATH`, and that Bash result annotations are off until it is
+  installed. It opens with a style reset written as the JSON escape `\u001b[0m`,
+  since a raw ESC byte would make the object invalid JSON. The reset lifts the
+  line out of the dimming Claude Code applies to ordinary hook output, which
+  suits a hook that speaks only when something is wrong.
+- `hookSpecificOutput.additionalContext`, with `hookEventName` `SessionStart`,
+  for the agent: annotations are off because `jq` is not on `PATH`, no Bash
+  result carries a sandbox-lies note until it is, and a result without one is to
+  be read as unchecked, not as undistorted. "Until it is" holds within the
+  session: `annotate.sh` looks `jq` up on every call, so a `jq` that appears on
+  `PATH` restores the annotations without a restart.
+
+The script writes no file, needs no temp directory, and exits 0 on every path.
+Pinned by `tests/check-jq.bats`, which runs the command string registered in
+`hooks.json` from a working directory outside the checkout: silent with `jq` on
+`PATH`; with a cleared environment and a `PATH` holding no `jq`, exactly one
+JSON object, no raw ESC byte, `systemMessage` opening with the reset and naming
+`jq`, the `SessionStart` event name, `additionalContext` naming `jq`, empty
+stderr and exit 0; and the same stdout with `TMPDIR` naming a missing directory
+and with the BSD stubs ahead on `PATH`. No test pins the wording beyond the `jq`
+name.
 
 **Why the hook can see what the tool could not.** Hooks are run by the harness,
 not through the Bash tool, so they are outside the command sandbox; a stat from
