@@ -192,8 +192,8 @@ measured, not gated).
 
 **NFR-4 — Hermetic.** The hook writes nothing (it runs outside the sandbox,
 where `$TMPDIR` may be unset). It reads only what the result names: the
-repository holding a refused path, which can be a sibling worktree rather than
-the call's (else the payload `cwd`'s), and the lock paths the error text names.
+repository holding a refused path, possibly a sibling worktree rather than the
+call's, or with no path the payload `cwd`'s; and the lock paths the error names.
 Where · pinned by: `tests/hook.bats` and `tests/matchers.bats` run the hook and
 `detect` with `TMPDIR` naming a missing directory, `tests/hook-writes.bats` the
 hook through a real readonly-path and git-lock probe, `tests/probes-edges.bats`
@@ -295,9 +295,9 @@ maintained. Sending it to `craft` would split the retirement across two repos,
 one of which is read-only from here. As the plugin's only skill it is
 `sandbox-lies:sandbox-lies`; a second name would add nothing.
 
-*Rejected:* a home in `craft` or `prohibitions` — the wrong trigger axis, and
-`prohibitions` forbids actions where this enriches results; `sandbox-gotchas` or
-`sandbox-effects` as names — a catalogue, and the memory file's own name.
+*Rejected:* a home in `craft` (the wrong trigger axis) or `prohibitions` (it
+forbids actions; this enriches results); `sandbox-gotchas` or `sandbox-effects`
+as names — a catalogue, and the memory file's own name.
 
 **D-10 — Self-reference is handled at the document, not the matcher.** Every
 false positive in the corpus is this project reading its own artefacts back. The

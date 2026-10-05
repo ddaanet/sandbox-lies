@@ -18,13 +18,13 @@ alike: the Bash tool merges stderr into stdout in emission order, so
 by that merged output — byte-identical to the tool result the model sees. Both
 events carry `hook_event_name` and a `cwd`, which was the session's working
 directory; no recorded call changed directory, so where a `cd` inside the call
-leaves `cwd` is unrecorded. Open with it: in the main session the Bash tool
-keeps a top-level `cd` between calls (seen on CC 2.1.281), and whether the
-payload `cwd` then follows the persisted directory or stays the session's is not
-recorded. The lock probes and `readonly-path`'s probe resolve a relative path
-against that `cwd`, so the answer decides where they look. A sandboxed write
-refused by the allowlist carried no harness sandbox-violation annotation in the
-payload or in the model's tool result (L-5). A **probe** runs in the hook
+leaves `cwd` is unrecorded. A related question is open: in the main session the
+Bash tool keeps a top-level `cd` between calls (seen on CC 2.1.281), and whether
+the payload `cwd` then follows the persisted directory or stays the session's is
+not recorded. The lock probes and `readonly-path`'s probe resolve a relative
+path against that `cwd`, so the answer decides where they look. A sandboxed
+write refused by the allowlist carried no harness sandbox-violation annotation
+in the payload or in the model's tool result (L-5). A **probe** runs in the hook
 process, outside the sandbox, reads the same text on stdin with the flag, the
 payload `cwd` and `tool_input.command` as its arguments, and prints an outcome
 token on its first line followed by `key=value` lines. The **flag** is

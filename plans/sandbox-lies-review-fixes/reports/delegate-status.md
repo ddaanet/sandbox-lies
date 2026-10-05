@@ -47,8 +47,13 @@ lives under `.git/`).
   (§Decisions given), applied in session —
   `docs/references/rejected-alternatives.md`, design.md 399 lines — and Item 5.2
   committed. Item 5.3 done in session (`reports/item-5-3.md`; comment and
-  help-text edits only, reviewed by the Phase 5 corrector). Item 5.4, the Phase
-  5 checkpoint and the finish remain.
+  help-text edits only, reviewed by the Phase 5 corrector). Item 5.4 done: slice
+  1 RED, test review (added an absolute-path half that kills a cwd-keyed guard),
+  GREEN, code review (`reports/item-5-4-s1-*.md`); list revision: none (single
+  slice). The code review ran the lock probes on scratch input and found the
+  same newline `path=` forgery there (§Open question). Phase 5 checkpoint
+  `reports/phase-5-corrector.md` (Ready; five minor fixes; lifecycle audit
+  clean). The finish (review gate, tdd-audit) remains.
 
 ## Build decisions
 
@@ -138,6 +143,20 @@ lives under `.git/`).
   §Rejected alternatives list with a pointer to the node. D-8's move to
   `sandbox-state.md` stays. No other section reworded. Result: 399 lines.
 
+## Open question for my human partner
+
+- The lock probes' `path=` (`lib/probes.sh` `_probe_lock_at`, six print sites)
+  has the defect Item 5.4 fixed for readonly-path: a relative lock path joined
+  onto a newline-bearing payload cwd splits the `path=` line and forges key
+  lines the verdicts read (`age=` overwritten in `probe_git_lock`'s `orphan`
+  verdict; `path=` swapped in `verdict_config_lock`, turning the act into "write
+  `.claude/settings.json` through `update-config`"). Verified by running both
+  probes (`reports/item-5-4-s1-code-review.md` §Lock probes). The lock outcomes
+  have no `nopath`; the review's options: (1) keep the outcome and omit `path=`
+  when the path holds a newline (smallest; `lock-detectors.md`'s A-3 text
+  changes); (2) a pathless outcome token; (3) encode the newline. Asked before
+  the finish, since a fix in this job would be Item 5.5 ahead of it.
+
 ## Carry list
 
 - `craft:design-doc-writing` also wants a split to ship with loading
@@ -158,10 +177,15 @@ lives under `.git/`).
 
 ## Resume
 
-- **Last commit:** "Item 5.3 — comments and help text" (with this file).
-- **Exact step:** `/edify:build` §4, Phase 5 — Item 5.4 slice 1 RED next.
-- **Why stopped:** not stopped; build running.
+- **Last commit:** "Phase 5 checkpoint" (with this file).
+- **Exact step:** `/edify:build` §4.5 done for Phase 5 (the last phase); §5
+  finish not started.
+- **Why stopped:** approval gate — the lock-probe `path=` question (§Open
+  question) decides whether an Item 5.5 precedes the finish.
 - **Decisions given:** see §Decisions given.
-- **Next:** Item 5.4 (tdd, one slice: RED, test review, GREEN, code review);
-  Phase 5 checkpoint (`phase-5-corrector`); finish (review gate, tdd-audit).
+- **Next after the answer:** if taken, add Item 5.5 (tdd, one slice) to
+  `runbook.md` with the chosen option and run RED, test review, GREEN, code
+  review; then the finish (`references/finishing.md`: review gate, triage,
+  tdd-audit, completion). If not taken, add it to the carry list and go straight
+  to the finish.
 - **Carry list:** as above.

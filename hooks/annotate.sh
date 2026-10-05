@@ -6,21 +6,21 @@
 # whichever of tool_response.stdout and tool_response.stderr are strings,
 # joined by a newline, of a PostToolUse payload (D-13).
 #
-# One jq call reads stdin and cannot error on any input, so the hook writes
-# nothing to stderr while jq is on PATH (without it, bash itself prints a
-# command-not-found line there; the hook still exits 0, so Claude Code ignores
-# it, and hooks/check-jq.sh reports the missing jq at session start): `-Rs` takes it as one raw string and `fromjson?` decodes it,
-# dropping what does not parse; `select(type == "object")` drops a scalar or
-# array, which jq cannot index without a fatal error; only a string field is
-# read as text. The output is the event, the sandbox flag, the payload cwd,
-# `tool_input.command`, then each text part, each ending in a newline, which
-# is the join. The event is printed only when it equals one of the two
-# literal names, the flag is `true` or `false`, and the cwd and command each
-# have every backslash doubled and every newline written `\n` (undone by
-# `printf %b`; a non-string or absent command reads empty, as a non-object
-# `tool_input` also does), so the first four newlines are always the split
-# points for event/flag/cwd/command. NUL bytes are dropped in jq: bash drops
-# them from a `$(...)` too, but warns on stderr.
+# Without jq on PATH, bash itself prints a command-not-found line on stderr; the
+# hook still exits 0, so Claude Code ignores it, and hooks/check-jq.sh reports
+# the missing jq at session start. With jq, the hook writes nothing to stderr:
+# one jq call reads stdin and cannot error on any input. `-Rs` takes it as one
+# raw string and `fromjson?` decodes it, dropping what does not parse;
+# `select(type == "object")` drops a scalar or array, which jq cannot index
+# without a fatal error; only a string field is read as text. The output is the
+# event, the sandbox flag, the payload cwd, `tool_input.command`, then each text
+# part, each ending in a newline, which is the join. The event is printed only
+# when it equals one of the two literal names, the flag is `true` or `false`,
+# and the cwd and command each have every backslash doubled and every newline
+# written `\n` (undone by `printf %b`; a non-string or absent command reads
+# empty, as a non-object `tool_input` also does), so the first four newlines are
+# always the split points for event/flag/cwd/command. NUL bytes are dropped in
+# jq: bash drops them from a `$(...)` too, but warns on stderr.
 #
 # Writes nothing (NFR-4): no here-document, which bash before 5.1 spools
 # through a temp file.

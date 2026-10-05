@@ -9,7 +9,7 @@ in its §Rejected alternatives list otherwise.
 `unsandbox-git-status` plugin pre-approved anything chained beside the
 `git status` it rewrote. A `git *` exclusion needs no hook and approves nothing,
 but frees only a call whose every command it covers; git with `-C` or an
-absolute path argument stays sandboxed under it.
+absolute, `~`-led or `..`-bearing path argument stays sandboxed under it.
 
 **Prompt-based hooks.** Non-deterministic, a model call per Bash result, and the
 discriminators are exact strings a regex settles for free.
