@@ -6,7 +6,8 @@
 # its error text is built with helpers/probes, never a fixture's host path.
 # Proven by mutation: a mktemp call in annotate.sh's probe branch before the
 # probe call, and one at the top of _readonly_print_facts, each turn a case
-# here red.
+# here red. The restore-clause case drives the same real-probe payload from
+# a subdirectory cwd and pins the clause's absolute match= names (outline D3).
 
 bats_require_minimum_version 1.5.0
 

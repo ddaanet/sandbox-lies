@@ -273,6 +273,10 @@ Same D5 rule as Phase 2.
        prints whatever name it receives.
   - Docs (same item): `readonly-path.md` Probe facts table `match=` row and the
     restore clause's description.
+  - List revision (recorded at the Phase 4 checkpoint): the hook case landed
+    in `tests/hook-writes.bats`, `hook-candidates.bats` being near its cap and
+    its cases stubbing the probe; Item 5.2's "pinned by" for D3 names
+    `hook-writes.bats`.
 - Item 4.3: new `hooks/check-jq.sh`; `hooks/hooks.json` — outline D2's
   `SessionStart` check (Major 2). Tests in a new `tests/check-jq.bats`.
   Requirements: NFR-2, D-12, FR-1.

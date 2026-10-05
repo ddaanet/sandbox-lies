@@ -79,10 +79,11 @@ assignment, is not recognised. The scan does not parse `$( )`, backticks,
 subshells, braces or `$'…'`, so their contents read as words of the command
 around them; it stops at the end of a line holding `<<`, and after 16384
 characters, and neither cut command yields `readfile=`. A `>` anywhere in a word
-counts as output redirection, as do `sort -o` and `awk -i`. A candidate ref
-holding `@{`, `^{`, `:` or a leading `-` is skipped. With an unborn HEAD, or
-past 1000 files modified against HEAD, no `target=` is printed. A file matches
-byte for byte, before any clean filter, and never as a symlink.
+counts as output redirection, quoted or not, except a descriptor duplication
+(`2>&1`, `>&2`); so do `sort -o` and `awk -i`. A candidate ref holding `@{`,
+`^{`, `:` or a leading `-` is skipped. With an unborn HEAD, or past 1000 files
+modified against HEAD, no `target=` is printed. A file matches byte for byte,
+before any clean filter, and never as a symlink.
 
 The `readfile=` operand rule leaves these residuals, each shown by what the
 probe prints:

@@ -57,7 +57,7 @@ assert_merge_without_target() {
 # refresh and never writes — the pin would stay green on the defect it names.
 # diff-files (plumbing, no refresh) still listing d afterwards proves the
 # fixture was stat-dirty and that the probe left it so; target=feat and
-# match=a prove the file comparison ran, so d's absence is its own.
+# match=<repo>/a prove the file comparison ran, so d's absence is its own.
 @test "a tracked file stat-dirty with unchanged content never becomes a match, and the index is untouched" {
   local repo="$BATS_TEST_TMPDIR/scratch repo" text facts before_mtime
 

@@ -2,11 +2,12 @@
 # lib/probes-readonly.sh's probe_readonly_path: the fact-table members
 # (docs/references/readonly-path.md, Probe facts table) that
 # tests/probes-readonly-facts.bats and tests/probes-readonly-pins.bats leave
-# unpinned (review Major 6). Each case runs the probe on a `writable` refusal
-# and asserts exact lines. A negative assertion is paired, in the same case,
-# with the positive form that proves the fault under test is the only thing
-# withholding the line. Sections: merge subcommands, target= and match= for
-# switch, readfile names and readfile exclusions. The readfile operand rule
+# unpinned (review Major 6), and match='s absolute names (outline D3). Each
+# case runs the probe on a `writable` refusal, or a nopath one where it says
+# so, and asserts exact lines. A negative assertion is paired, in the same
+# case, with the positive form that proves the fault under test is the only
+# thing withholding the line. Sections: merge subcommands, target= and
+# match=, readfile names and readfile exclusions. The readfile operand rule
 # (outline D4) is in tests/probes-readonly-operands.bats.
 
 ROOT="${BATS_TEST_DIRNAME}/.."
@@ -39,7 +40,7 @@ setup() {
   done
 }
 
-# --- target= and match= for switch -----------------------------------------
+# --- target= and match= ----------------------------------------------------
 
 # switch is one of the three subcommands target= is attempted after; the
 # refused path is <repo>/a, so the search starts there and finds the repo.

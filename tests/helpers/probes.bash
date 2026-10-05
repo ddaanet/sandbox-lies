@@ -3,8 +3,8 @@
 # tests/probes-readonly-facts.bats, tests/probes-readonly-pins.bats,
 # tests/probes-readonly-members.bats and tests/probes-readonly-operands.bats: the
 # error builders, the `run` wrappers, the tools-only PATH, the lock holder,
-# the no-.git precondition, the readonly-path scratch repo and the index
-# mtime reader their probe cases use.
+# the no-.git precondition, the readonly-path scratch repo, the index mtime
+# reader and the no-readfile assertion their probe cases use.
 
 # Self-quiet (FR-11): git's lock error is built from two fragments at run
 # time, as lib/matchers.sh match_git_lock builds its follow-on, so no test

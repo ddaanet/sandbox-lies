@@ -126,7 +126,7 @@ _readonly_tokenize() {
 # with no output redirection and no writer form (sed -i/-I/--in-place,
 # sort -o/--output, awk -i/--include, uniq with a second operand); empty when
 # <cut> is 1, since the unscanned rest may hold a writer. Never an input
-# operand (outline D4): a word opening with -, unless a < in it redirects; the
+# operand: a word opening with -, unless a < in it redirects; the
 # first operand of grep, sed or awk, its pattern or program, unless an -e or
 # -f came earlier in the segment; the word after a separate -e or -f, its
 # argument. The name after a lone < is input, never the pattern. A `>`
@@ -224,7 +224,7 @@ _readonly_readfile_arg() {
                 grep:-[ef]?* | sed:-[ef]?* | awk:-[ef]?*) pat=0 ;;
             esac
         fi
-        # A word opening with - is an option, never input (outline D4), unless
+        # A word opening with - is an option, never input, unless
         # a < in it redirects from the name after it, as wc -l<x.log does.
         case "$word" in
             *"$nl"*) ;;

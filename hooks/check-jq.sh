@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# SessionStart hook (hooks/hooks.json), outline D2. Speaks only when `jq` is
-# not on PATH, because hooks/annotate.sh needs it and otherwise degrades with
-# no sign. The JSON is printed from fixed text, so the notice needs no `jq`.
+# SessionStart hook (hooks/hooks.json; D-12, docs/references/hook.md). Speaks
+# only when `jq` is not on PATH, because hooks/annotate.sh needs it and
+# otherwise degrades with no sign. The JSON is printed from fixed text, so the
+# notice needs no `jq`.
 # Stdin is ignored, nothing is written, the exit status is always 0.
 # `command -v`, not `type -P`: it resolves `jq` as annotate.sh's own call
 # will, so an exported function named `jq` counts as present.

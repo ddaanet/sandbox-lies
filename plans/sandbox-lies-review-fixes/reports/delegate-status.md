@@ -33,9 +33,12 @@ baseline lives under `.git/`).
   `tests/hook-writes.bats`), code review folding in the main session's
   security finding (a newline in the repository root split `match=` lines and
   forged key lines: guarded, pinned red-first) plus a trailing-slash `//` fix,
-  pinned by `item-4-2-s1-pins`; docs step `reports/item-4-2-docs.md`. Item
-  4.3, the Phase 4 corrector, Phase 5 and the finish (review gate, tdd-audit)
-  remain.
+  pinned by `item-4-2-s1-pins`; docs step `reports/item-4-2-docs.md`.
+- Phase 4 — Item 4.3 done: slices 1 and 2 (`reports/item-4-3-s{1,2}-*.md`;
+  `SessionStart` entry with no matcher and a 10 s timeout), docs step
+  `reports/item-4-3-docs.md`. Phase-4 corrector `reports/phase-4-corrector.md`
+  (Ready; six minor fixes, faults A–F run). Phase 5 and the finish (review
+  gate, tdd-audit) remain.
 
 ## Build decisions
 
