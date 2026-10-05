@@ -184,10 +184,13 @@ run_hook() {
   [ "$(printf '%s' "$output" | jq -r '.systemMessage')" = "$expected_sys" ]
 }
 
-@test "hooks.json names both events" {
-  # Exactly these two events (FR-1: no PreToolUse), each registered once, as
-  # the command hook.bats runs: `bash` on the plugin root's script.
-  run jq -e --arg cmd 'bash "${CLAUDE_PLUGIN_ROOT}/hooks/annotate.sh"' '
+@test "hooks.json names the three events" {
+  # Exactly these three events (FR-1: no PreToolUse). The two Bash events run
+  # `bash` on the plugin root's annotate.sh; SessionStart runs check-jq.sh
+  # once, with no matcher (it fires on every start source, so a clear or a
+  # compact re-injects the notice) and the annotate entries' 10 s timeout.
+  run jq -e --arg cmd 'bash "${CLAUDE_PLUGIN_ROOT}/hooks/annotate.sh"' \
+    --arg chk 'bash "${CLAUDE_PLUGIN_ROOT}/hooks/check-jq.sh"' '
     def one($k):
       (.hooks[$k] | length == 1)
       and (.hooks[$k][0].matcher == "Bash")
@@ -195,8 +198,16 @@ run_hook() {
       and (.hooks[$k][0].hooks[0].type == "command")
       and (.hooks[$k][0].hooks[0].timeout == 10)
       and (.hooks[$k][0].hooks[0].command == $cmd);
-    (.hooks | keys == ["PostToolUse", "PostToolUseFailure"])
+    (.hooks | keys == ["PostToolUse", "PostToolUseFailure", "SessionStart"])
     and one("PostToolUse") and one("PostToolUseFailure")
+    and (.hooks.SessionStart | length == 1)
+    and (.hooks.SessionStart[0] | keys == ["hooks"])
+    and (.hooks.SessionStart[0].hooks | length == 1)
+    and (.hooks.SessionStart[0].hooks[0] | keys
+      == ["command", "timeout", "type"])
+    and (.hooks.SessionStart[0].hooks[0].type == "command")
+    and (.hooks.SessionStart[0].hooks[0].timeout == 10)
+    and (.hooks.SessionStart[0].hooks[0].command == $chk)
   ' "$ROOT/hooks/hooks.json"
   [ "$status" -eq 0 ]
 }
