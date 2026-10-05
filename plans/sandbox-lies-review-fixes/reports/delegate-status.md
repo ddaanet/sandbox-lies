@@ -28,7 +28,12 @@ baseline lives under `.git/`).
   done (`reports/item-4-1-s4-*.md`; the code review fixed four missed uniq
   operands, pinned afterwards by a test-only dispatch with one mutation per
   run, `reports/item-4-1-s4-pins.md`); list revision after slice 4: none.
-  Docs step done (`reports/item-4-1-docs.md`). Item 4.1 complete. Items 4.2,
+  Docs step done (`reports/item-4-1-docs.md`). Item 4.1 complete.
+- Phase 4 — Item 4.2 done: slice 1 (`reports/item-4-2-s1-*.md`; hook case in
+  `tests/hook-writes.bats`), code review folding in the main session's
+  security finding (a newline in the repository root split `match=` lines and
+  forged key lines: guarded, pinned red-first) plus a trailing-slash `//` fix,
+  pinned by `item-4-2-s1-pins`; docs step `reports/item-4-2-docs.md`. Item
   4.3, the Phase 4 corrector, Phase 5 and the finish (review gate, tdd-audit)
   remain.
 
@@ -77,6 +82,16 @@ baseline lives under `.git/`).
   follow-up commit; every later dispatch is told to `git add` new files before
   the gate. The gate gap itself (`--others --exclude-standard`) is out of this
   job's scope — proposed for my human partner.
+
+## Open question for my human partner
+
+- Pre-existing, same class as the `match=` newline finding: a relative
+  refused path joined onto a newline-bearing payload cwd makes the probe's
+  `path=` line forge key lines (`reports/item-4-2-s1-code-review.md`,
+  Recommendations 1, verified there). The fix must choose what the probe
+  reports for a path it cannot print (`nopath`, or an outcome with no `path=`
+  line), which changes the A-3 contract. Not fixed; to be asked before the
+  finish.
 
 ## Carry list
 
