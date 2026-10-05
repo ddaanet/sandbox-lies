@@ -82,6 +82,34 @@ setup() {
   done
 }
 
+# A match= line carries the repository root, so a newline in the root's name
+# would split it and forge the key line after the newline (here readfile=).
+# Under nopath the root is the cwd's: a refused path comes off one line of
+# the text and cannot hold a newline. The sibling named with a blank where
+# the other has the newline gives the full fact list, so only the newline
+# withholds target= and match=; both outputs are compared whole.
+@test "a repository root holding a newline gives no target= or match=" {
+  local good="$BATS_TEST_TMPDIR/r readfile=x"
+  local bad="$BATS_TEST_TMPDIR/r"$'\n'"readfile=x" text expected
+  make_scratch_repo "$good"
+  make_scratch_repo "$bad"
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "")
+
+  run_probe_command probe_readonly_path false "$good" 'git merge feat' \
+    "$text"
+  expected=$(printf '%s\n' nopath merge=1 target=feat "match=$good/a" \
+    "match=$good/b" "match=$good/e f")
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "$output" = "$expected" ]
+
+  run_probe_command probe_readonly_path false "$bad" 'git merge feat' \
+    "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "$output" = $'nopath\nmerge=1' ]
+}
+
 # --- readfile names --------------------------------------------------------
 
 # *.out and *.err are command-output names beside *.log and *.output.

@@ -96,7 +96,9 @@ _readonly_partial_checkout_text() {
 # holding a .git entry (worktree or gitlink); empty, exit 1, when none
 # exists up to /. A relative <dir> joins onto $PWD first, as
 # _probe_readonly_resolve joins a relative cwd: stripping /-suffixes from a
-# relative name would never reach /. One `[ -e ]` per ancestor, no process.
+# relative name would never reach /. Trailing slashes go before the walk, so
+# the root printed and joined into match=<repo>/<file> never ends in one
+# (bar / itself). One `[ -e ]` per ancestor, no process.
 _readonly_git_dir() {
     local dir="$1"
     [ -n "$dir" ] || return 1
@@ -104,6 +106,10 @@ _readonly_git_dir() {
         /*) ;;
         *) dir="$PWD/$dir" ;;
     esac
+    while [ "${dir%/}" != "$dir" ]; do
+        dir="${dir%/}"
+    done
+    [ -n "$dir" ] || dir=/
     while :; do
         if [ -e "$dir/.git" ]; then
             printf '%s\n' "$dir"
@@ -120,7 +126,8 @@ _readonly_git_dir() {
 # regular file differing from HEAD in the working tree, staged or not, whose
 # bytes equal the target's blob (readonly-path.md's target= and match=), named
 # by absolute path so the verdict's clause reads from any cwd; nothing when no
-# candidate resolves. A subshell, so the environment edits stay here:
+# candidate resolves or <repo> holds a newline. A subshell, so the
+# environment edits stay here:
 # repository variables inherited from the hook's own environment (a claude
 # started inside a git hook) would point every read at another repository.
 #
@@ -146,6 +153,13 @@ _readonly_repo_facts() (
     local i=0 j=0 out=''
     local -a names=() files=() heads=() shas=() tpaths=() tshas=()
     shift
+    # Every match= line opens with <repo>: a newline in it would split the
+    # line and forge the key line after it, as for a file name below. A
+    # refused path comes off one line of the text, so only the cwd, joined
+    # on or fallen back to, can bring one.
+    case "$repo" in
+        *$'\n'*) return 0 ;;
+    esac
     unset GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_CONFIG GIT_CONFIG_PARAMETERS \
         GIT_CONFIG_COUNT GIT_OBJECT_DIRECTORY GIT_DIR GIT_WORK_TREE \
         GIT_IMPLICIT_WORK_TREE GIT_GRAFT_FILE GIT_INDEX_FILE \
