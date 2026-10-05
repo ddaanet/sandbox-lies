@@ -33,14 +33,14 @@ _probes_lib_dir=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd) ||
 unset _probes_lib_dir
 
 # probe_readonly_path <flag> <cwd> <command> — A-3 contract for
-# readonly-path: line 1 `writable`, `readonly` or `nopath` (also when the
-# resolved path holds a newline, which is never printed), then `path=`
-# when a path was extracted, then — under `writable` and `nopath` only —
-# the facts _readonly_print_facts derives from the result text and
-# <command>. <flag> is part of the interface but unread here: whether the
-# hook calls this probe at all is the candidate's flag policy
-# (docs/references/readonly-path.md), decided before the probe runs, not inside
-# it.
+# readonly-path: line 1 `writable`, `readonly` or `nopath` (no path
+# extracted, or the resolved path holds a newline, which is never
+# printed), then `path=` under `writable` and `readonly` only, then —
+# under `writable` and `nopath` only — the facts _readonly_print_facts
+# derives from the result text and <command>. <flag> is part of the
+# interface but unread here: whether the hook calls this probe at all is
+# the candidate's flag policy (docs/references/readonly-path.md), decided
+# before the probe runs, not inside it.
 probe_readonly_path() {
     local cwd="${2-}" command="${3-}" text path target outcome
     text=$(cat)
