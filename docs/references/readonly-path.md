@@ -48,7 +48,7 @@ under `git -C` the path is wrong, and one whose parent is missing reads
 |---|---|
 | `writable` | writable outside the sandbox |
 | `readonly` | not writable outside either |
-| `nopath` | no path extracted |
+| `nopath` | no path extracted, or the resolved path holds a newline |
 
 The probe also takes the payload's `tool_input.command` as its third argument
 and, under `writable` and `nopath`, prints the facts the verdict's acts depend

@@ -33,7 +33,8 @@ _probes_lib_dir=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd) ||
 unset _probes_lib_dir
 
 # probe_readonly_path <flag> <cwd> <command> — A-3 contract for
-# readonly-path: line 1 `writable`, `readonly` or `nopath`, then `path=`
+# readonly-path: line 1 `writable`, `readonly` or `nopath` (also when the
+# resolved path holds a newline, which is never printed), then `path=`
 # when a path was extracted, then — under `writable` and `nopath` only —
 # the facts _readonly_print_facts derives from the result text and
 # <command>. <flag> is part of the interface but unread here: whether the
@@ -48,12 +49,14 @@ probe_readonly_path() {
     # running under set -e still gets nopath.
     path=$(printf '%s\n' "$text" | _readonly_path_line \
         | _probe_readonly_path_from_line)
-    if [ -z "$path" ]; then
+    path=$(_probe_readonly_resolve "$path" "$cwd")
+    # A newline in the resolved path (a relative path joined onto a
+    # newline-bearing cwd) would split the path= line and forge key lines.
+    if [ -z "$path" ] || [[ $path == *$'\n'* ]]; then
         printf '%s\n' nopath
         _readonly_print_facts "$text" "$command" "" "$cwd"
         return 0
     fi
-    path=$(_probe_readonly_resolve "$path" "$cwd")
     target="$path"
     # Absent, a dangling symlink included (`-w` follows the link and would
     # read it unwritable whatever its directory allows): the parent decides,

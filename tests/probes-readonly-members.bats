@@ -130,6 +130,39 @@ setup() {
   [ "$output" = $'nopath\nmerge=1' ]
 }
 
+# A relative refused path is joined onto the payload cwd, so a newline in the
+# cwd's name would split the path= line and forge the key line after the
+# newline (here readfile=). A resolved path holding a newline is nopath, and
+# nopath prints no path= line. The sibling named with a blank where the other
+# has the newline gives writable and path=, so a guard dropping blanks too
+# fails; the absolute refused path $good/a under the newline cwd gives the
+# same, so a guard keyed on the cwd rather than the resolved path fails. All
+# three outputs are compared whole; cat build.out gives readfile=build.out
+# under each.
+@test "a resolved refused path holding a newline gives nopath, not path=" {
+  local good="$BATS_TEST_TMPDIR/r readfile=x"
+  local bad="$BATS_TEST_TMPDIR/r"$'\n'"readfile=x" text expected
+  mkdir "$good" "$bad"
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'a'")
+  expected=$(printf '%s\n' writable "path=$good/a" readfile=build.out)
+
+  run_probe_command probe_readonly_path false "$good" 'cat build.out' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "$output" = "$expected" ]
+
+  run_probe_command probe_readonly_path false "$bad" 'cat build.out' \
+    "$(readonly_path_text fire-readonly-path-cp-tmp "'$good/a'")"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "$output" = "$expected" ]
+
+  run_probe_command probe_readonly_path false "$bad" 'cat build.out' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "$output" = $'nopath\nreadfile=build.out' ]
+}
+
 # --- readfile names --------------------------------------------------------
 
 # *.out and *.err are command-output names beside *.log and *.output.
