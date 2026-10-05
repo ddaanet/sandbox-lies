@@ -391,6 +391,10 @@ Same D5 rule as Phase 2.
     nothing reads that variable, and `detectors.md` accepts it as a residual.
   - `lib/probes.sh`: the header's probe contract gains `tool_input.command` as
     `$3`.
+  - `hooks/annotate.sh`: its header's claim that nothing reaches stderr — with
+    `jq` absent, bash prints a command-not-found line there (exit 0, so Claude
+    Code ignores it); say so (List revision after Item 4.3 slice 2, from its
+    code review).
   - `justfile`: `just --list` describes `precommit` as
     `Checks that run before every commit.` (the comment block reordered, or a
     `[doc(...)]` attribute; just 1.46 supports both).
