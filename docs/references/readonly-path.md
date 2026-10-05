@@ -57,7 +57,7 @@ on. The command shapes the wording only; detection never reads it (D-1).
 | `merge=1` | a git segment of the command runs `merge`, `pull`, `checkout`, `switch`, `rebase` or `cherry-pick`, after any global options; or `partial=1` is printed |
 | `partial=1` | the text holds git's partial-checkout error, `unable to unlink old`, `unable to create file` or `cannot create directory at`, under any command |
 | `target=<ref>` | with `merge=1`: the first word after a `merge`, `checkout` or `switch` subcommand, before any `--`, that resolves to a commit |
-| `match=<file>` | with `target=`: one line per file modified against HEAD, staged or not, whose working-tree content equals the target's |
+| `match=<repo>/<file>` | with `target=`: one line per file modified against HEAD, staged or not, whose working-tree content equals the target's, named by absolute path — the repository root, trailing slashes stripped, then the file's name within it |
 | `readfile=<path>` | every command in the call's pipelines and lists is a reader — `cat`, `head`, `tail`, `grep`, `sed` without in-place editing, `awk`, `cut`, `sort`, `uniq` without a second operand, `wc`, `tr`, `less` — with no output redirection, and an input-file operand or `<` target has a command-output name: `*.log`, `*.output`, `*.out`, `*.err`; the first such. Never an input operand: a word opening with `-`; the first operand of `grep`, `sed` or `awk`, the pattern or program, unless an `-e` or `-f` came earlier in the segment; the word after a separate `-e` or `-f` |
 
 The repository for `target=` and `match=` is the one holding the path's nearest
@@ -71,16 +71,18 @@ lines, which a finished checkout leaves none of. A partial checkout whose text
 lost git's error — cut by a `tail`, or sent to a file — and whose target does
 not resolve gets no clause. `partial=1` does not check which git command printed
 the error, so a `stash` or `restore` dying on the same error counts too. A file
-whose name holds a newline is never a `match=` or a `readfile=`; a reader behind
-a `cd`, or a reader or git behind a variable assignment, is not recognised. The
-scan does not parse `$( )`, backticks, subshells, braces or `$'…'`, so their
-contents read as words of the command around them; it stops at the end of a line
-holding `<<`, and after 16384 characters, and neither cut command yields
-`readfile=`. A `>` anywhere in a word counts as output redirection, as do
-`sort -o` and `awk -i`. A candidate ref holding `@{`, `^{`, `:` or a leading `-`
-is skipped. With an unborn HEAD, or past 1000 files modified against HEAD, no
-`target=` is printed. A file matches byte for byte, before any clean filter, and
-never as a symlink.
+whose name holds a newline is never a `match=` or a `readfile=`, and a
+repository root holding one gives no `target=` or `match=` at all: either would
+split a `match=` line and forge the key line after it. A repository at `/` gives
+`match=//<file>`. A reader behind a `cd`, or a reader or git behind a variable
+assignment, is not recognised. The scan does not parse `$( )`, backticks,
+subshells, braces or `$'…'`, so their contents read as words of the command
+around them; it stops at the end of a line holding `<<`, and after 16384
+characters, and neither cut command yields `readfile=`. A `>` anywhere in a word
+counts as output redirection, as do `sort -o` and `awk -i`. A candidate ref
+holding `@{`, `^{`, `:` or a leading `-` is skipped. With an unborn HEAD, or
+past 1000 files modified against HEAD, no `target=` is printed. A file matches
+byte for byte, before any clean filter, and never as a symlink.
 
 The `readfile=` operand rule leaves these residuals, each shown by what the
 probe prints:
@@ -150,7 +152,10 @@ leads into it, lowercase. With `merge=1`, the probe's facts select the clause:
 
 - `match=` lines — The merge or checkout left files at the target with HEAD
   unmoved, blocking a re-run: restore `<a>`, `<b>` from HEAD — they match
-  `<target>` —, then *act*. Five names at most, then `and N more`.
+  `<target>` —, then *act*. Five names at most, then `and N more`. Each name is
+  its `match=` line's absolute path, so the clause names the same files from any
+  working directory; a backtick in a name closes its code span early, bytes
+  intact.
 - no `target=`, and `partial=1` — The merge or checkout left the files it wrote
   with HEAD unmoved, blocking a re-run: restore them from HEAD, then *act*.
 - `target=` and no `match=` — no clause: nothing sits at the target to restore.
