@@ -40,14 +40,15 @@ lives under `.git/`).
   (Ready; six minor fixes, faults A–F run).
 - Phase 5 — Item 5.1 done on the second dispatch under the revised D1
   (`reports/item-5-1-r2.md`, commit "Item 5.1 — skill exclusion rule per revised
-  D1"; post-item gate clean). Item 5.2 **blocked, uncommitted**: every bullet is
-  edited in the working tree (`reports/item-5-2.md`, untracked; new untracked
-  node `docs/references/sandbox-state.md` holding D-8's argument), but
-  `docs/design.md` is at 417 lines after the D-8 move-out (398 before; the
-  item's additions took it to 422, the move saved 5). The item says stop and
-  report: a further move-out is a design call. `just precommit` fails only on
-  that cap, so nothing can be committed until it is settled. Items 5.3, 5.4, the
-  Phase 5 checkpoint and the finish remain.
+  D1"; post-item gate clean). Item 5.2 done (`reports/item-5-2.md`, with an
+  orchestrator addendum): the dispatch stopped at the item's own stop condition,
+  `docs/design.md` at 417 lines after moving D-8's argument to
+  `docs/references/sandbox-state.md`; my human partner chose option (a′)
+  (§Decisions given), applied in session —
+  `docs/references/rejected-alternatives.md`, design.md 399 lines — and Item 5.2
+  committed. Item 5.3 done in session (`reports/item-5-3.md`; comment and
+  help-text edits only, reviewed by the Phase 5 corrector). Item 5.4, the Phase
+  5 checkpoint and the finish remain.
 
 ## Build decisions
 
@@ -157,12 +158,10 @@ lives under `.git/`).
 
 ## Resume
 
-- **Last commit:** "Item 5.2 — docs for exclusion rule, jq check and doc minors"
-  (with this file).
-- **Exact step:** `/edify:build` §4, Phase 5 — Item 5.3 next.
+- **Last commit:** "Item 5.3 — comments and help text" (with this file).
+- **Exact step:** `/edify:build` §4, Phase 5 — Item 5.4 slice 1 RED next.
 - **Why stopped:** not stopped; build running.
 - **Decisions given:** see §Decisions given.
-- **Next:** Item 5.3; Item 5.4 (tdd, one slice: RED, test review, GREEN, code
-  review); Phase 5 checkpoint (`phase-5-corrector`); finish (review gate,
-  tdd-audit).
+- **Next:** Item 5.4 (tdd, one slice: RED, test review, GREEN, code review);
+  Phase 5 checkpoint (`phase-5-corrector`); finish (review gate, tdd-audit).
 - **Carry list:** as above.

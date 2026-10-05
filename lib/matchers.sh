@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Candidate sandbox-symptom matchers for the detector pilot.
+# The shipped sandbox-symptom matchers, one per detector
+# (docs/references/detectors.md and its per-detector nodes).
 #
 # Each matcher reads a Bash tool result on stdin and exits 0 when the symptom
 # is present, 1 when it is not. `detect` runs the set and prints one verdict
@@ -87,9 +88,10 @@ match_config_lock() {
 # corpus hits was genuine, across eight repos, and about half were incidental
 # `ls -la` where the agent was not investigating the sandbox at all.
 #
-# A real character device in a listing (`ls -la /dev`) would also match; no
-# such call exists in the corpus, and anchoring the hook to CLAUDE_PROJECT_DIR
-# closes it.
+# A real character device in a listing (`ls -la /dev`) would also match. That
+# false positive is an accepted residual: no such call exists in the corpus,
+# nothing narrows the matcher to the project root, and
+# docs/references/detectors.md names it.
 match_phantom_chardev() {
     grep -qE '^[[:space:]]*c[rwx-]{9}[.+@]?[[:space:]]'
 }

@@ -6,8 +6,10 @@
 # whichever of tool_response.stdout and tool_response.stderr are strings,
 # joined by a newline, of a PostToolUse payload (D-13).
 #
-# One jq call reads stdin and cannot error on any input, so nothing reaches
-# stderr: `-Rs` takes it as one raw string and `fromjson?` decodes it,
+# One jq call reads stdin and cannot error on any input, so the hook writes
+# nothing to stderr while jq is on PATH (without it, bash itself prints a
+# command-not-found line there; the hook still exits 0, so Claude Code ignores
+# it, and hooks/check-jq.sh reports the missing jq at session start): `-Rs` takes it as one raw string and `fromjson?` decodes it,
 # dropping what does not parse; `select(type == "object")` drops a scalar or
 # array, which jq cannot index without a fatal error; only a string field is
 # read as text. The output is the event, the sandbox flag, the payload cwd,

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # lib/probes.sh — probe_<verdict> functions the hook runs outside the sandbox
 # (A-3 contract, docs/design.md FR-4): each probe reads the Bash tool result
-# text on stdin, takes the sandbox flag as $1 and the payload cwd as $2, and
+# text on stdin, takes the sandbox flag as $1, the payload cwd as $2 and the
+# payload's `tool_input.command` as $3 (read by probe_readonly_path only), and
 # prints an outcome token on its first line followed by key=value lines
 # (pid=, bytes=, age=, path=); exit 0.
 #

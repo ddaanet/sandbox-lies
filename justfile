@@ -1,8 +1,9 @@
 import 'plugin-dev/release.just'
 
-# Checks that run before every commit. Each check runs through `report`, which
-# records its name; a clean run ends with the list of checks that passed, and a
-# failing one stops at that check with the check's own output.
+# Each check runs through `report`, which records its name; a clean run ends
+# with the list of checks that passed, and a failing one stops at that check
+# with the check's own output.
+[doc('Checks that run before every commit.')]
 precommit:
     #!/usr/bin/env bash
     set -euo pipefail
