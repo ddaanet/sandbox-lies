@@ -298,7 +298,11 @@ Same D5 rule as Phase 2.
     - `hooks/hooks.json` `SessionStart` — one command hook,
       `bash "${CLAUDE_PLUGIN_ROOT}/hooks/check-jq.sh"`; Item 5.2 documents it.
   - Docs (same item): `docs/references/hook.md` registration and the script's
-    role.
+    role. List revision after slice 1: the registration has no `matcher` (it
+    fires on every `SessionStart` source, so a `clear` or `compact` re-issues
+    the notice) and a 10 s `timeout`, as the slice-1 test review decided;
+    hook.md and Item 5.2's `docs/design.md` NFR-3 and Architecture block say
+    so.
 
 ## Phase 5: prose (type: general)
 
