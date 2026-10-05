@@ -270,11 +270,11 @@ partial_checkout_mkdir_error() {
   [ "${facts%%$'\n'*}" = writable ]
   printf '%s\n' "$facts" | grep -qxF 'merge=1'
   printf '%s\n' "$facts" | grep -qxF 'target=feat'
-  printf '%s\n' "$facts" | grep -qxF 'match=a'
-  printf '%s\n' "$facts" | grep -qxF 'match=b'
-  printf '%s\n' "$facts" | grep -qxF 'match=e f'
-  run ! grep -qxF 'match=c' <<<"$facts"
-  run ! grep -qxF 'match=d' <<<"$facts"
+  printf '%s\n' "$facts" | grep -qxF "match=$repo/a"
+  printf '%s\n' "$facts" | grep -qxF "match=$repo/b"
+  printf '%s\n' "$facts" | grep -qxF "match=$repo/e f"
+  run ! grep -qxF "match=$repo/c" <<<"$facts"
+  run ! grep -qxF "match=$repo/d" <<<"$facts"
 }
 
 @test "an unresolvable ref gives merge=1 and no target" {
@@ -311,7 +311,7 @@ partial_checkout_mkdir_error() {
   [ -z "$stderr" ]
   [ "${output%%$'\n'*}" = writable ]
   printf '%s\n' "$output" | grep -qxF 'target=feat'
-  printf '%s\n' "$output" | grep -qxF 'match=a'
+  printf '%s\n' "$output" | grep -qxF "match=$repo/a"
 }
 
 @test "nopath falls back to the cwd's repository" {
@@ -326,7 +326,7 @@ partial_checkout_mkdir_error() {
   [ -z "$stderr" ]
   [ "${output%%$'\n'*}" = nopath ]
   printf '%s\n' "$output" | grep -qxF 'target=feat'
-  printf '%s\n' "$output" | grep -qxF 'match=a'
+  printf '%s\n' "$output" | grep -qxF "match=$repo/a"
 }
 
 # The facts through BSD grep, sed, stat and wc (NFR-2): one call per kind of
@@ -345,8 +345,8 @@ partial_checkout_mkdir_error() {
   [ -z "$stderr" ]
   [ "${output%%$'\n'*}" = writable ]
   printf '%s\n' "$output" | grep -qxF 'target=feat'
-  printf '%s\n' "$output" | grep -qxF 'match=a'
-  printf '%s\n' "$output" | grep -qxF 'match=e f'
+  printf '%s\n' "$output" | grep -qxF "match=$repo/a"
+  printf '%s\n' "$output" | grep -qxF "match=$repo/e f"
 
   text=$(readonly_path_text fire-readonly-path-cp-tmp "")
   PATH="$bsd:$PATH" run_probe_command probe_readonly_path false \

@@ -116,10 +116,11 @@ _readonly_git_dir() {
 }
 
 # _readonly_repo_facts <repo> <candidate...> — target= for the first
-# <candidate> naming a commit in <repo>, then match=<file> for each regular
-# file differing from HEAD in the working tree, staged or not, whose bytes
-# equal the target's blob (readonly-path.md's target= and match=); nothing when
-# no candidate resolves. A subshell, so the environment edits stay here:
+# <candidate> naming a commit in <repo>, then match=<repo>/<file> for each
+# regular file differing from HEAD in the working tree, staged or not, whose
+# bytes equal the target's blob (readonly-path.md's target= and match=), named
+# by absolute path so the verdict's clause reads from any cwd; nothing when no
+# candidate resolves. A subshell, so the environment edits stay here:
 # repository variables inherited from the hook's own environment (a claude
 # started inside a git hook) would point every read at another repository.
 #
@@ -240,7 +241,7 @@ _readonly_repo_facts() (
         if [ "${tpaths[$j]}" = "${files[$i]}" ]; then
             if [ "${shas[$i]}" = "${tshas[$j]}" ] \
                 && [ "${shas[$i]}" != "${heads[$i]}" ]; then
-                out="${out}match=${files[$i]}"$'\n'
+                out="${out}match=${repo}/${files[$i]}"$'\n'
             fi
             i=$((i + 1))
             j=$((j + 1))

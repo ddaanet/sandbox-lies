@@ -78,9 +78,9 @@ assert_merge_without_target() {
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
   printf '%s\n' "$facts" | grep -qxF 'target=feat'
-  printf '%s\n' "$facts" | grep -qxF 'match=a'
+  printf '%s\n' "$facts" | grep -qxF "match=$repo/a"
   git -C "$repo" diff-files --name-only | grep -qxF d
-  run ! grep -qxF 'match=d' <<<"$facts"
+  run ! grep -qxF "match=$repo/d" <<<"$facts"
 }
 
 # `git pull` has no candidate word after its subcommand, so
@@ -198,7 +198,7 @@ assert_merge_without_target() {
   run_probe_command probe_readonly_path false "$repo" 'git merge feat' "$text"
   [ "$status" -eq 0 ]
   printf '%s\n' "$output" | grep -qxF 'target=feat'
-  printf '%s\n' "$output" | grep -qxF 'match=f1000'
+  printf '%s\n' "$output" | grep -qxF "match=$repo/f1000"
 }
 
 # make_merge_pass_repo <repo> — main holds x and z; feat changes z; HEAD at
@@ -235,7 +235,7 @@ make_merge_pass_repo() {
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
   printf '%s\n' "$output" | grep -qxF 'target=feat'
-  printf '%s\n' "$output" | grep -qxF 'match=z'
+  printf '%s\n' "$output" | grep -qxF "match=$repo/z"
 }
 
 # The other side: x is a file in the working tree and a directory at feat,
@@ -261,7 +261,7 @@ make_merge_pass_repo() {
   [ -z "$stderr" ]
   git -C "$repo" ls-tree -r --name-only feat -- x | grep -qxF x/y
   printf '%s\n' "$output" | grep -qxF 'target=feat'
-  printf '%s\n' "$output" | grep -qxF 'match=z'
+  printf '%s\n' "$output" | grep -qxF "match=$repo/z"
 }
 
 # Critical Issue 1: the tokenizer stops at 16384 characters, and a cut scan

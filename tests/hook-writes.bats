@@ -107,3 +107,20 @@ run_spied() {
   [ "$output" = "$expected" ]
   [ ! -e "$SPY_CALLS" ] || { cat "$SPY_CALLS" >&2; return 1; }
 }
+
+# The restore clause names the matching files by absolute path, from a
+# payload whose cwd is a subdirectory of the repo: real probe, flag absent.
+@test "hook restore clause names the match by absolute path" {
+  local repo="$BATS_TEST_TMPDIR/repo" ctx
+  make_scratch_repo "$repo"
+  mkdir "$repo/sub"
+  readonly_payload_file "$repo"
+  jq --arg c "$repo/sub" '.cwd = $c' "$PAYLOAD_FILE" >"$PAYLOAD_FILE.sub"
+
+  run bash "$HOOK_COPY/hooks/annotate.sh" <"$PAYLOAD_FILE.sub"
+
+  [ "$status" -eq 0 ]
+  ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  printf '%s' "$ctx" | grep -qF "restore \`$repo/a\`, \`$repo/b\`, \`$repo/e f\` from HEAD"
+}

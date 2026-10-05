@@ -43,7 +43,7 @@ setup() {
 
 # switch is one of the three subcommands target= is attempted after; the
 # refused path is <repo>/a, so the search starts there and finds the repo.
-@test "git switch feat in a scratch repo gives target=feat and match=a" {
+@test "git switch feat in a scratch repo gives target=feat and an absolute match=" {
   local repo="$BATS_TEST_TMPDIR/scratch repo" text
   make_scratch_repo "$repo"
   text=$(readonly_path_text fire-readonly-path-cp-tmp "'$repo/a'")
@@ -55,7 +55,31 @@ setup() {
   [ -z "$stderr" ]
   printf '%s\n' "$output" | grep -qxF 'merge=1'
   printf '%s\n' "$output" | grep -qxF 'target=feat'
-  printf '%s\n' "$output" | grep -qxF 'match=a'
+  printf '%s\n' "$output" | grep -qxF "match=$repo/a"
+}
+
+# The name is absolute: <repo>/<name>, the repository root joined on, never
+# the cwd <repo>/sub nor the refused path's directory (<repo>/sub for the
+# second refused path). merge is one of the three subcommands target= is
+# attempted after. a, b and `e f` sit at feat's blob and differ from HEAD; c
+# is edited to a third value and d equals HEAD. The match= lines are compared
+# whole, so a bare name printed beside the absolute one fails too.
+@test "match= names are absolute from a subdirectory cwd" {
+  local repo="$BATS_TEST_TMPDIR/scratch repo" text refused expected
+  make_scratch_repo "$repo"
+  mkdir "$repo/sub"
+  expected=$(printf 'match=%s\n' "$repo/a" "$repo/b" "$repo/e f")
+
+  for refused in "$repo/a" "$repo/sub/x"; do
+    text=$(readonly_path_text fire-readonly-path-cp-tmp "'$refused'")
+    run_probe_command probe_readonly_path false "$repo/sub" \
+      'git merge feat' "$text"
+
+    [ "$status" -eq 0 ]
+    [ -z "$stderr" ]
+    [ "${output%%$'\n'*}" = writable ]
+    [ "$(printf '%s\n' "$output" | grep '^match=')" = "$expected" ]
+  done
 }
 
 # --- readfile names --------------------------------------------------------
@@ -155,7 +179,7 @@ setup() {
   [ -z "$stderr" ]
   printf '%s\n' "$output" | grep -qxF 'merge=1'
   printf '%s\n' "$output" | grep -qxF 'target=feat'
-  printf '%s\n' "$output" | grep -qxF 'match=a'
+  printf '%s\n' "$output" | grep -qxF "match=$repo/a"
 
   text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
   PATH="$bsd:$PATH" run_probe_command probe_readonly_path false \
