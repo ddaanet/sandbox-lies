@@ -10,3 +10,6 @@ __pycache__/
 .claude/handoff-session
 
 .venv/
+
+# The dogfood copy plugin-dev/bin/claude loads (D-16).
+/dist/plugin/

@@ -13,12 +13,13 @@ precommit:
         "$@"
         passed="${passed:+$passed, }$name"
     }
-    # Tracked paths matching the pathspecs, NUL-delimited through a file so
+    # Tracked and untracked-unignored paths matching the pathspecs, so a new
+    # file is linted before its first commit, NUL-delimited through a file so
     # names with whitespace survive and a git failure stops the gate.
     list=$(mktemp "${TMPDIR:-/tmp}/sandbox-lies-precommit.XXXXXX")
     trap 'rm -f "$list"' EXIT
     tracked() {
-        git ls-files -z -- "$@" >"$list"
+        git ls-files -z --cached --others --exclude-standard -- "$@" >"$list"
         files=()
         while IFS= read -r -d '' f; do files+=("$f"); done <"$list"
     }
@@ -28,7 +29,7 @@ precommit:
     }
     report plugin.json jq empty .claude-plugin/plugin.json
     report hooks.json jq empty hooks/hooks.json
-    tracked '*.sh' '*.bash' '*.bats' '.bin/*'
+    tracked '*.sh' '*.bash' '*.bats'
     report shellcheck shellcheck "${files[@]}"
     tracked '*.sh'
     report 'bash -n' each_bash_n "${files[@]}"

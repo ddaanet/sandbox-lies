@@ -228,3 +228,15 @@ line next, and a subshell last, since a git inside one misses an honoured
 exclusion. The description also gained triggers for a `claude -p` run for a
 `SessionStart` side effect and for a slash command's context block, and the
 hub's node pointers became links the link check resolves.
+
+## 2026-10-05 — dogfood through the toolkit's shim
+
+The release toolkit moved to 0.9.0, which ships a `claude` shim at
+`plugin-dev/bin/claude`. It loads the plugin from a copy synced to
+`dist/plugin/` rather than from the working tree. The hand-copied `.bin/claude`
+went, and with it `tests/shim.bats` and the BSD `paste` stub only that suite
+used. Under `--plugin-dir` on the checkout, an agent's Write or Edit there often
+got no permission verdict at all, so edits had to be routed through scripts.
+D-16 now names the toolkit's shim. The precommit lint now covers untracked,
+unignored files too: a new bats file had reached a commit failing shellcheck,
+because the gate listed tracked files only.

@@ -198,7 +198,6 @@ lib/probes.sh           probe_<verdict> functions   (layer 3)
 lib/probes-readonly*.sh probe_readonly_path, its D-17 facts and command scan
 lib/verdicts.sh         agent paragraph + human line per verdict
 skills/sandbox-lies/    the symptom-less knowledge
-.bin/claude             dev shim: `--plugin-dir` this checkout (D-16)
 tests/                  matchers, hook, probes, verdicts, docs; fixtures/
 scripts/run-bats.sh     failure-only bats wrapper
 scripts/check-*.sh      line-limit and link gates, NFR-5
@@ -317,11 +316,15 @@ floor was rejected: on two- and four-hit bases a single hit swings precision by
 tens of points, so the number would gate on noise while the classification names
 what actually fired.
 
-**D-16 — Dogfood through a `--plugin-dir` shim.** `.bin/claude` prepends
-`--plugin-dir <this checkout>` and chains to the next `claude` on `PATH` with
-its own directory stripped, and `.envrc` adds `.bin` last so it sits ahead of
-the gitlore launcher. The marketplace route clones with submodules and aborts on
-the memory submodule's relative url, and the flag typed by hand is forgotten.
+**D-16 — Dogfood through the toolkit's shim.** `plugin-dev/bin/claude`, vendored
+with the release toolkit, syncs the plugin into `dist/plugin/` at launch (and on
+`just dogfood`) and chains to the next `claude` on `PATH` with that copy as its
+plugin dir; `.envrc` adds `plugin-dev/bin` last so it sits ahead of the gitlore
+launcher. The marketplace route clones with submodules and aborts on the memory
+submodule's relative url, and the flag typed by hand is forgotten. Loading the
+working tree itself, as the earlier `.bin/claude` shim did with `--plugin-dir`,
+left agent edits in the checkout without a permission verdict and ran
+half-edited hook scripts.
 
 **D-17 — The script decides conditions.** Text a hook emits for the agent
 carries no conditional the script could evaluate itself. The probe or the

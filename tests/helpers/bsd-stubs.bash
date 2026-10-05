@@ -18,7 +18,6 @@ make_bsd_stubs() {
       grep)   _bsd_stub_grep "$dir/grep" "$real" ;;
       stat)   _bsd_stub_stat "$dir/stat" "$real" ;;
       wc)     _bsd_stub_wc "$dir/wc" "$real" ;;
-      paste)  _bsd_stub_paste "$dir/paste" "$real" ;;
       *)      echo "make_bsd_stubs: no stub for $tool" >&2; return 1 ;;
     esac
     chmod 755 "$dir/$tool"
@@ -147,38 +146,6 @@ if [ "\$#" -eq 1 ] && [ "\$1" = -c ]; then
   printf ' %7s\n' "\$n"
   exit 0
 fi
-exec "$2" "\$@"
-STUB
-}
-
-# BSD paste reads no implicit stdin: with no file operand it prints its usage
-# line and exits 1, where GNU paste reads stdin. The stub parses the BSD option
-# set (-s, and -d taking a delimiter list, attached or separate) with getopts,
-# so `-s`, `-sd:` and `-sd :` with no operand are all refused; an operand,
-# including the explicit `-` for stdin, goes to the real tool.
-_bsd_stub_paste() {
-  # unquoted EOF: $2 (the real paste) expands now; \$ forms stay for run time
-  cat > "$1" <<STUB
-#!/bin/sh
-# true when an operand follows the options; the shift stays inside the function
-operands() {
-  while getopts ':sd:' o; do
-    case "\$o" in
-      s|d) ;;
-      :)
-        echo "paste: option requires an argument -- \$OPTARG" >&2
-        echo "usage: paste [-s] [-d delimiters] file ..." >&2
-        exit 1 ;;
-      '?')
-        echo "paste: illegal option -- \$OPTARG" >&2
-        echo "usage: paste [-s] [-d delimiters] file ..." >&2
-        exit 1 ;;
-    esac
-  done
-  shift \$((OPTIND - 1))
-  [ "\$#" -gt 0 ]
-}
-operands "\$@" || { echo "usage: paste [-s] [-d delimiters] file ..." >&2; exit 1; }
 exec "$2" "\$@"
 STUB
 }
