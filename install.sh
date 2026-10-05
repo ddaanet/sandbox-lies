@@ -23,7 +23,7 @@
 # The script will:
 #   1. git subtree add the toolkit at plugin-dev/ (skipped if present)
 #   2. add 'import "plugin-dev/release.just"' to justfile
-#   3. wire the version-guard hook into .claude/settings.json
+#   3. wire the version-guard and dogfood hooks into .claude/settings.json
 #
 # Re-run (after the toolkit is already vendored):
 #
@@ -123,41 +123,48 @@ EOF
     changed+=("justfile (created)")
 fi
 
-# 3. .claude/settings.json hook block. Append the hook only if not already
+# 3. .claude/settings.json hook block. Append each hook only if not already
 # present, and write only if that changed something.
 #
-# The two cases are separate branches, not a jq failure falling through to a
-# fallback: the fallback writes a document holding nothing but this hook, so
-# reaching it with an existing settings.json replaces the consumer's whole
-# configuration. `.matcher == null` is what used to get there — a PreToolUse
-# entry with no matcher is legal and matches every tool, but `null | test(...)`
-# aborts jq with exit 5.
-mkdir -p .claude
-tmp="$(mktemp)"
-if [ -f "$settings" ]; then
-    jq --arg cmd "$hook_cmd" '
-      if ([.hooks.PreToolUse[]?
-           | select(.matcher == null or (.matcher | test("Write|Edit")))
-           | .hooks[]? | select(.command == $cmd)] | length > 0)
+# An existing file and a missing one run the same pipeline, the missing one
+# seeded with {}, so a failure in any stage takes the one error branch: there
+# is no fallback that writes a stub of just the toolkit's hooks, which over an
+# existing settings.json would replace the consumer's whole configuration.
+#
+# A hook counts as present when any entry under its event carries its command,
+# whatever that entry's matcher, a missing one included: the consumer may have
+# rescoped it, and a second copy beside it would run the command twice wherever
+# the two matchers overlap. An empty matcher argument omits the key, which is
+# how SessionStart is wired.
+add_hook() {
+    jq --arg event "$1" --arg matcher "$2" --arg cmd "$3" '
+      if ([.hooks[$event][]? | .hooks[]? | select(.command == $cmd)] | length > 0)
       then .
       else .hooks //= {} |
-           .hooks.PreToolUse //= [] |
-           .hooks.PreToolUse += [{
-             matcher: "Write|Edit",
-             hooks: [{type: "command", command: $cmd}]
-           }]
+           .hooks[$event] //= [] |
+           .hooks[$event] += [
+             (if $matcher == "" then {} else {matcher: $matcher} end)
+             + {hooks: [{type: "command", command: $cmd}]}
+           ]
       end
-    ' "$settings" > "$tmp" || {
-        rm -f "$tmp"
-        echo "error: could not rewrite $settings — left unchanged." >&2
-        exit 1
-    }
-else
-    jq --arg cmd "$hook_cmd" -n '
-      {hooks: {PreToolUse: [{matcher: "Write|Edit",
-                             hooks: [{type: "command", command: $cmd}]}]}}
-    ' > "$tmp"
-fi
+    '
+}
+
+# shellcheck disable=SC2016  # ${CLAUDE_PROJECT_DIR} is for Claude Code to expand at hook-fire time, not bash now.
+pretool_cmd='bash "${CLAUDE_PROJECT_DIR}/plugin-dev/dogfood.sh" pre-tool'
+# shellcheck disable=SC2016  # same: expanded by Claude Code at hook-fire time.
+session_cmd='bash "${CLAUDE_PROJECT_DIR}/plugin-dev/dogfood.sh" session-start'
+
+mkdir -p .claude
+tmp="$(mktemp)"
+{ if [ -f "$settings" ]; then cat "$settings"; else echo '{}'; fi \
+    | add_hook PreToolUse 'Write|Edit' "$hook_cmd" \
+    | add_hook PreToolUse 'Write|Edit|NotebookEdit' "$pretool_cmd" \
+    | add_hook SessionStart '' "$session_cmd" > "$tmp"; } || {
+    rm -f "$tmp"
+    echo "error: could not wire the hooks into $settings — nothing written." >&2
+    exit 1
+}
 
 if [ -f "$settings" ] && cmp -s "$settings" "$tmp"; then
     rm -f "$tmp"
@@ -168,7 +175,7 @@ else
     # ACL, and creates a new one at the umask like any other tool would.
     cat "$tmp" > "$settings"
     rm -f "$tmp"
-    changed+=("$settings (added version-guard hook)")
+    changed+=("$settings (wired the version-guard and dogfood hooks)")
 fi
 
 if [ "${#changed[@]}" -eq 0 ]; then
@@ -184,4 +191,7 @@ else
     echo "  2. Commit the changes:"
     echo "     git add $TOOLKIT_PREFIX justfile .claude/settings.json"
     echo "     git commit -m 'add claude-plugin-dev toolkit'"
+    echo "  3. Set up the dogfood launcher: $TOOLKIT_PREFIX/README.md, section"
+    echo "     Dogfooding, subsection Setup. Until then the SessionStart check"
+    echo "     warns on every session."
 fi

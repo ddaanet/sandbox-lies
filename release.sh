@@ -148,7 +148,7 @@ common_preflight() {
     main_branch=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||' || echo "main")
     [ "$branch" = "$main_branch" ] || die "must be on $main_branch (currently $branch)"
 
-    # A push redirected away from origin (decision 3, outline.md) makes
+    # A push redirected away from origin makes
     # push_branch's unqualified `git push` and/or push_tag's
     # `git push origin <tag>` — redirected only by pushurl — land somewhere the
     # origin-tag probes below never inspect. Refuse before any side effect,
@@ -163,7 +163,8 @@ common_preflight() {
     # a same-repo pushurl on a different protocol too.
     #
     # url.<base>.pushInsteadOf is a fourth route and is NOT checked — a stated
-    # bound, recorded in docs/references/recovery.md. Set, it sends the push to
+    # bound, recorded in the toolkit repo's docs/references/recovery.md. Set, it
+    # sends the push to
     # the rewritten repository while ls-remote still reads the original
     # (measured). "Refuse when set" is what fails to carry over: the rewrite
     # fires only when its base prefixes origin's URL, a non-matching base is
@@ -249,8 +250,9 @@ common_preflight() {
     # absence, which in `release` mode was only ever caught downstream, by
     # check-version.sh, with an unrelated "version drift" message. In
     # `--resume` mode nothing downstream reads this file at all until
-    # bump_marketplace: release_preflight never runs on resume
-    # (release.sh:780-785), so the misread survived common_preflight
+    # bump_marketplace: release_preflight never runs on resume — the mode
+    # dispatch at the foot of this file takes the `else resume_preflight`
+    # branch — so the misread survived common_preflight
     # untouched and the run reached create_github_release — a GitHub release
     # made public — before bump_marketplace's own jq call finally aborted the
     # script with a raw parse error instead of a `die`.
@@ -290,6 +292,20 @@ semver_tags() {
     # non-zero. That distinction only reaches the caller if the caller reads
     # the status: capture into a variable, never `[ -z "$(…)" ]`, which
     # discards it and makes a failed listing look like an empty one.
+    #
+    # That absorption is also why neither release_tags nor origin_release_tags
+    # pipes its listing command straight into this filter, and why both capture
+    # the listing and read ITS status first: a failed listing prints nothing,
+    # this filter exits 0 on the empty input, and the pipeline's own status
+    # says "no tags" rather than "listing failed" — the fail-open path into
+    # publishing over a release the caller could not see. Piping would not be
+    # wrong today: `set -o pipefail` yields the RIGHTMOST non-zero stage
+    # status, so a listing command's failure would still reach the caller
+    # past this filter's exit 0 on empty input. But pipefail is the only
+    # thing that would carry it, so each caller's safety would rest on one
+    # word of the `set` line at the top of the script.
+    # Verified both ways (bash 5.2, git 2.47.3): piped refuses under pipefail
+    # and succeeds with it off; captured refuses either way.
     { grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || [ "$?" -eq 1 ]; }
 }
 
@@ -303,7 +319,15 @@ release_tags() {
     # branch would read as no tags at all; and it returns the NEAREST tag of
     # ANY name, distance-ordered rather than version-ordered, so an unrelated
     # tag on a later commit would read as the last release.
-    git tag --list 'v*' --sort=-v:refname | semver_tags
+    #
+    # Capture the listing and read its own status, the same shape
+    # origin_release_tags uses: this function's safety no longer depends on
+    # the `set -o pipefail` line above — a failed `git tag --list` returns 1
+    # here directly, rather than relying on pipefail to carry a mid-pipeline
+    # failure past semver_tags.
+    local listing
+    listing=$(git tag --list 'v*' --sort=-v:refname) || return 1
+    printf '%s\n' "$listing" | semver_tags
 }
 
 origin_release_tags() {
@@ -321,18 +345,9 @@ origin_release_tags() {
     #
     # `git ls-remote` reaches the network and fails routinely (unreachable
     # origin, no origin, auth) — unlike `git tag --list`, which essentially
-    # never fails. So capture its output and read ITS status, rather than
-    # piping it straight into cut/sed/semver_tags. Piping is not wrong today:
-    # `set -o pipefail` yields the RIGHTMOST non-zero stage status, so
-    # ls-remote's 128 does reach the caller past filters that exit 0. But
-    # pipefail is the only thing that carries it — semver_tags deliberately
-    # absorbs a no-match grep's status 1, so the filter tail reports success
-    # on empty input, and with pipefail off the pipeline returns 0 and the
-    # caller reads "origin has no tags either": the fail-open path into
-    # publishing over a release it could not see. That would leave this
-    # function's safety resting on one word of the `set` line 250 lines up.
-    # Verified both ways (bash 5.2, git 2.47.3): piped refuses under pipefail
-    # and succeeds with it off; captured refuses either way.
+    # never fails. So capture its output and read ITS status rather than piping
+    # it straight into cut/sed/semver_tags — for the reason semver_tags's own
+    # comment gives, which applies to release_tags the same way.
     local listing
     listing=$(git ls-remote --tags --sort=-v:refname origin) || return 1
     # cut -f2 splits on TAB, and ls-remote emits exactly `<oid><TAB><ref>`.
@@ -498,9 +513,8 @@ release_preflight() {
     # returned), and its first line matched the semver anchor, so latest_tag
     # is always set; the -n test below is belt and braces.
     latest_tag=$(printf '%s\n' "$release_tag_list" | sed -n '1s/^v//p')
-    # One remedy, because only one works here. This hint used to offer two more
-    # and both were dead on every path that reaches it — recorded so they do not
-    # come back:
+    # One remedy. This hint used to offer two more; both are gone — recorded so
+    # they do not come back:
     #
     # `git checkout HEAD -- $manifest` is always a no-op. common_preflight
     # refuses a dirty tree before release_preflight runs, and clean_pathspecs
@@ -509,13 +523,19 @@ release_preflight() {
     # always been committed already. Reverting it therefore takes a new commit,
     # which is what the hint now says.
     #
-    # `git fetch --tags` can never have anything left to fetch. latest_tag comes
-    # from release_tag_list, the LOCAL semver tags, and the lost-tags probe
-    # above has already established that local and origin agree on the newest
-    # one (an origin tag ahead of local fires the probe's own fetch hint first;
-    # an unreachable origin dies there outright). Worse than merely useless: the
-    # probe's hint is what sends an operator to fetch, so a fetch offered here
-    # hands back the command they just ran and the two refusals close a loop.
+    # `git fetch --tags` is not the remedy for the state this refusal names.
+    # latest_tag comes from release_tag_list, the LOCAL semver tags, and this
+    # refusal fires only when that list came back non-empty — which is exactly
+    # when the lost-tags probe above did NOT run, so origin was never consulted
+    # on this path. The probe establishes nothing here. A clone missing every
+    # release tag takes the probe instead and is sent to fetch by the probe's
+    # own hint, so offering one here would only duplicate it. What is left is a
+    # clone that kept older release tags but lost the newest: there a fetch
+    # would genuinely help, and this hint still sends the operator to write the
+    # manifest back to a stale tag. That partial tag loss is a stated bound of
+    # the probe rather than an oversight — closing it means listing origin on
+    # every release and not only on an empty local list, a network round trip
+    # and a listing whose failure has to be absorbed on the common path.
     if [ -n "$latest_tag" ] && [ "$manifest_version" != "$latest_tag" ]; then
         printf 'hint: plugin.json holds the LAST released version, never the next one.\n' >&2
         # shellcheck disable=SC2016  # backticks are literal markdown, not command substitution
@@ -573,7 +593,12 @@ resume_preflight() {
         # character. No semver_tags-filtered line can false-positive on that BRE
         # anyway, but $V is whatever the manifest holds. -x pins the whole line,
         # so the single empty line an empty listing prints cannot match.
-        if printf '%s\n' "$origin_tag_list" | grep -qxF -- "$tag"; then
+        # Herestring, not a pipe: a pipe's `grep -qxF` can exit 0 on its first
+        # match while `printf` is still writing, and SIGPIPE-killed `printf`
+        # reports 141 over `grep`'s 0 under `pipefail`, promoting the wrong
+        # side's status. `toolkit/version-guard.sh`'s tag filter,
+        # `grep -E '…' <<<"$listing"`, is the in-repo precedent for this fix.
+        if grep -qxF -- "$tag" <<<"$origin_tag_list"; then
             # Origin already has the tag this clone is missing: the release
             # was published, and this clone just never fetched it. Resuming
             # after the fetch picks it up; starting a new release would try
@@ -646,9 +671,28 @@ bump_commit_tag() {
     note "manifest + tag: $tag created locally"
 }
 
+ls_remote_sha() {
+    # $1 = a repo directory, $2 = a full ref name. Prints that ref's sha on the
+    # repo's origin, and nothing when origin does not have it.
+    #
+    # Captured whole and trimmed with a parameter expansion rather than piped
+    # into `cut`: a pipeline reports cut's status, and cut succeeds on the empty
+    # input a failed `ls-remote` hands it — so without `set -o pipefail` a
+    # network or auth failure would read as "the ref is not on origin", which is
+    # the answer each caller below treats as licence to act. push_tag is the
+    # sharp one: absence there is what lets it push, so a misread would walk
+    # straight past the refusal that keeps a published tag from being moved.
+    # pipefail does cover this today. Not depending on that is the point; a
+    # `set -o` line is easy to lose and nothing here would say so.
+    local line
+    line=$(git -C "$1" ls-remote origin "$2") \
+        || die "git ls-remote origin $2 failed in $1"
+    printf '%s' "${line%%$'\t'*}"
+}
+
 push_branch() {
     local remote_head
-    remote_head=$(git ls-remote origin "refs/heads/$branch" | cut -f1)
+    remote_head=$(ls_remote_sha . "refs/heads/$branch")
     if [ -n "$remote_head" ] && [ "$remote_head" = "$(git rev-parse HEAD)" ]; then
         note "branch $branch: already pushed"
         return
@@ -676,7 +720,7 @@ push_branch() {
 
 push_tag() {
     local remote_tag local_tag
-    remote_tag=$(git ls-remote origin "refs/tags/$tag" | cut -f1)
+    remote_tag=$(ls_remote_sha . "refs/tags/$tag")
     local_tag=$(git rev-parse "$tag")
     if [ -n "$remote_tag" ]; then
         # Never move a published tag: a mismatch means it was reused, which no
@@ -772,7 +816,7 @@ bump_marketplace() {
     fi
 
     mp_branch=$(git -C "$MARKETPLACE_DIR" symbolic-ref -q --short HEAD || echo "")
-    mp_remote_head=$(git -C "$MARKETPLACE_DIR" ls-remote origin "refs/heads/$mp_branch" | cut -f1)
+    mp_remote_head=$(ls_remote_sha "$MARKETPLACE_DIR" "refs/heads/$mp_branch")
     mp_local_head=$(git -C "$MARKETPLACE_DIR" rev-parse HEAD)
     if [ "$mp_remote_head" = "$mp_local_head" ]; then
         if [ "$committed" = 1 ]; then
