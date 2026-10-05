@@ -108,22 +108,24 @@ baseline lives under `.git/`).
 
 ## Resume
 
-- **Last commit:** the one adding this section (after `1b81266`, Item 4.1
-  list revision after slice 2).
-- **Exact step:** `/edify:build` §4.3, Item 4.1 slice 3 — next dispatch is
-  the slice-3 RED (`edify:test-driver`, sonnet, Mode RED), tests in
-  `tests/probes-readonly-operands.bats` per the revised runbook text
-  (includes the per-segment reset pin). Then test review, GREEN, code review,
-  commit the review, `verify-step.sh` (with the env-only exclude above), list
-  revision; slice 4 the same; then the docs step; then Items 4.2 (one slice)
-  and 4.3 (two slices); then `phase-4-corrector`.
-- **Why stopped:** the delegate's context reached the ~200k cap from the
-  dispatch brief.
+- **Last commit:** the one adding this section (after `43c1711`, Phase 4
+  checkpoint).
+- **Exact step:** `/edify:build` §4, Phase 5, Item 5.1 — stopped before any
+  skill edit. The Item 5.1 dispatch returned an error: CC's settings reference
+  lists an absolute-path `git init` among calls that stay sandboxed even when
+  covered, so D1's 2.288/2.289 `git init -q /tmp/...` probes are confounded;
+  on 2.1.289 a bare covered `git status --porcelain` showed no masks
+  (unsandboxed) while `true && git status --porcelain` showed them
+  (`reports/item-5-1.md`, untracked findings report committed with this
+  section). The orchestrator re-ran the bare and compound `git status` and saw
+  the same split. D1 ("exclusions are observed not honoured") is my human
+  partner's decision, so the build waits on it.
+- **Why stopped:** approval gate — two questions to my human partner (D1
+  revision; the pre-existing `path=` newline forgery).
 - **Decisions given:** runbook approved as committed at `/proof` (2026-10-04);
-  no item verdicts. Earlier planning decisions as in the outline (D1–D5).
-- **Phase-boundary reports so far:** `reports/phase-{1,2,3}-corrector.md`, all
-  Ready.
-- **Carry list:** as above (precommit lints tracked files only;
-  `hook-candidates.bats` at 374 lines for Item 4.2's hook case, which goes in
-  `hook-writes.bats` if long; Item 4.1 docs-step residuals; the outline's OUT
-  list; the simplifier's multi-item files note).
+  the main session's `match=` newline finding folded into Item 4.2 (done).
+- **Next after the answer:** re-dispatch Item 5.1 (opus artisan) with the D1
+  answer; Items 5.2 (its `lock-detectors.md` text follows the same answer) and
+  5.3; the `path=` item if taken; the Phase 5 checkpoint; then the finish
+  (review gate, tdd-audit).
+- **Carry list:** as above.
