@@ -54,8 +54,15 @@ lives under `.git/`).
   same newline `path=` forgery there (§Open question). Phase 5 checkpoint
   `reports/phase-5-corrector.md` (Ready; five minor fixes; lifecycle audit
   clean). Item 5.5 (lock-probe `path=` newline guard, option 1, one tdd slice)
-  added to `runbook.md` on 2026-10-06; then the finish (review gate, triage,
-  tdd-audit, completion).
+  added to `runbook.md` on 2026-10-06. Slice 1 RED, test review (added the
+  character-device site, the held blank twin, a git-lock cwd-keyed half, a
+  `make_bsd_stubs` re-run and an age-window pin; ran eight wrong GREENs, each
+  red), GREEN (`pathline` flag read by all six sites), code review (Ready; one
+  changelog minor fixed) — `reports/item-5-5-s1-*.md`; tests in the new
+  `tests/probes-lock-newline.bats` (`probes-config.bats` would pass 400). The
+  code review's Major 1 (no hook-level pin for a lock probe printing no
+  `path=`) went to a test-only pin dispatch, `item-5-5-s1-pins`. List
+  revision: none (single slice). Then the finish.
 
 ## Build decisions
 
@@ -87,6 +94,16 @@ lives under `.git/`).
   env-only exclude (now `/.claude/gitlore-memory-message` and `/inbox/`, file
   under `$TMPDIR`), filtered of ` M memory` and those two handoff lines and
   required empty, then `just precommit` with its exit status read.
+
+- 2026-10-06: the slice 5.5/1 test review was still running final checks when
+  GREEN was dispatched (its report file was written before it returned). The
+  test file was unchanged between the report and GREEN's run (174 lines both
+  times), and GREEN's commit carries it; noted as a sequencing slip, not
+  repeated.
+- 2026-10-06: under load average ~16 the full bats run takes 15–25 minutes and
+  `probes-readonly-pins.bats`' 3 s-bounded "nopath with a relative cwd" case
+  timed out once (passed alone and on the re-run). Dispatches are told to
+  re-run, not background, and to treat that case as a load flake.
 
 - Item 5.1's second dispatch reports to `reports/item-5-1-r2.md`, not the
   dispatch name's `item-5-1.md`: that file is the first dispatch's probe
@@ -181,11 +198,13 @@ lives under `.git/`).
 
 ## Resume
 
-- **Last commit:** "Item 5.5 added to the runbook" (with this file).
-- **Exact step:** Item 5.5 slice 1, RED dispatch next.
+- **Last commit:** "Item 5.5/1 — code-review fixes" (with this file).
+- **Exact step:** Item 5.5 slice 1 done through code review; next the
+  test-only pin dispatch `item-5-5-s1-pins` for the code review's Major 1.
 - **Why stopped:** not stopped; in progress.
 - **Decisions given:** see §Decisions given.
-- **Next:** Item 5.5 slice 1 RED, test review, GREEN, code review; then the
-  finish (`references/finishing.md`: review gate, triage, tdd-audit,
-  completion).
+- **Next:** the pin dispatch and its commit; then the finish
+  (`references/finishing.md`: review gate over the job's commits only — the
+  main session's plugin-dev/dogfood commits in the range are not this job's —
+  triage, tdd-audit, completion).
 - **Carry list:** as above.

@@ -264,8 +264,9 @@ restore clause is right from any directory of the repository, and `readfile=`
 takes only input operands: never an option word, a `grep`, `sed` or `awk`
 pattern or program, or the output operand that makes `uniq` a writer. A refused
 path that resolves to a newline-bearing one reports `nopath` rather than forging
-key lines, and the lock probes leave out `path=` for such a path. The docs now
-say the symptoms and figures were recorded on Linux with macOS unverified, which
-repositories the hook reads (NFR-4), how far the fixtures re-cut from the script
-(FR-8), and which corpus each `phantom-untracked` figure comes from. The suite
-gained pins for the review's verification gaps.
+key lines, and a lock probe whose resolved path holds a newline keeps its
+outcome and leaves out `path=`. The docs now say the symptoms and figures were
+recorded on Linux with macOS unverified, which repositories the hook reads
+(NFR-4), how far the fixtures re-cut from the script (FR-8), and which corpus
+each `phantom-untracked` figure comes from. The suite gained pins for the
+review's verification gaps.
