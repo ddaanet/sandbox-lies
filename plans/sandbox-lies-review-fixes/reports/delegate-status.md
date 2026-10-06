@@ -2,6 +2,10 @@
 
 ## Phase reached
 
+Build complete (2026-10-06): every item done, finish run (review gate, triage,
+tdd-audit, run summary). Next: `/deliverable-review plans/sandbox-lies-review-fixes`
+(opus, fresh session).
+
 Planning done: outline and runbook approved at `/proof` (2026-10-04). Build
 running (`/edify:build plans/sandbox-lies-review-fixes`), baseline `a7ff5e5` (in
 `.git/build-baseline`; `tmp/` is not gitignored in this repo, so the baseline
@@ -61,8 +65,26 @@ lives under `.git/`).
   changelog minor fixed) — `reports/item-5-5-s1-*.md`; tests in the new
   `tests/probes-lock-newline.bats` (`probes-config.bats` would pass 400). The
   code review's Major 1 (no hook-level pin for a lock probe printing no
-  `path=`) went to a test-only pin dispatch, `item-5-5-s1-pins`. List
-  revision: none (single slice). Then the finish.
+  `path=`) went to a test-only pin dispatch, `item-5-5-s1-pins` (four
+  mutations; new `tests/hook-locks-pathless.bats`, `hook-locks.bats` being at
+  399). List revision: placement only, recorded in `runbook.md` after the
+  tdd-audit flagged it (V4).
+- Finish (2026-10-06). Review gate, three groups: `reports/review-code.md`
+  (`edify:corrector`; Ready; one major — the real-probe pathless hook case
+  needed `assert_no_git_above` — and four minors fixed), `reports/review-docs.md`
+  (`edify:corrector`, the living `docs/design.md` included rather than
+  `edify:design-corrector`, whose remit is a plan's `design.md`; Ready; design
+  Status line fixed, still 399 lines), `reports/review-skill.md`
+  (`plugin-dev:skill-reviewer`, report-only; three majors and ten minors,
+  each verified against its source and fixed in session). No UNFIXABLE. The
+  gate covered only this job's changes: the main session's `0bbb18c`,
+  `161d958` and `11b96a4`/`533dca7` in the range were excluded. Triage:
+  `match`. Final review: covered by the gate. `reports/tdd-audit.md`: 9 slices,
+  6 fully compliant, no critical; findings V1–V6 (V1 Item 4.2/1 GREEN migrated
+  existing assertions as the runbook directed; V2 4.3/2 GREEN report lacks a
+  suite line; V3 5.5/1 GREEN dispatched before the test review returned; V4
+  fixed above; V5 a BSD re-run case inside the 4.1/2 refactor commit; V6
+  test-at-a-time unauditable where one edit greens several tests).
 
 ## Build decisions
 
@@ -118,8 +140,12 @@ lives under `.git/`).
 
 ## Notes for the main session
 
-- Item 3.1 adds a BSD `paste` stub and a shim case to `tests/shim.bats`; the
-  saved `.bin/claude` patch re-applied after the build must keep it green.
+- Item 3.1's deliverable (the BSD `paste` stub and the shim case in
+  `tests/shim.bats`) no longer exists: the main session's `0bbb18c` moved
+  dogfooding to plugin-dev's shim and removed `tests/shim.bats` and the
+  `.bin/claude` shim. The review gate treated that as out of this job's scope.
+- The tdd-audit's process recommendations (`reports/tdd-audit.md`
+  §Recommendations) concern the edify build skill, not this repository.
 
 ## RCA follow-ups
 
@@ -198,13 +224,11 @@ lives under `.git/`).
 
 ## Resume
 
-- **Last commit:** "Item 5.5/1 — code-review fixes" (with this file).
-- **Exact step:** Item 5.5 slice 1 done through code review; next the
-  test-only pin dispatch `item-5-5-s1-pins` for the code review's Major 1.
-- **Why stopped:** not stopped; in progress.
+- **Last commit:** "Build finish — tdd-audit, run summary" (with this file).
+- **Exact step:** `/edify:build` complete: §5 finish done (review gate, triage,
+  tdd-audit, run summary).
+- **Why stopped:** the build is finished.
 - **Decisions given:** see §Decisions given.
-- **Next:** the pin dispatch and its commit; then the finish
-  (`references/finishing.md`: review gate over the job's commits only — the
-  main session's plugin-dev/dogfood commits in the range are not this job's —
-  triage, tdd-audit, completion).
+- **Next:** `/deliverable-review plans/sandbox-lies-review-fixes` (opus, fresh
+  session) — my human partner's call to launch.
 - **Carry list:** as above.

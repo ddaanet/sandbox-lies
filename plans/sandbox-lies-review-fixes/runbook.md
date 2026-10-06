@@ -480,3 +480,8 @@ revision: the runs are recorded as confounded, and the `git status` re-probe and
     `_probe_lock_at`'s comment say the same; one `docs/changelog.md` sentence
     beside Item 5.4's.
   - Out of scope: a `path=` encoding that carries newlines (carry list).
+  - List revision after slice 1 (placement only): the slice's tests landed in
+    a new `tests/probes-lock-newline.bats`, since `tests/probes-config.bats`
+    (313 lines) would pass 400 with them; the code review's hook-level pins for
+    a lock probe printing no `path=` landed in a new
+    `tests/hook-locks-pathless.bats`, since `tests/hook-locks.bats` was at 399.
