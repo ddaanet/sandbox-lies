@@ -42,16 +42,19 @@ every command in the call. Before writing one:
 
 - Write `git *`, a prefix; `git:*` is the legacy form. A plain `"git status"`
   covers only the bare literal.
-- A covered call still stays sandboxed with a `cd`, `pushd` or `popd` anywhere,
-  a subshell, a command substitution, an `if` or `for` block, a redirection
-  other than a descriptor duplication, or a command name from a variable. Nested
-  commands never match: `sh -c '…'` and a git inside a recipe or script.
+- A covered call still stays sandboxed with a `sudo`, `eval` or `xargs` head, a
+  `cd`, `pushd` or `popd` anywhere, a subshell, a command substitution, an `if`
+  or `for` block, a redirection (a descriptor duplication such as `2>&1` is
+  documented as fine, but was seen to keep a call sandboxed on CC 2.1.289), or a
+  command name from a variable. Nested commands never match: `sh -c '…'` and a
+  git inside a recipe or script.
 - Git stays sandboxed under any entry with `-C <dir>`, and with an absolute,
   `~`-led or `..`-bearing path argument (`git init`, `git clone`,
   `git worktree add`, among others).
 - It does not grant approval: the rest of the permission pipeline still judges
   the command, clearing a bare read-only command from the original working
-  directory before any classifier call.
+  directory before any classifier call, unless the session has server-side
+  review.
 
 The full list of forfeiting shapes, what was observed beyond the documented
 ones, the confounded probes, wrapper unwrapping, the read-only validator's
@@ -90,9 +93,10 @@ working directory resets per call. In order of preference:
 - Otherwise use a subshell, `(cd <dir> && …)`, whose `cd` cannot persist.
 - Or end the call with a `cd <root>` line.
 
-`git -C`, a `cd` and a subshell each keep the call sandboxed under any
-`excludedCommands` entry. Run with `dangerouslyDisableSandbox`, each forfeits
-the read-only auto-allow and costs a classifier call:
+`git -C`, a git absolute-path argument, a `cd` and a subshell each keep the call
+sandboxed under any `excludedCommands` entry. Run with
+`dangerouslyDisableSandbox`, `git -C`, a subshell and a `cd` beside git each
+forfeit the read-only auto-allow and cost a classifier call:
 [references/excluded-commands.md](references/excluded-commands.md).
 
 ## Writing a recipe or script that must run unsandboxed
@@ -136,9 +140,10 @@ The observed collapse:
   paths with `git status --porcelain --untracked-files=no` where untracked files
   are not the subject.
 - **A slash command's `` !`cmd` `` expansion is a Bash call no hook sees.** It
-  is sandboxed like a typed call, so a `## Context` block can list masks, and no
-  annotation will say so. Never act on an injected listing: re-run `git status`
-  unsandboxed first.
+  goes through the same sandbox decision as a typed call, so a `## Context`
+  block can list masks, its own or a concurrent sibling's, and no annotation
+  will say so. Never act on an injected listing: re-run `git status` unsandboxed
+  first.
 
 Mask shapes and placement, and the expansion path's mechanism:
 [references/masks-and-gates.md](references/masks-and-gates.md).

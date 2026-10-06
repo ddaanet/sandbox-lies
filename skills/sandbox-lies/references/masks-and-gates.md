@@ -20,9 +20,10 @@ subagent's working directory resets per call instead. A top-level `cd` anywhere
 in a call persists, not only at its head; one inside `( … )` does not (probed
 2026-09-27, CC 2.1.281). Give commands absolute paths or `git -C <dir>`;
 otherwise use a subshell, `(cd <dir> && …)`, whose `cd` cannot persist, or end
-the call with a `cd <root>` line. `git -C`, a `cd` and a subshell each keep the
-call sandboxed under any `excludedCommands` entry; run with
-`dangerouslyDisableSandbox`, each costs a classifier call
+the call with a `cd <root>` line. `git -C`, a git absolute-path argument, a `cd`
+and a subshell each keep the call sandboxed under any `excludedCommands` entry;
+run with `dangerouslyDisableSandbox`, `git -C`, a subshell and a `cd` beside git
+each cost a classifier call
 ([excluded-commands.md](excluded-commands.md)).
 
 This plugin annotates a listing or a status that shows them. What it cannot
@@ -45,7 +46,7 @@ The injection is `` !`cmd` `` expansion in the command body — the
 decompiling CC 2.1.233 shows it executed through the ordinary Bash tool call
 with a bare `{command}`. The sandbox decision and the `excludedCommands` match
 apply exactly as to a typed call, so an entry frees an expansion only when it
-covers every command in it: confirmed live 2026-08-16, an excluded `git status`
+covers every command in it. Observed 2026-08-16: an excluded bare `git status`
 expansion saw the real tree while an unmatched one saw the masks.
 
 **No hook runs on that path.** Measured 2026-09-02 on CC 2.1.258: a `!` block

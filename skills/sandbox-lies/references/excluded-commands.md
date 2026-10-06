@@ -46,16 +46,17 @@ under the documented rule. Whether the legacy `git:*` form was honoured on CC
 
 The setup these observations were made under: `/sandbox` set to
 *unsandboxed fallback* (not strict), auto mode on, and user-scope
-`sandbox.excludedCommands` covering `git`, `find`, `ls` and `claude` — written
-`git:*` and so on through CC 2.1.288, `git *` since. A call made of those
-commands alone runs outside the sandbox with no flag. Any other command beside
-them, a shape under [Matching](#matching), or a command nested in `( … )`,
-`$( … )`, `sh -c` or a recipe keeps it sandboxed, so most sandbox effects are
-still met in ordinary compound calls, and on a machine without the entries.
+`sandbox.excludedCommands` covering `git`, `find`, `ls` and `claude`, and
+`just release *` at the CC 2.1.289 probes — written `git:*` and so on through CC
+2.1.288, `git *` since. A call made of those commands alone runs outside the
+sandbox with no flag. Any other command beside them, a shape under
+[Matching](#matching), or a command nested in `( … )`, `$( … )`, `sh -c` or a
+recipe keeps it sandboxed, so most sandbox effects are still met in ordinary
+compound calls, and on a machine without the entries.
 
-An exclusion match silently sets `dangerouslyDisableSandbox` for the call. It
-changes nothing about what that call sees of *other* calls' sandboxes: their
-masks stay visible to it.
+An exclusion match runs the call as if it carried `dangerouslyDisableSandbox`;
+the flag in the hook payload stays unset. It changes nothing about what that
+call sees of *other* calls' sandboxes: their masks stay visible to it.
 
 ## Matching
 
@@ -80,10 +81,14 @@ observations above govern.
   with an absolute path too.
 - **Seen beyond the documented list**, on CC 2.1.289 in a separate session and
   not re-probed: `2>&1`, although a descriptor duplication is documented as
-  fine; a glob argument; an unquoted `$HOME`; a `VAR=value` prefix outside a
-  short allowlist (`LANG`, `TZ`, `NODE_ENV`, `CI`, `NO_COLOR` and a few more);
-  and the value-taking git options `-C`, `-c`, `--git-dir` and `--work-tree`
-  before the subcommand. Each kept an otherwise covered call sandboxed.
+  fine; a glob argument; an unquoted `$HOME`. Each kept an otherwise covered
+  call sandboxed. The same session saw a covered call with a quoted argument, a
+  `\.` escape or a trailing `# comment` run unsandboxed.
+- **Read from the CC 2.1.289 bundle** in that session, not observed: a
+  `VAR=value` prefix outside a short allowlist (`LANG`, `TZ`, `NODE_ENV`, `CI`,
+  `NO_COLOR` and a few more), and the value-taking git options `-C`, `-c`,
+  `--git-dir` and `--work-tree` before the subcommand (boolean ones such as
+  `--no-pager` still match), each keep a covered call sandboxed.
 - **Splitting** is a tree-sitter-bash parse, cut at `&&`, `||`, `|`, `;`, `&`
   and newline. Nesting is never descended into: `( … )`, `$( … )`, `sh -c '…'`
   and `if …; fi` are compared whole, so they never match. Nesting fails closed,
@@ -97,8 +102,10 @@ observations above govern.
   `stdbuf`, `nohup`, `command`, `builtin`, `noglob`. On CC 2.1.233 leading
   `VAR=value` assignments were stripped before comparison, except `LD_*`,
   `DYLD_*` and `PATH=`; see the CC 2.1.289 report above for what a `VAR=` prefix
-  did there. Double spaces, quoted arguments, `/bin/ls`, an extra argument, and
-  pre-expansion `$VAR` all defeat the match.
+  did there. On CC 2.1.233, double spaces, quoted arguments, `/bin/ls`, an extra
+  argument and pre-expansion `$VAR` all defeated the match; on CC 2.1.289 a
+  covered call with a quoted argument ran unsandboxed (the separate-session
+  report above).
 - **Nothing records the outcome.** Nothing in the tool result or the transcript
   records that a call ran unsandboxed.
 - **`` !`cmd` `` expansions in a slash command or skill body are matched too**,
@@ -115,7 +122,7 @@ An exclusion does not grant approval, but that rarely costs a classifier call.
 The sandbox auto-allow shortcut is skipped precisely when the command is not
 sandboxed, so deny and ask rules and then the rest of the permission pipeline
 still evaluate it — a `Bash(sudo:*)` deny rule refused a call carrying an
-excluded segment.
+excluded segment (observed before the every-command rule; version not recorded).
 
 What catches it next is a **sandbox-independent read-only auto-allow** (decision
 reason `Read-only command is allowed`), which sits ahead of the auto-mode

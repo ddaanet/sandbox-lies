@@ -26,10 +26,11 @@ pre-announcing or asking. A `git *`/`ls *`/`find *` baseline frees only a call
 made of covered commands alone, so the default still has work, and it fires on a
 symptom rather than while composing: a phantom dotfile in a listing, an empty
 `cat` of a `.claude/` path, a `git status` that ran beside an uncovered command,
-after a `cd`, inside `( … )`, `$( … )`, `sh -c` or a recipe, or a command the
-matcher missed (a quoted argument, a double space, `/bin/ls`). Mutating
-operations (`git commit`, `push`, `reset`, `checkout -- …`, anything that
-writes) are not covered and follow normal confirmation rules.
+with `-C` or an absolute path argument, after a `cd`, inside `( … )`, `$( … )`,
+`sh -c` or a recipe, or a command the matcher missed (a glob argument, `2>&1`, a
+double space, `/bin/ls`). Mutating operations (`git commit`, `push`, `reset`,
+`checkout -- …`, anything that writes) are not covered and follow normal
+confirmation rules.
 
 ## The observed `$TMPDIR` collapse
 
