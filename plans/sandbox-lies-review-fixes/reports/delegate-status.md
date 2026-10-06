@@ -53,7 +53,9 @@ lives under `.git/`).
   slice). The code review ran the lock probes on scratch input and found the
   same newline `path=` forgery there (§Open question). Phase 5 checkpoint
   `reports/phase-5-corrector.md` (Ready; five minor fixes; lifecycle audit
-  clean). The finish (review gate, tdd-audit) remains.
+  clean). Item 5.5 (lock-probe `path=` newline guard, option 1, one tdd slice)
+  added to `runbook.md` on 2026-10-06; then the finish (review gate, triage,
+  tdd-audit, completion).
 
 ## Build decisions
 
@@ -143,22 +145,24 @@ lives under `.git/`).
   §Rejected alternatives list with a pointer to the node. D-8's move to
   `sandbox-state.md` stays. No other section reworded. Result: 399 lines.
 
-## Open question for my human partner
-
-- The lock probes' `path=` (`lib/probes.sh` `_probe_lock_at`, six print sites)
-  has the defect Item 5.4 fixed for readonly-path: a relative lock path joined
-  onto a newline-bearing payload cwd splits the `path=` line and forges key
-  lines the verdicts read (`age=` overwritten in `probe_git_lock`'s `orphan`
-  verdict; `path=` swapped in `verdict_config_lock`, turning the act into "write
-  `.claude/settings.json` through `update-config`"). Verified by running both
-  probes (`reports/item-5-4-s1-code-review.md` §Lock probes). The lock outcomes
-  have no `nopath`; the review's options: (1) keep the outcome and omit `path=`
-  when the path holds a newline (smallest; `lock-detectors.md`'s A-3 text
-  changes); (2) a pathless outcome token; (3) encode the newline. Asked before
-  the finish, since a fix in this job would be Item 5.5 ahead of it.
+- 2026-10-06, at the lock-probe `path=` gate, by my human partner:
+  1. **Fixed now with option (1), as Item 5.5** (one tdd slice, shaped like
+     Item 5.4): when the lock path holds a newline, `_probe_lock_at` keeps the
+     outcome and leaves out the `path=` line; `lock-detectors.md`'s A-3 text
+     changes to match; every verdict reading `path=` from a lock probe must
+     still read correctly with it absent. RED, test review, GREEN and code
+     review per the skill.
+  2. **A path encoding is a carry-list entry, not this job** (Carry list,
+     first entry, in my human partner's words).
 
 ## Carry list
 
+- Later, per my human partner: replace the newline guards — readonly `nopath`,
+  and Item 5.5's omitted lock `path=` — with a `path=` encoding that can carry
+  newlines. Bash `$'a\nb'` syntax was suggested. A candidate is to print the
+  raw path when it holds no control characters and the `printf %q` form only
+  when it does; bash 3.2's `%q` also emits the `$'...'` form (verified by my
+  human partner 2026-10-06).
 - `craft:design-doc-writing` also wants a split to ship with loading
   instructions: `docs/design.md`'s opening should state that it is a hub whose
   detail lives in `docs/references/`, and `CLAUDE.md` should carry a routing
@@ -177,15 +181,11 @@ lives under `.git/`).
 
 ## Resume
 
-- **Last commit:** "Phase 5 checkpoint" (with this file).
-- **Exact step:** `/edify:build` §4.5 done for Phase 5 (the last phase); §5
-  finish not started.
-- **Why stopped:** approval gate — the lock-probe `path=` question (§Open
-  question) decides whether an Item 5.5 precedes the finish.
+- **Last commit:** "Item 5.5 added to the runbook" (with this file).
+- **Exact step:** Item 5.5 slice 1, RED dispatch next.
+- **Why stopped:** not stopped; in progress.
 - **Decisions given:** see §Decisions given.
-- **Next after the answer:** if taken, add Item 5.5 (tdd, one slice) to
-  `runbook.md` with the chosen option and run RED, test review, GREEN, code
-  review; then the finish (`references/finishing.md`: review gate, triage,
-  tdd-audit, completion). If not taken, add it to the carry list and go straight
-  to the finish.
+- **Next:** Item 5.5 slice 1 RED, test review, GREEN, code review; then the
+  finish (`references/finishing.md`: review gate, triage, tdd-audit,
+  completion).
 - **Carry list:** as above.

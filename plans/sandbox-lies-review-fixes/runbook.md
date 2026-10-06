@@ -434,3 +434,49 @@ revision: the runs are recorded as confounded, and the `git status` re-probe and
   - The code review checks whether the lock probes' `path=` (`lib/probes.sh`,
     `_probe_resolve_path` joining onto the payload cwd) share the defect and
     reports it; a lock-probe fix is not in this item.
+- Item 5.5 (added 2026-10-06 by my human partner's decision at the lock-probe
+  `path=` gate, option 1; a tdd item inside this general phase, run by its
+  `Slices:`): `lib/probes.sh` `_probe_lock_at` — when the resolved lock path
+  holds a newline, the outcome is decided as before (presence, character
+  device, holder, `stat` and `wc` all work on the real name) and the `path=`
+  line is left out; every other line is printed as before. One guard, at the
+  top of `_probe_lock_at`, that all six `path=` print sites read
+  (`reports/item-5-4-s1-code-review.md` §Lock probes: a relative lock path
+  joined onto a newline-bearing payload cwd forges `age=` under `orphan` and
+  swaps `verdict_config_lock`'s `path=` to the `update-config` act). Tests in
+  `tests/probes-config.bats` (the relative-path base-resolution file). The
+  verdicts already read correctly with `path=` absent: `_verdict_lock_present`
+  and `verdict_git_lock` ignore it, and `verdict_config_lock` keeps *Re-run*
+  with none (`tests/verdicts-locks.bats`, empty-stdin `config_lock mask`).
+  Requirements: FR-4. Depends on: Item 5.4.
+  - Slices:
+    1. Each half compares the whole output. Write `<g>` for a scratch
+       directory `<tmp>/r age=99999 x` and `<b>` for its twin
+       `<tmp>/r⏎age=99999⏎x` (a newline where each blank was: the review's
+       shape, whose middle line is a clean forged `age=`), so a guard that
+       also drops blanks fails on `<g>`.
+       - `probe_config_lock`, flag `false`, no lock present, text naming the
+         relative `.git/config`: cwd `<g>` prints `mask` and
+         `path=<g>/.git/config.lock`; cwd `<b>` prints `mask` alone. With cwd
+         `<b>` and text naming the absolute `<g>/.git/config`, it prints `mask`
+         and `path=<g>/.git/config.lock`, so a guard keyed on the cwd rather
+         than the resolved path fails.
+       - `probe_git_lock`, text naming the relative `.git/index.lock`, both
+         twins holding a `.git/` with a 3-byte `index.lock` touched to an old
+         mtime: under flag `false` and no holder, cwd `<g>` prints `orphan`,
+         `bytes=3`, one `age=` line and `path=<g>/.git/index.lock`; cwd `<b>`
+         prints `orphan`, `bytes=3` and one `age=` line only (the age value is
+         read back from the output's single `age=` line, so a forged second
+         one fails the equality). With `hold_lock` on `<b>`'s lock, cwd `<b>`
+         prints `held` and `pid=<holder>` only. With `<b>`'s lock removed and
+         flag `true`, cwd `<b>` prints `gone` alone.
+       - Residual: the `gone` print after a lock vanishes between the
+         presence test and `stat` has no deterministic trigger here; the
+         single guard covers it.
+  - Docs (same item): `docs/references/lock-detectors.md`'s Probe paragraph —
+    every outcome prints the resolved lock path as `path=`, except a path
+    holding a newline, which is never printed: the outcome stands and the
+    `path=` line is left out (the A-3 text); `lib/probes.sh`'s header and
+    `_probe_lock_at`'s comment say the same; one `docs/changelog.md` sentence
+    beside Item 5.4's.
+  - Out of scope: a `path=` encoding that carries newlines (carry list).
