@@ -57,7 +57,9 @@ assert_notice() {
   [ -z "$stderr" ]
   # A raw ESC byte is invalid JSON, which Claude Code's parser rejects whatever
   # this host's jq accepts: the reset must arrive as the \u001b escape.
-  [[ "$output" != *"$esc"* ]]
+  # `[ ]`, not `[[ ]]`: bash before 4.1 exempts a failing `[[ ]]` from errexit,
+  # so mid-body it would assert nothing there.
+  [ "${output#*"$esc"}" = "$output" ]
   printf '%s' "$output" | "$JQ" -e -s 'length == 1 and (.[0] | type == "object")'
   # shellcheck disable=SC2016  # $esc is a jq variable
   printf '%s' "$output" | "$JQ" -e --arg esc "$esc" \

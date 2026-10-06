@@ -1,15 +1,17 @@
 #!/usr/bin/env bats
 # Item 5.5 slice 1's code review, Major 1: hook-level pins for a lock probe
 # that prints its outcome alone, with no path= line (a resolved lock path
-# holding a newline leaves path= out). The probe's output has no newline, so
-# annotate.sh takes its no-newline branch and the verdict reads one empty
-# stdin line. Split from tests/hook-locks.bats (at 399 of 400 lines).
+# holding a newline leaves path= out). A mask or gone output is then the
+# outcome alone, with no newline, so annotate.sh takes its no-newline branch and
+# the verdict reads one empty stdin line; held keeps its pid= line. Split from
+# tests/hook-locks.bats, which sat at 399 of 400 lines.
 
 bats_require_minimum_version 1.5.0
 
 load helpers/bsd-stubs
 load helpers/git-env
 load helpers/hook
+load helpers/probes
 
 setup() {
   hook_copy_tree
@@ -20,13 +22,6 @@ setup() {
 run_hook() {
   run bash -c 'printf "%s" "$1" | bash "$2"' \
     _ "$1" "$HOOK_COPY/hooks/annotate.sh"
-}
-
-# assert_lacks <haystack> <pattern> — <pattern> (fixed string) must not occur
-# in <haystack>; a grep exit other than 1 fails rather than reading as absence.
-assert_lacks() {
-  run bash -c 'printf "%s" "$1" | grep -qF -- "$2"' _ "$1" "$2"
-  [ "$status" -eq 1 ]
 }
 
 @test "config-lock mask with no path= line keeps Re-run, never update-config" {
@@ -71,8 +66,12 @@ assert_lacks() {
 @test "real config-lock probe: a newline-bearing cwd forges no settings path" {
   # The 5.4 review's exploit end to end: a relative lock path joins onto a cwd
   # whose name holds a forged path= line. The payload carries real newlines;
-  # the hook encodes and decodes them (%b) before the probe sees the cwd.
+  # the hook encodes and decodes them (%b) before the probe sees the cwd. The
+  # relative .git/config joins onto the cwd only when the walk up from it finds
+  # no .git directory; one above $BATS_TEST_TMPDIR would take the join, no
+  # newline would reach the probe, and the case would pass on any code.
   local text cwd ctx
+  assert_no_git_above "$BATS_TEST_TMPDIR"
   text=$(cat "$FIXTURES/fire-configlock-remote-add.txt")
   cwd="$BATS_TEST_TMPDIR/c"$'\n'"path=$BATS_TEST_TMPDIR/h/.claude/settings.json.lock"$'\n'y
 

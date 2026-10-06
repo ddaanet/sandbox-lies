@@ -48,7 +48,8 @@ MASKED = [
 # Deliberately over-broad: strictly broader than any matcher in matchers.sh,
 # and than the candidate detectors' discriminators in
 # docs/references/detectors.md and readonly-path.md, so nothing a matcher
-# would catch is dropped before it sees it. The candidates' strings follow the shipped ones.
+# would catch is dropped before it sees it. The candidates' strings follow
+# the shipped ones.
 PREFILTER_SUBSTRINGS = [
     "File exists",
     "could not lock config file",

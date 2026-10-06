@@ -97,3 +97,12 @@ stub_probe_kv() {
   body="${body}; }"
   stub_lib probes.sh "$body"
 }
+
+# assert_lacks <haystack> <pattern> — <pattern> (fixed string) must not occur
+# in <haystack>; a grep exit other than 1 (found, or errored) fails the
+# assertion rather than reading as absence. Overwrites $status and $output.
+assert_lacks() {
+  run bash -c 'printf "%s" "$1" | grep -qF -- "$2"' _ "$1" "$2"
+  # shellcheck disable=SC2154 # set by bats' run
+  [ "$status" -eq 1 ]
+}

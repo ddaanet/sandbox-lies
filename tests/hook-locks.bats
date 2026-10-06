@@ -29,14 +29,6 @@ run_hook() {
 # host path, and so would a verdict defaulting to mask with no probe call at
 # all.
 
-# assert_lacks <haystack> <pattern> — <pattern> (fixed string) must not occur
-# in <haystack>; a grep exit other than 1 (found, or errored) fails the
-# assertion rather than reading as absence.
-assert_lacks() {
-  run bash -c 'printf "%s" "$1" | grep -qF -- "$2"' _ "$1" "$2"
-  [ "$status" -eq 1 ]
-}
-
 @test "mask outcome through the hook" {
   stub_probe git_lock mask
   local text payload ctx sys
