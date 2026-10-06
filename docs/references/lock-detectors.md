@@ -27,7 +27,8 @@ included) holding a `.git` directory, else against the `cwd`, and a missing or
 empty `cwd` falls back to the probe's own working directory, never `/` — then a
 holder check: `lsof -t`, else `fuser`. Size and age come from a portable `stat`
 form (BSD and GNU differ). Every outcome also prints the resolved lock path as
-`path=`.
+`path=`, except that a resolved path holding a newline is never printed: the
+outcome stands and the `path=` line is left out.
 
 | outcome | condition |
 |---|---|

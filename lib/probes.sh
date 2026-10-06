@@ -4,7 +4,8 @@
 # text on stdin, takes the sandbox flag as $1, the payload cwd as $2 and the
 # payload's `tool_input.command` as $3 (read by probe_readonly_path only), and
 # prints an outcome token on its first line followed by key=value lines
-# (pid=, bytes=, age=, path=); exit 0.
+# (pid=, bytes=, age=, path=); exit 0. path= is left out when the resolved
+# path holds a newline, which would split the line and forge key lines.
 #
 # set -u as in lib/matchers.sh and lib/verdicts.sh. hooks/annotate.sh sets it
 # before sourcing those; bats does not, so setting it here keeps an unset
@@ -48,10 +49,16 @@ probe_config_lock() {
 # and resolved its own lock path: presence, character-device-ness, the
 # holder, size and mtime, then the outcome and its key=value lines. Shared by
 # probe_git_lock and probe_config_lock, which differ only in how <path> is
-# extracted from their own error shape.
+# extracted from their own error shape. A <path> holding a newline (a relative
+# path joined onto a newline-bearing cwd) decides the outcome as any other,
+# but its path= line is left out: printed, it would split and forge key lines.
 _probe_lock_at() {
     local flag="$1" path="$2" pids holder_status=0 holder_pid mtime bytes=''
-    local now age outcome
+    local now age outcome pathline=1
+
+    if [[ $path == *$'\n'* ]]; then
+        pathline=
+    fi
 
     # Only the literal `true` reads as unsandboxed, as FR-5 reads an absent
     # flag as false. A wrong mask still ends in the right diagnosis (its
@@ -59,9 +66,9 @@ _probe_lock_at() {
     # sandboxed call to retry unchanged.
     if [ ! -e "$path" ] && [ ! -L "$path" ]; then
         if [ "$flag" = true ]; then
-            printf '%s\n' gone "path=$path"
+            printf '%s\n' gone ${pathline:+"path=$path"}
         else
-            printf '%s\n' mask "path=$path"
+            printf '%s\n' mask ${pathline:+"path=$path"}
         fi
         return 0
     fi
@@ -74,7 +81,7 @@ _probe_lock_at() {
     # read held. `[ -c ]`
     # follows a symlink, so a link to a device masks too.
     if [ -c "$path" ]; then
-        printf '%s\n' mask "path=$path"
+        printf '%s\n' mask ${pathline:+"path=$path"}
         return 0
     fi
 
@@ -92,7 +99,7 @@ _probe_lock_at() {
     pids=${pids#"${pids%%[0-9]*}"}
     holder_pid=${pids%%[!0-9]*}
     if [ -n "$holder_pid" ]; then
-        printf '%s\n' held "pid=$holder_pid" "path=$path"
+        printf '%s\n' held "pid=$holder_pid" ${pathline:+"path=$path"}
         return 0
     fi
 
@@ -117,7 +124,7 @@ _probe_lock_at() {
     elif ! mtime=$(stat -c %Y "$path" 2>&1) \
         || ! _probe_is_seconds "$mtime"; then
         if [ ! -e "$path" ] && [ ! -L "$path" ]; then
-            printf '%s\n' gone "path=$path"
+            printf '%s\n' gone ${pathline:+"path=$path"}
             return 0
         fi
         printf '%s\n' "$mtime" >&2
@@ -152,7 +159,9 @@ _probe_lock_at() {
         fi
         printf 'age=%s\n' "$age"
     fi
-    printf 'path=%s\n' "$path"
+    if [ -n "$pathline" ]; then
+        printf 'path=%s\n' "$path"
+    fi
 }
 
 # Prints the lock path from git's "Unable to create '<path>.lock': <reason>"
