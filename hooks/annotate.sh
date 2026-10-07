@@ -91,11 +91,10 @@ while IFS= read -r name; do
   fi
   # The candidate flag policies in detectors.md and readonly-path.md
   # (FR-5): gating lives here, never in the matcher. tmpdir-unset fires
-  # only when the flag is true; resume-lost, seccomp-init and readonly-path
-  # are silent when it is.
+  # only when the flag is true; seccomp-init and readonly-path are silent
+  # when it is. resume-lost has no policy: both its verdicts apply either way.
   case "$name:$flag" in
-    tmpdir-unset:false | resume-lost:true | seccomp-init:true | \
-      readonly-path:true) continue ;;
+    tmpdir-unset:false | seccomp-init:true | readonly-path:true) continue ;;
   esac
   # A detected name with no verdict function contributes nothing and the
   # other names still emit theirs; the `|| exit 0` below is for a verdict

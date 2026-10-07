@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 # The candidate detectors through the hook: the flag policy of the shipped
-# verdict-only candidates (tmpdir-unset, resume-lost, seccomp-init, Item 4.2)
+# verdict-only candidates (tmpdir-unset, seccomp-init, Item 4.2; resume-lost
+# has none and is in tests/hook-resume.bats)
 # and readonly-path's probed verdicts (Item 6.1). First file
 # to exist for candidate hook cases (runbook Phase 4 preamble), so it also
 # carries the one BSD-portability case any such file owes.
@@ -43,30 +44,6 @@ run_hook() {
   [ "$sys" = '$TMPDIR — expanded empty, path collapsed to /' ]
 
   payload=$(failure_payload "$text")
-  run_hook "$payload"
-  [ "$status" -eq 0 ]
-  [ -z "$output" ]
-}
-
-@test "resume-lost flag policy" {
-  # Fires only when the flag is false.
-  local text payload ctx sys
-  text=$(cat "$FIXTURES/fire-resume-lost-two-turn.txt")
-  # The real probe reads the config dir; an empty one keeps it off the host's.
-  mkdir -p "$BATS_TEST_TMPDIR/cfg-empty"
-  export CLAUDE_CONFIG_DIR="$BATS_TEST_TMPDIR/cfg-empty"
-
-  payload=$(post_payload "$text")
-  run_hook "$payload"
-  [ "$status" -eq 0 ]
-  [ -n "$output" ] \
-    || { echo "no verdict emitted, flag absent" >&2; return 1; }
-  ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
-  printf '%s' "$ctx" | grep -qF 'one unsandboxed call'
-  sys=$(printf '%s' "$output" | jq -r '.systemMessage')
-  [ "$sys" = '--resume — transcript not persisted in sandbox' ]
-
-  payload=$(post_payload "$text" "" true)
   run_hook "$payload"
   [ "$status" -eq 0 ]
   [ -z "$output" ]

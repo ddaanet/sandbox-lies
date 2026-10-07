@@ -99,6 +99,16 @@ load helpers/verdicts
   [ "$line2" = 'sandbox init failed — transient, retry' ]
 }
 
+@test "resume-lost found verdict prints the paragraph then the human line" {
+  local expected
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  expected='A transcript for this session exists, so the sandbox did not lose it and an unsandboxed retry will not help. `--resume` finds a session from any working directory: check that this call reads the config directory that holds the transcript (`CLAUDE_CONFIG_DIR`, else `~/.claude`).
+--resume — transcript exists, not the sandbox'
+  run bash -c '. "$1"; verdict_resume_lost found' _ "$VERDICTS"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$expected" ]
+}
+
 @test "resume-lost verdict prints nothing for an outcome it has no text for" {
   # verdict_text maps `-` to a call with no argument; this passes the
   # literal `-`, the outcome the verdict used to be called with.

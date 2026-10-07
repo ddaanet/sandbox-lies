@@ -249,6 +249,12 @@ verdict_tmpdir_unset() {
 }
 
 verdict_resume_lost() {
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  if [ "${1-}" = found ]; then
+    printf '%s\n' 'A transcript for this session exists, so the sandbox did not lose it and an unsandboxed retry will not help. `--resume` finds a session from any working directory: check that this call reads the config directory that holds the transcript (`CLAUDE_CONFIG_DIR`, else `~/.claude`).'
+    printf '%s\n' '--resume — transcript exists, not the sandbox'
+    return 0
+  fi
   [ "${1-}" = lost ] || return 0
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   printf '%s\n' 'The transcript was never written: `~/.claude/projects` is read-only inside the sandbox. Run the entire multi-turn flow in one unsandboxed call.'
