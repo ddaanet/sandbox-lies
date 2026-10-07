@@ -9,7 +9,7 @@ Scope: Major 1, m-1 to m-6, m-9 to m-18. Out: m-7, m-8 (fixed upstream).
 - [x] `/edify:design`: classified Moderate (`classification.md`), code read
 - [x] m-3 empirical probe run and recorded (`resume-probe-evidence.md`)
 - [x] Outline written (`outline.md`)
-- [ ] **Waiting at the outline approval gate**: questions Q1 to Q6, below
+- [x] Outline approved: my human partner took every default (Q1 to Q6)
 - [ ] `/edify:build plans/sandbox-lies-review-fixes-2` (the outline routes to
       `/build` with no runbook)
 
@@ -17,12 +17,10 @@ Scope: Major 1, m-1 to m-6, m-9 to m-18. Out: m-7, m-8 (fixed upstream).
 
 - m-3: a `resume-lost` probe that searches `~/.claude/projects/*/<id>.jsonl`,
   plus doc corrections (D-8, L-2, `sandbox-state.md`, `detectors.md`).
-
-## Open questions (outline gate)
-
-Q1 is the flag policy, Q2 the `found` outcome, Q3 the fixture `cat`, Q4 m-11,
-Q5 m-18 and Q6 m-4. Their defaults are in the gate message and in
-`outline.md`.
+- Q1 to Q6: every default taken. They are recorded in `outline.md`
+  §Decisions: no flag policy for `resume-lost`; a `found` verdict; the fixture
+  `cat` still fires; m-11 fixed; m-18 over eight suites with the `CLAUDE.md`
+  and NFR-2 rule narrowed; m-4 re-probe with `--ignored`, re-observed.
 
 ## Carry list
 

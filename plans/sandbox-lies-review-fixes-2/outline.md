@@ -23,6 +23,25 @@ runbook item shape, so `/build` can walk this outline directly.
     a rejected run.
   - The previous job's carry lists, unless an item below names one.
 
+## Decisions (approval gate)
+
+My human partner approved this outline and took every default:
+
+- **Q1:** `resume-lost` drops its flag policy. The transcript probe decides
+  under either flag.
+- **Q2:** `found` gets its own verdict (D-b): the sandbox did not lose the
+  transcript, unsandboxing will not help, check `CLAUDE_CONFIG_DIR` and `HOME`.
+- **Q3:** a sandboxed `cat` of the fire fixture still fires. Accepted, with no
+  command-word gate.
+- **Q4:** m-11 is fixed (Item 2.1). The quoted-literal over-skip is documented
+  as a residual (Item 5.3).
+- **Q5:** m-18 covers the eight suites in Item 3.5's default scope. The
+  `CLAUDE.md` rule and NFR-2 narrow from "a suite exercising shell code" to a
+  suite whose code calls a stubbed tool.
+- **Q6:** m-4 switches the re-probe to `git status --porcelain --ignored`,
+  re-observed during the build in the bare and the `true && …` form, recorded
+  with the CC version.
+
 ## m-3: what the probe found, and the design it sets
 
 The evidence is in `resume-probe-evidence.md` (CC 2.1.292, each sandboxed call
