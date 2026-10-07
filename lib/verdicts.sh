@@ -238,9 +238,10 @@ _readonly_match_list() {
   printf '%s' "$names"
 }
 
-# The shipped candidates. Each takes no outcome, as the phantom verdicts do;
-# text from docs/references/detectors.md's Verdict paragraphs, transcribed
-# verbatim.
+# The shipped candidates. Each takes no outcome, as the phantom verdicts do,
+# except resume_lost: its probe's lost or found picks the text, and any other
+# outcome prints nothing. Text from docs/references/detectors.md's Verdict
+# paragraphs, transcribed verbatim.
 verdict_tmpdir_unset() {
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   printf '%s\n' '`$TMPDIR` expanded empty in this unsandboxed call, so the path collapsed to `/`. Use the literal scratch path `/tmp/claude/<job>` (create it with `mkdir -p`) in this and every unsandboxed or delegated command.'
@@ -249,16 +250,18 @@ verdict_tmpdir_unset() {
 }
 
 verdict_resume_lost() {
-  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  if [ "${1-}" = found ]; then
-    printf '%s\n' 'A transcript for this session exists, so the sandbox did not lose it and an unsandboxed retry will not help. `--resume` finds a session from any working directory: check that this call reads the config directory that holds the transcript (`CLAUDE_CONFIG_DIR`, else `~/.claude`).'
-    printf '%s\n' '--resume — transcript exists, not the sandbox'
-    return 0
-  fi
-  [ "${1-}" = lost ] || return 0
-  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  printf '%s\n' 'The transcript was never written: `~/.claude/projects` is read-only inside the sandbox. Run the entire multi-turn flow in one unsandboxed call.'
-  printf '%s\n' '--resume — transcript not persisted in sandbox'
+  case "${1-}" in
+    lost)
+      # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+      printf '%s\n' 'The transcript was never written: `~/.claude/projects` is read-only inside the sandbox. Run the entire multi-turn flow in one unsandboxed call.'
+      printf '%s\n' '--resume — transcript not persisted in sandbox'
+      ;;
+    found)
+      # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+      printf '%s\n' 'A transcript for this session exists, so the sandbox did not lose it and an unsandboxed retry will not help. `--resume` finds a session from any working directory: check that this call reads the config directory that holds the transcript (`CLAUDE_CONFIG_DIR`, else `~/.claude`).'
+      printf '%s\n' '--resume — transcript exists, not the sandbox'
+      ;;
+  esac
 }
 
 verdict_seccomp_init() {

@@ -48,7 +48,50 @@ mutation.
 Why: four dispatches per slice over eleven slices would not fit one delegate's
 context budget. Each test still carries a red or a mutation proof.
 
+### Mutation testing in per-slice reviews
+
+My human partner's instruction, given mid-build (after Slice B's test review),
+binding on every per-slice corrector or review dispatch from then on. The
+corrector runs mutation tests, one mutation per behaviour, over:
+
+- every behaviour the slice's green diff added that no RED report names: extra
+  branches, guards and fallbacks the implementer wrote beyond the red tests;
+- every test written after its code (pins and regression cases such as
+  Major 1, m-14 and m-16), which have no red phase;
+- any behaviour whose fixture changed between red and green.
+
+It skips a behaviour whose RED report already shows the test failing on its
+assertion against the unchanged code, with the fixture unchanged since.
+
+Procedure:
+
+- Run only the slice's own bats files, one process at a time, in the
+  foreground, never the full suite per mutation. Expect about 3–5 mutations
+  per slice.
+- Mutate the subject in place and prove the mutation landed. Run the test, then
+  restore by reversing the edit, not from a backup copy. Before reporting,
+  confirm with `git diff` that only the intended changes remain.
+- A surviving mutation gets its fixture or test fixed by the corrector. The same
+  mutation going red proves the fix.
+- The slice report carries a table: behaviour | mutation | red or survived (and
+  fixed).
+
+Reviewed before the instruction, not redone. The end-of-build review covers
+them:
+
+- Slice A (Item 1.1/A): test review and code review. The code review added the
+  `unknown` outcome, the `set -u`/`HOME` handling, the empty
+  `CLAUDE_CONFIG_DIR` handling and the `failglob` subshell, each behind a test
+  shown red.
+- Slice B (Item 1.1/B): test review only. Its code review runs under the
+  instruction.
+
 ## Carry list
+
+- `probe_resume_lost` has a third outcome, `unknown` (nothing checkable: no id
+  extracted, or no locatable config dir), and the hook is silent on it. Item
+  4.1 (`lib/probes.sh` header) and Item 5.2 (`detectors.md` Probe paragraph)
+  must document it.
 
 - Scratch transcripts from the m-3 probe stay on the host:
   `~/.claude/projects/-tmp-claude-resume-probe-A/` and `…-B/`. They hold
