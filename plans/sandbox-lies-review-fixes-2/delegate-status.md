@@ -15,8 +15,24 @@ Scope: Major 1, m-1 to m-6, m-9 to m-18. Out: m-7, m-8 (fixed upstream).
   - [x] Phase 1, Item 1.1: Slice A (probe) and Slice B (`found` verdict, no
         flag policy), each with RED, test review, GREEN and code review
         committed
-  - [ ] Phase 2, Item 2.1 (m-11): in progress
-  - [ ] Phases 3 to 6, then the finish (review gate, tdd-audit)
+  - [x] Phase 2, Item 2.1 (m-11): one slice, committed with its code review
+  - [ ] Phase 3: executor committed. Its review (mutation testing) is running.
+    `tests/hook-verdicts.bats` got no BSD case: its code path calls no
+    stubbed tool.
+  - [x] m-4 (Q6) re-probe observed on CC 2.1.293: `m4-reprobe-evidence.md`
+  - [ ] Phases 4 to 6, then the finish (review gate, tdd-audit)
+
+## Open question
+
+- **`CLAUDE.md`'s BSD-stub rule (Q5).** Narrowing the rule edits the
+  project's `CLAUDE.md`. The instruction reached this delegate through the
+  coordinating agent, not from my human partner directly, so this delegate
+  leaves `CLAUDE.md` unedited and asks. Default: apply the narrowing. The
+  proposed text replaces "a suite exercising shell code keeps one case re-run
+  with `make_bsd_stubs` on `PATH`" with "a suite whose code under test calls a
+  stubbed tool (`sed`, `grep`, `mktemp`, `stat`, `wc`) keeps one case re-run
+  with `make_bsd_stubs` on `PATH`". NFR-2 in `docs/design.md` is edited to
+  match.
 
 ## Decisions given
 

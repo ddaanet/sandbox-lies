@@ -1,9 +1,7 @@
-# Shared helpers for tests/probes.bats, tests/probes-edges.bats,
-# tests/probes-tools.bats, tests/probes-config.bats, tests/probes-readonly.bats,
-# tests/probes-readonly-facts.bats, tests/probes-readonly-pins.bats,
-# tests/probes-readonly-members.bats and tests/probes-readonly-operands.bats: the
-# error builders, the `run` wrappers, the tools-only PATH, the lock holder,
-# the no-.git precondition, the readonly-path scratch repo, the index mtime
+# Shared helpers for the tests/probes*.bats suites, tests/hook-candidates.bats,
+# tests/hook-locks-pathless.bats and tests/hook-writes.bats: the error
+# builders, the `run` wrappers, the tools-only PATH, the lock holder, the
+# no-.git precondition, the readonly-path scratch repo, the index mtime
 # reader and the no-readfile assertion their probe cases use.
 
 # Self-quiet (FR-11): git's lock error is built from two fragments at run
@@ -150,7 +148,8 @@ tools_only_path() {
 # probe printing its own $! cannot pass for one naming the holder.
 #
 # Shared by tests/probes.bats, tests/probes-edges.bats and
-# tests/probes-lock-newline.bats: each file's own setup() resets _probe_holder_pid and its own teardown() calls kill_holder.
+# tests/probes-lock-newline.bats: each file's own setup() resets
+# _probe_holder_pid and its own teardown() calls kill_holder.
 hold_lock() {
   local ready="$BATS_TEST_TMPDIR/holder-ready" tries=0
   (

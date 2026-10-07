@@ -38,6 +38,8 @@ future_mtime_case() {
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
   [ "${output%%$'\n'*}" = orphan ]
+  # The size line is the BSD re-run's wc check: BSD wc pads its count.
+  printf '%s\n' "$output" | grep -qxF "bytes=7"
   printf '%s\n' "$output" | grep -qxF "age=0"
 }
 

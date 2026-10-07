@@ -23,12 +23,9 @@ is_exempt() {
   return 1
 }
 
-# sweep_tracked_files [<prefix>...] — the exemption check, then every tracked
-# regular file outside the fixtures (only those under a <prefix>, when given)
-# through the matchers; fails naming each file that fires.
-sweep_tracked_files() {
+@test "no tracked file outside the fixtures fires a detector" {
   local index="$BATS_TEST_TMPDIR/index" meta path mode verdicts firing=""
-  local checked=0 e status prefix in_scope
+  local checked=0 e status
   # The exemptions quote live diagnostics whole: each must still fire, or the
   # sweep below could be passing because the matchers never ran.
   for e in "${EXEMPT[@]}"; do
@@ -47,13 +44,6 @@ sweep_tracked_files() {
     case "$mode" in 120000|160000) continue ;; esac
     case "$path" in tests/fixtures/*) continue ;; esac
     is_exempt "$path" && continue
-    if [ "$#" -gt 0 ]; then
-      in_scope=0
-      for prefix in "$@"; do
-        case "$path" in "$prefix"*) in_scope=1 ;; esac
-      done
-      [ "$in_scope" -eq 1 ] || continue
-    fi
     status=0
     verdicts=$(bash "$MATCHERS" <"$ROOT/$path") || status=$?
     checked=$((checked + 1))
@@ -71,22 +61,30 @@ sweep_tracked_files() {
   }
 }
 
-@test "no tracked file outside the fixtures fires a detector" {
-  sweep_tracked_files
-}
-
-# A full second sweep would double the suite's 90 s, so the BSD re-run covers
-# the files that carry the matchers' own patterns: lib/ and hooks/. The
-# exemptions, which must fire, give identical verdicts under both tool sets.
-@test "the exempt files give the same verdicts, and lib and hooks stay quiet, with BSD tools" {
-  local bsd="$BATS_TEST_TMPDIR/bsdtools" e plain stubbed
+# A stub either refuses or runs the real tool, so under the stubs a file can
+# fire only where it fires plainly: a second sweep would find nothing the
+# first misses. What the stubs add is the refusal, on stderr whether or not
+# its matcher would have fired, and every matcher runs on every input. The
+# exempt files reach git-lock's follow-on grep; lib/ and hooks/, which hold
+# the matchers' own patterns, reach the other matchers' later stages.
+@test "the matchers give the plain verdicts and refuse no BSD sed or grep call" {
+  local bsd="$BATS_TEST_TMPDIR/bsdtools" err="$BATS_TEST_TMPDIR/stubbed-err"
+  local path plain stubbed
+  local -a inputs=("${EXEMPT[@]}")
   make_bsd_stubs "$bsd" sed grep
-  for e in "${EXEMPT[@]}"; do
-    plain=$(bash "$MATCHERS" <"$ROOT/$e")
-    [ -n "$plain" ]
+  while IFS= read -r -d '' path; do
+    inputs+=("$path")
+  done < <(git -C "$ROOT" ls-files -z -- lib hooks)
+  [ "${#inputs[@]}" -gt "${#EXEMPT[@]}" ]
+  for path in "${inputs[@]}"; do
     # `detect` exits 1 when nothing fires: that must reach the comparison.
-    stubbed=$(PATH="$bsd:$PATH" bash "$MATCHERS" <"$ROOT/$e") || :
-    [ "$stubbed" = "$plain" ]
+    plain=$(bash "$MATCHERS" <"$ROOT/$path") || :
+    stubbed=$(PATH="$bsd:$PATH" bash "$MATCHERS" <"$ROOT/$path" 2>"$err") || :
+    if is_exempt "$path"; then [ -n "$plain" ]; fi
+    [ "$stubbed" = "$plain" ] || {
+      echo "$path: stubbed [$stubbed], plain [$plain]" >&2
+      return 1
+    }
+    [ ! -s "$err" ] || { echo "$path:" >&2; cat "$err" >&2; return 1; }
   done
-  PATH="$bsd:$PATH" sweep_tracked_files lib/ hooks/
 }
