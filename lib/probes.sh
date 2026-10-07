@@ -22,6 +22,26 @@ _probes_lib_dir=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd) ||
 . "$_probes_lib_dir/probes-readonly.sh" || return 1
 unset _probes_lib_dir
 
+# The ids come from the refusal lines in the text (the shape
+# match_resume_lost anchors on). Each is tested for a regular file
+# <config dir>/projects/*/<id>.jsonl by glob; the ids are hex digits and
+# hyphens, so safe in one. Residual: archived/ and subagents/ sit below the
+# glob's depth and are not searched. The transcript is never opened.
+probe_resume_lost() {
+    local text id root verdict=found f hit
+    text=$(cat)
+    root=${CLAUDE_CONFIG_DIR:-$HOME/.claude}
+    while IFS= read -r id; do
+        hit=
+        for f in "$root"/projects/*/"$id".jsonl; do
+            [ -f "$f" ] && { hit=1; break; }
+        done
+        [ -n "$hit" ] || verdict=lost
+    done < <(printf '%s\n' "$text" |
+        sed -nE 's/^No conversation found with session ID: ([0-9a-fA-F-]+)[[:space:]]*$/\1/p')
+    printf '%s\n' "$verdict"
+}
+
 probe_git_lock() {
     local flag="$1" text path
     text=$(cat)

@@ -22,6 +22,32 @@ Scope: Major 1, m-1 to m-6, m-9 to m-18. Out: m-7, m-8 (fixed upstream).
   `cat` still fires; m-11 fixed; m-18 over eight suites with the `CLAUDE.md`
   and NFR-2 rule narrowed; m-4 re-probe with `--ignored`, re-observed.
 
+## Build state
+
+- Baseline: the outline-approval commit (`📝 Record outline approval …`).
+- Entry gate: `verify-step.sh` reads the pre-staged handoff files and the
+  untracked entries this job must not touch as dirt. A filtered equivalent
+  ignores exactly those entries and still runs `just precommit`.
+- Shared dispatch rules: `dispatch-rules.md`, cited by path in every prompt.
+- Subagents launch unnamed. The report path carries the dispatch name.
+
+### Slice grouping (plan as executed)
+
+Item 1.1's seven slices run as two:
+
+- **Slice A** (outline slices 1, 2, 3, 4 and 6) covers the probe, the wiring,
+  an outcome-aware `lost` verdict and the BSD re-run. Against an inert probe
+  stub every probe-level case reds on its assertion. The hook `lost` and BSD
+  cases are proven by mutation.
+- **Slice B** (outline slices 5 and 7) covers the `found` verdict and the
+  dropped flag gate.
+
+Item 2.1's three slices run as one. The over-skip guard (slice 3) is proven by
+mutation.
+
+Why: four dispatches per slice over eleven slices would not fit one delegate's
+context budget. Each test still carries a red or a mutation proof.
+
 ## Carry list
 
 - Scratch transcripts from the m-3 probe stay on the host:

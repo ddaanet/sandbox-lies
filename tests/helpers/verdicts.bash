@@ -36,7 +36,7 @@ config_lock mask true
 config_lock orphan true
 config_lock unknown true
 tmpdir_unset -
-resume_lost -
+resume_lost lost
 seccomp_init -
 readonly_path writable
 readonly_path readonly

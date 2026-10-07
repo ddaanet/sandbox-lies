@@ -52,6 +52,9 @@ run_hook() {
   # Fires only when the flag is false.
   local text payload ctx sys
   text=$(cat "$FIXTURES/fire-resume-lost-two-turn.txt")
+  # The real probe reads the config dir; an empty one keeps it off the host's.
+  mkdir -p "$BATS_TEST_TMPDIR/cfg-empty"
+  export CLAUDE_CONFIG_DIR="$BATS_TEST_TMPDIR/cfg-empty"
 
   payload=$(post_payload "$text")
   run_hook "$payload"

@@ -87,8 +87,8 @@ load helpers/verdicts
   # shellcheck disable=SC2016 # $TMPDIR is literal prose, not expansion
   [ "$line2" = '$TMPDIR — expanded empty, path collapsed to /' ]
 
-  line1=$(verdict_text resume_lost - | sed -n '1p')
-  line2=$(verdict_text resume_lost - | sed -n '2p')
+  line1=$(verdict_text resume_lost lost | sed -n '1p')
+  line2=$(verdict_text resume_lost lost | sed -n '2p')
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   [ "$line1" = 'The transcript was never written: `~/.claude/projects` is read-only inside the sandbox. Run the entire multi-turn flow in one unsandboxed call.' ]
   [ "$line2" = '--resume — transcript not persisted in sandbox' ]
@@ -97,6 +97,14 @@ load helpers/verdicts
   line2=$(verdict_text seccomp_init - | sed -n '2p')
   [ "$line1" = 'The sandbox failed to initialise before the command ran; this is transient. Retry the identical command once; if it fails the same way, split it into smaller calls. Escape the sandbox only after both.' ]
   [ "$line2" = 'sandbox init failed — transient, retry' ]
+}
+
+@test "resume-lost verdict prints nothing for an outcome it has no text for" {
+  # verdict_text maps `-` to a call with no argument; this passes the
+  # literal `-`, the outcome the verdict used to be called with.
+  run bash -c '. "$1"; verdict_resume_lost -' _ "$VERDICTS"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
 }
 
 @test "readonly-path writable verdict text matches readonly-path.md" {

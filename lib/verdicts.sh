@@ -249,6 +249,7 @@ verdict_tmpdir_unset() {
 }
 
 verdict_resume_lost() {
+  [ "${1-}" = lost ] || return 0
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   printf '%s\n' 'The transcript was never written: `~/.claude/projects` is read-only inside the sandbox. Run the entire multi-turn flow in one unsandboxed call.'
   printf '%s\n' '--resume — transcript not persisted in sandbox'
