@@ -108,8 +108,15 @@ probes `git init -q /tmp/<name>` (CC 2.1.288 with `git:*`, 2026-10-03; CC
 way: git with an absolute, `~`-led or `..`-bearing path argument stays sandboxed
 under any entry. What was observed, on CC 2.1.289 on 2026-10-05, is an entry
 honoured: a bare covered `git status --porcelain` from the project root listed
-no masks, while `true && git status --porcelain` listed them. That bare
-`git status` is the re-probe. A mask proves nothing about the call that sees it,
+no masks, while `true && git status --porcelain` listed them. On CC 2.1.293 on
+2026-10-07 the same contrast held with `--ignored`: the bare covered form listed
+no mask name, while `true && command git status --porcelain --ignored`, shown
+sandboxed by a refused write to `/tmp/<name>` in the same call, listed 20 as
+`??` and a gitignored one as `!!`, which a listing without `--ignored` leaves
+out (`plans/sandbox-lies-review-fixes-2/m4-reprobe-evidence.md`). So the
+re-probe is a bare `git status --porcelain --ignored`: without `--ignored`, a
+sandboxed listing in a repository that ignores every mask name shows none and
+reads as an unsandboxed run. A mask proves nothing about the call that sees it,
 since masks are visible from every process while any sandboxed command runs.
 
 ## config-lock

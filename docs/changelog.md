@@ -270,3 +270,23 @@ recorded on Linux with macOS unverified, which repositories the hook reads
 (NFR-4), how far the fixtures re-cut from the script (FR-8), and which corpus
 each `phantom-untracked` figure comes from. The suite gained pins for the
 review's verification gaps.
+
+## 2026-10-08 — review fixes: a transcript probe for `resume-lost`
+
+The second deliverable review found D-8's mitigation false: exclusions are
+honoured for a fully covered call and the baseline excludes `claude`, so a
+covered `claude --resume` refused for any reason carried no flag and read as a
+transcript the sandbox lost. A live probe on CC 2.1.292 showed a sandboxed
+`--resume` of an existing transcript succeeding, from any project directory, and
+a different config directory as the observed cause of a refusal for one that
+exists. `resume-lost` now has a probe, transcript existence by glob under the
+config directory, and drops its flag policy: `lost` keeps the old verdict,
+`found` gets its own, saying the sandbox is not the cause and naming the config
+directory, and `unknown` is silent. What D-8 still accepts is a covered `git`
+whose lock was gone by probe time reading `mask`, whose re-run is harmless. The
+`readfile=` scan passes over a candidate holding a glob or an expansion, quoted
+or not. Re-observed on CC 2.1.293, the exclusion re-probe became
+`git status --porcelain --ignored`, since a mask the repository ignores shows
+only as `!!`. NFR-2's per-suite BSD case now binds only a suite whose code under
+test calls a stubbed tool, the FR-4 pinned-by list names test families rather
+than files, and `just precommit` gained a Python compile check.

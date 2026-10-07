@@ -21,19 +21,10 @@ Scope: Major 1, m-1 to m-6, m-9 to m-18. Out: m-7, m-8 (fixed upstream).
     stubbed tool.
   - [x] m-4 (Q6) re-probe observed on CC 2.1.293: `m4-reprobe-evidence.md`
   - [x] Phase 4: done in session, self-reviewed, committed
-  - [ ] Phases 5 and 6, then the finish (review gate, tdd-audit)
-
-## Open question
-
-- **`CLAUDE.md`'s BSD-stub rule (Q5).** Narrowing the rule edits the
-  project's `CLAUDE.md`. The instruction reached this delegate through the
-  coordinating agent, not from my human partner directly, so this delegate
-  leaves `CLAUDE.md` unedited and asks. Default: apply the narrowing. The
-  proposed text replaces "a suite exercising shell code keeps one case re-run
-  with `make_bsd_stubs` on `PATH`" with "a suite whose code under test calls a
-  stubbed tool (`sed`, `grep`, `mktemp`, `stat`, `wc`) keeps one case re-run
-  with `make_bsd_stubs` on `PATH`". NFR-2 in `docs/design.md` is edited to
-  match.
+  - [x] Q5 answered (approved): `CLAUDE.md` BSD-stub rule narrowed
+  - [x] Phase 5 (Items 5.1 to 5.4): one opus dispatch,
+        `reports/item-5.md`, committed
+  - [ ] Phase 6, then the finish (review gate, tdd-audit)
 
 ## Decisions given
 
@@ -43,6 +34,11 @@ Scope: Major 1, m-1 to m-6, m-9 to m-18. Out: m-7, m-8 (fixed upstream).
   §Decisions: no flag policy for `resume-lost`; a `found` verdict; the fixture
   `cat` still fires; m-11 fixed; m-18 over eight suites with the `CLAUDE.md`
   and NFR-2 rule narrowed; m-4 re-probe with `--ignored`, re-observed.
+- Q5 `CLAUDE.md` edit: approved. My human partner answered "defaults" after
+  being told that default edits `CLAUDE.md`. The rule now reads "a suite whose
+  code under test calls a stubbed tool (`sed`, `grep`, `mktemp`, `stat`,
+  `wc`)", the list read from `make_bsd_stubs` in `tests/helpers/bsd-stubs.bash`.
+  NFR-2 in `docs/design.md` matches (Item 5.1).
 
 ## Build state
 
@@ -187,8 +183,8 @@ Item 2.1 and Phase 3 had mutation-tested reviews under the rule.
 ### Decisions given
 
 Q1 to Q6, all defaults (§Decisions in `outline.md`). The `found` verdict text
-is final as committed in `lib/verdicts.sh`. One question is open, the
-`CLAUDE.md` edit above.
+is final as committed in `lib/verdicts.sh`. Q5's `CLAUDE.md` edit is
+approved and applied (§Decisions given above).
 
 
 ### Carry list

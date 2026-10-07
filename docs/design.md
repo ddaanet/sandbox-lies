@@ -1,11 +1,11 @@
 # sandbox-lies — design
 
 **Status:** Partial. Built and tested: the hook, the `phantom-*` and lock
-verdicts, the hook's lock-probe call, the `tmpdir-unset`, `resume-lost` and
-`seccomp-init` verdicts, the `readonly-path` verdicts composed from their
-probe's facts, the `SessionStart` `jq` check, and the skill. Dogfooded
-2026-09-27 on CC 2.1.283. The memory file is not retired: its zellij section has
-no detector. **Verified against:** `0df5864e` (2026-09-27).
+verdicts, the hook's lock and `resume-lost` probe calls, the `tmpdir-unset`,
+`resume-lost` and `seccomp-init` verdicts, the `readonly-path` verdicts composed
+from their probe's facts, the `SessionStart` `jq` check, and the skill.
+Dogfooded 2026-09-27 on CC 2.1.283. The memory file is not retired: its zellij
+section has no detector. **Verified against:** `d8a8591` (2026-10-08).
 
 Changelog: [changelog.md](changelog.md). This document is a hub; `references/`
 holds one node per mechanism — per detector in
@@ -16,7 +16,7 @@ this hub that a node does not carry.
 
 ## Now
 
-- **Focus:** closing the first build — its review and TDD audit.
+- **Focus:** closing the review-fixes jobs — their review and TDD audit.
 - **Next:** publish the plugin; then publish the memory tier, held until the
   plugin installs in the other ddaanet repos. `nopath` shapes worth a form:
   `tee:`, `sed`'s temporary file, git's `could not write config file`.
@@ -76,26 +76,22 @@ then stderr from `tool_response` on a success payload — holds it in memory, ru
 `detect`, runs the probe for each verdict that has one, and emits a single JSON
 document. Any parse or runtime failure exits 0 with no output. Where · pinned
 by: `hooks/annotate.sh` · `tests/hook.bats` over both events' recorded payloads,
-`tests/hook-malformed.bats` over malformed ones, `tests/hook-locks.bats` over
-the probe call. Done.
+`tests/hook-malformed.bats` over malformed ones and a probe or verdict that dies
+mid-run, `tests/hook-locks.bats` over the probe call. Done.
 
 **FR-4 — Probes.** For each verdict whose correct action depends on state the
 tool could not see, the hook runs a discriminator outside the sandbox and the
 verdict names the outcome. A probe reads the result text on stdin, takes the
 flag (FR-5), the payload `cwd` and `tool_input.command` as its arguments, prints
 an outcome token on its first line and `key=value` lines after it; the verdict
-function reads both, and the flag. Three probes: lock existence and holder
-(`git-lock`, `config-lock`) and path writability (`readonly-path`), which also
-reports the command facts and the partial-merge files its acts depend on (D-17).
-Each probe is proved once against a live reproduction before it ships; the
-reproduction is recorded in `references/`. Where · pinned by: `lib/probes.sh`,
-`lib/probes-readonly*.sh` · `tests/probes*.bats` over synthetic trees, with a
-character device at the lock path and no holder tool on `PATH`, and
-`tests/probes-readonly.bats` over each path-extraction form,
-`tests/probes-readonly-members.bats` and `tests/probes-readonly-operands.bats`
-over the Probe facts members and the `readfile=` operand rule;
-`tests/hook-locks.bats`, `tests/hook-candidates.bats` and
-`tests/hook-writes.bats` over the hook's calls. Done.
+function reads both, and the flag. Four probes: lock existence and holder
+(`git-lock`, `config-lock`), path writability (`readonly-path`), which also
+reports the command facts and the partial-merge files its acts depend on (D-17),
+and transcript existence (`resume-lost`). Each probe is proved once against a
+live reproduction before it ships; the reproduction is recorded in
+`references/`. Where · pinned by: `lib/probes.sh`, `lib/probes-readonly*.sh` ·
+the `tests/probes*.bats` family over synthetic trees and the `tests/hook-*.bats`
+family over the hook's calls. Done.
 
 **FR-5 — Sandbox-state awareness.** The payload's
 `tool_input.dangerouslyDisableSandbox` (absent means false) decides wording: a
@@ -179,7 +175,8 @@ harness under `tests/`. Done (harness promoted; each shipped candidate
 re-measured with its shipped matcher as arbiter, not gated).
 
 **NFR-2 — Portability.** bash 3.2, BSD `grep`/`sed`/`mktemp`/`stat`/`wc`, `jq`.
-The suite re-runs itself with BSD-strict stubs on `PATH`. Where · pinned by:
+A suite whose code under test calls one of those five tools keeps one case
+re-run with BSD-strict stubs on `PATH`. Where · pinned by:
 `tests/helpers/bsd-stubs.bash` · every bats file loads it. Done.
 
 **NFR-3 — Cost.** No verdict, no output: the hook exits 0 silently, and that
@@ -193,12 +190,13 @@ measured, not gated).
 **NFR-4 — Hermetic.** The hook writes nothing (it runs outside the sandbox,
 where `$TMPDIR` may be unset). It reads only what the result names: the
 repository holding a refused path, possibly a sibling worktree rather than the
-call's, or with no path the payload `cwd`'s; and the lock paths the error names.
-Where · pinned by: `tests/hook.bats` and `tests/matchers.bats` run the hook and
-`detect` with `TMPDIR` naming a missing directory, `tests/hook-writes.bats` the
-hook through a real readonly-path and git-lock probe, `tests/probes-edges.bats`
-those two probes, `tests/check-jq.bats` the `SessionStart` check. Done (read
-scope: review, not gated).
+call's, or with no path the payload `cwd`'s; the lock paths the error names; and
+whether each session id a `--resume` refusal names has a transcript, never
+opening one. Where · pinned by: `tests/hook.bats` and `tests/matchers.bats` run
+the hook and `detect` with `TMPDIR` naming a missing directory,
+`tests/hook-writes.bats` the hook through a real readonly-path and git-lock
+probe, `tests/probes-edges.bats` those two probes, `tests/check-jq.bats` the
+`SessionStart` check with a `mktemp` spy. Done (read scope: review, not gated).
 
 **NFR-5 — Size and links.** Every document and script is at most 400 lines (a
 `SKILL.md` at most 200), and every inline relative link resolves (reference
@@ -284,8 +282,10 @@ diagnostic and its follow-on on one line — the corpus eval report fires
 
 **D-8 — Sandbox state from the payload.** Detectors read
 `tool_input.dangerouslyDisableSandbox` and either change wording or stay silent.
-Accepted tradeoff: a call an exclusion unsandboxed carries no flag. Argued in
-[references/sandbox-state.md](references/sandbox-state.md).
+`resume-lost` ignores it: its probe tests the transcript itself. Accepted
+tradeoff: a call an exclusion unsandboxed carries no flag, so a covered `git`
+whose lock was gone by probe time reads `mask`, whose re-run is harmless. Argued
+in [references/sandbox-state.md](references/sandbox-state.md).
 
 **D-9 — The skill lives here and carries the plugin's name.** `craft`'s premise
 is facts that fire on a design moment with no token to match; the escapes
@@ -381,7 +381,7 @@ for each argument; D-9 names two more.
   `## Context` listing phantom dotfiles is permanently out of reach and stays
   prose.
 - **L-2** A call unsandboxed by `excludedCommands`, one whose every command an
-  entry covers, leaves no trace in the payload (D-8).
+  entry covers, carries no flag or other trace in the payload (D-8).
 - **L-3** A symptom with no output — `SessionStart` hooks dropped under a
   sandboxed `claude -p`, the classifier refusing a benign compound — cannot be
   annotated.

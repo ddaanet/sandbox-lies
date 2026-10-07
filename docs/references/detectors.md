@@ -189,16 +189,70 @@ Replaces `--resume dies because the transcript never persisted`.
 its own — naming the session ID it cannot find, then the id (hex digits and
 hyphens) and nothing but trailing blanks. The store quotes it mid-line.
 
-**Flag policy.** Fires only when the flag is false; unsandboxed, the cause is
-elsewhere.
+**Probe.** `probe_resume_lost` takes every session id from a refusal line in the
+text, the line shape the matcher anchors on, and tests each for a regular file
+`<config dir>/projects/*/<id>.jsonl`. The config dir is CC's own resolution:
+`CLAUDE_CONFIG_DIR` when set, else `$HOME/.claude`. The search is a shell glob
+over the project directories, so it never derives a project-directory name from
+the `cwd`; the ids are hex digits and hyphens, safe inside a glob. The
+transcript is tested for existence only, never opened, and the probe prints no
+key lines. Outcomes:
 
-**Verdict.** The transcript was never written: `~/.claude/projects` is read-only
-inside the sandbox. Run the entire multi-turn flow in one unsandboxed call. ·
-`--resume — transcript not persisted in sandbox`
+- `lost` — some id has no transcript.
+- `found` — every id has one.
+- `unknown` — nothing checkable: no id extracted, `CLAUDE_CONFIG_DIR` set but
+  empty, or both it and `HOME` unset. The verdict has no text for it, so the
+  hook is silent.
+
+Residuals: `archived/` and `subagents/` sit below the glob's depth and are not
+searched, and whether `--resume` reads `archived/` is untested. The fire
+fixture's ids have no transcript, so reading the fixture still gives `lost`
+(D-10).
+
+**Flag policy.** None: the probe decides under either flag. Whether a transcript
+was written depends on the call that should have written it, not on the call
+that resumes it, and a call an exclusion unsandboxed carries no flag anyway
+([sandbox-state.md](sandbox-state.md)).
+
+**Verdicts.**
+
+- `lost` — The transcript was never written: `~/.claude/projects` is read-only
+  inside the sandbox. Run the entire multi-turn flow in one unsandboxed call. ·
+  `--resume — transcript not persisted in sandbox`
+- `found` — A transcript for this session exists, so the sandbox did not lose it
+  and an unsandboxed retry will not help. `--resume` finds a session from any
+  working directory: check that this call reads the config directory that holds
+  the transcript (`CLAUDE_CONFIG_DIR`, else `~/.claude`). ·
+  `--resume — transcript exists, not the sandbox`
+
+**Live reproduction (2026-10-07, CC 2.1.292).** Linux bubblewrap, with
+`~/.claude/projects` in the sandbox's write deny list; each sandboxed call
+proved its own state with a write test there that failed read-only in the same
+call, and every call ran `claude -p` with `--model haiku` from a scratch
+directory (`plans/sandbox-lies-review-fixes-2/resume-probe-evidence.md`).
+
+- E1, unsandboxed: a new session in directory A wrote its transcript.
+- E2, sandboxed, from A: `--resume` of that session answered with no refusal,
+  but its turn was not persisted.
+- E3, unsandboxed, from directory B, another project: the resume answered and
+  appended to the original file under A's project directory. `-p --resume <id>`
+  finds a session in any project directory under the config dir.
+- E3s, sandboxed, from B: the resume answered too. So neither the sandbox nor a
+  project mismatch makes `--resume` refuse a transcript that exists.
+- E4, sandboxed, from B, the fixture's shape: a session started sandboxed left
+  no transcript, its resume printed the refusal, and the installed hook fired
+  with this detector's verdict.
+- E5, unsandboxed, from A, `CLAUDE_CONFIG_DIR` naming an empty directory: the
+  resume of E1's session was refused. A different config dir is the observed
+  cause for a transcript that exists, which the `found` verdict names.
+
+Not tested: interactive `--resume` (the picker) and `--continue`.
 
 **Corpus.** 2 hits, 2 true, one gitlore session reproducing the loss on
 2026-07-17. 100% on 2026-09-25, a two-hit base; no pilot traffic. A third match,
-resuming an all-zero id on purpose, had the flag set: silent.
+resuming an all-zero id on purpose, had the flag set and was silent under the
+flag policy the detector then had; with none, it would read `lost`, a false
+positive, since no transcript was meant to exist.
 
 **Decision: ships.**
 

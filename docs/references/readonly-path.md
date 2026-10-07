@@ -65,27 +65,31 @@ on. The command shapes the wording only; detection never reads it (D-1).
 The repository for `target=` and `match=` is the one holding the path's nearest
 existing directory, else the payload `cwd`'s. Git reads run with optional locks
 off, so the probe writes nothing (NFR-4). Word splitting is safe for `target=`,
-since a ref name holds no blank; `readfile=` honours single and double quotes.
-Residuals: `merge=1` read off the command alone does not show that the git
-segment died, so a call whose merge or checkout succeeded before another
-command's write was refused gets it too; its clause then rests on `match=`
-lines, which a finished checkout leaves none of. A partial checkout whose text
-lost git's error — cut by a `tail`, or sent to a file — and whose target does
-not resolve gets no clause. `partial=1` does not check which git command printed
-the error, so a `stash` or `restore` dying on the same error counts too. A file
-whose name holds a newline is never a `match=` or a `readfile=`, and a
-repository root holding one gives no `target=` or `match=` at all: either would
-split a `match=` line and forge the key line after it. A repository at `/` gives
-`match=//<file>`. A reader behind a `cd`, or a reader or git behind a variable
-assignment, is not recognised. The scan does not parse `$( )`, backticks,
-subshells, braces or `$'…'`, so their contents read as words of the command
-around them; it stops at the end of a line holding `<<`, and after 16384
-characters, and neither cut command yields `readfile=`. A `>` anywhere in a word
-counts as output redirection, quoted or not, except a descriptor duplication
-(`2>&1`, `>&2`); so do `sort -o` and `awk -i`. A candidate ref holding `@{`,
-`^{`, `:` or a leading `-` is skipped. With an unborn HEAD, or past 1000 files
-modified against HEAD, no `target=` is printed. A file matches byte for byte,
-before any clean filter, and never as a symlink.
+since a ref name holds no blank; `readfile=` honours single and double quotes. A
+`readfile=` candidate holding `*`, `?`, `[` or `$` is a glob or an expansion,
+not a name the command wrote, and is passed over for the next one; in a word
+holding `<`, only the name after the last `<` is tested. So
+`grep pat *.log x.err` gives `x.err`, `cat $OUT.log` gives no line, and
+`grep 'err.*'<x.log` gives `x.log`. Residuals: `merge=1` read off the command
+alone does not show that the git segment died, so a call whose merge or checkout
+succeeded before another command's write was refused gets it too; its clause
+then rests on `match=` lines, which a finished checkout leaves none of. A
+partial checkout whose text lost git's error — cut by a `tail`, or sent to a
+file — and whose target does not resolve gets no clause. `partial=1` does not
+check which git command printed the error, so a `stash` or `restore` dying on
+the same error counts too. A file whose name holds a newline is never a `match=`
+or a `readfile=`, and a repository root holding one gives no `target=` or
+`match=` at all: either would split a `match=` line and forge the key line after
+it. A repository at `/` gives `match=//<file>`. A reader behind a `cd`, or a
+reader or git behind a variable assignment, is not recognised. The scan does not
+parse `$( )`, backticks, subshells, braces or `$'…'`, so their contents read as
+words of the command around them; it stops at the end of a line holding `<<`,
+and after 16384 characters, and neither cut command yields `readfile=`. A `>`
+anywhere in a word counts as output redirection, quoted or not, except a
+descriptor duplication (`2>&1`, `>&2`); so do `sort -o` and `awk -i`. A
+candidate ref holding `@{`, `^{`, `:` or a leading `-` is skipped. With an
+unborn HEAD, or past 1000 files modified against HEAD, no `target=` is printed.
+A file matches byte for byte, before any clean filter, and never as a symlink.
 
 The `readfile=` operand rule leaves these residuals, each shown by what the
 probe prints:
@@ -116,6 +120,9 @@ probe prints:
   here-string's word is a candidate too: `grep pat <<<x.log` gives `x.log`.
 - In `uniq`, a lone `-` glued to a redirection is skipped as an option:
   `uniq -<in.log out.log` writes `out.log` and gives `in.log`.
+- The glob and expansion skip tests the word with its quotes already removed, so
+  a quoted literal naming a real file is skipped too: `grep -l pat '*.log'`
+  gives no line, the safe side.
 
 **Live reproduction (2026-09-26): `writable`.** Scratch repo under
 `/tmp/claude/` with a linked worktree directly under `/tmp/`, outside the
