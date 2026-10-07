@@ -133,10 +133,12 @@ _readonly_tokenize() {
 # anywhere in a word counts as a redirection, quoted or not, except a
 # descriptor duplication (2>&1, >&2): awk's own `print > "f"` writes, so a
 # quoted `>` in a grep pattern costing readfile= is the safe side. A name
-# holding a newline cannot be a key line's value and is passed over. The
-# rule's residuals (other options' separate arguments, clustered and long
-# -e/-f forms, sed's w, a descriptor duplication in an operand slot, and
-# more) are listed in readonly-path.md after its Probe facts table.
+# holding a newline cannot be a key line's value and is passed over, and so
+# is one holding *, ?, [ or $, a glob or an expansion: quoted too, since the
+# tokenizer has removed the quotes. The rule's residuals (other options'
+# separate arguments, clustered and long -e/-f forms, sed's w, a descriptor
+# duplication in an operand slot, and more) are listed in readonly-path.md
+# after its Probe facts table.
 _readonly_readfile_arg() {
     local cut="$1" tok word first='' seg_first=1 seg_ok=1 all_ok=1 in_seg=0
     local candidate='' nl=$'\n' pat=0 lt=0 not_op uops=0 uend=0
@@ -226,14 +228,12 @@ _readonly_readfile_arg() {
         fi
         # A word opening with - is an option, never input, unless
         # a < in it redirects from the name after it, as wc -l<x.log does.
-        # A word holding *, ?, [ or $ is no name: skipped, quoted or not, since
-        # no quote state is kept, so a quoted literal *.log is skipped too.
         case "$word" in
             *"$nl"*) ;;
             [!-]* | *'<'*)
                 case "$word" in
                     *.log | *.output | *.out | *.err)
-                        case "$word" in
+                        case "${word##*<}" in
                             *[*?[\$]*) ;;
                             *) [ -n "$candidate" ] || candidate="${word##*<}" ;;
                         esac

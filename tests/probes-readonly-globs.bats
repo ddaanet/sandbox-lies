@@ -121,6 +121,39 @@ probe_for() {
   assert_no_readfile
 }
 
+# In a word glued to <, the candidate is the name after the last <, and only
+# that name is tested: a glob or $ in grep's pattern ahead of the < must not
+# withhold the redirected name.
+@test "a glob or \$ ahead of a glued < keeps the redirected name" {
+  probe_for "grep 'err.*'<x.log"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  [ "$(grep '^readfile=' <<<"$output")" = readfile=x.log ]
+
+  # shellcheck disable=SC2016 # the literal $p is the command's text
+  probe_for 'grep "$p"<x.log'
+  [ "$status" -eq 0 ]
+  [ "$(grep '^readfile=' <<<"$output")" = readfile=x.log ]
+}
+
+@test "a glob or \$ after < is skipped, lone or glued" {
+  probe_for 'cat <x.log'
+  [ "$status" -eq 0 ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=x.log'
+
+  probe_for 'cat <*.log'
+  assert_no_readfile
+
+  probe_for 'wc -l<x.log'
+  [ "$status" -eq 0 ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=x.log'
+
+  # shellcheck disable=SC2016 # the literal $x is the command's text
+  probe_for 'wc -l<$x.log'
+  assert_no_readfile
+}
+
 # The skip and the later-literal rule through BSD grep, sed, stat and wc
 # (NFR-2), as tests/probes-readonly-operands.bats re-runs its operand rule.
 @test "the glob skip survives BSD grep, sed, stat and wc" {

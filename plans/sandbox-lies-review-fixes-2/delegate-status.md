@@ -12,6 +12,11 @@ Scope: Major 1, m-1 to m-6, m-9 to m-18. Out: m-7, m-8 (fixed upstream).
 - [x] Outline approved: my human partner took every default (Q1 to Q6)
 - [ ] `/edify:build plans/sandbox-lies-review-fixes-2` (the outline routes to
       `/build` with no runbook)
+  - [x] Phase 1, Item 1.1: Slice A (probe) and Slice B (`found` verdict, no
+        flag policy), each with RED, test review, GREEN and code review
+        committed
+  - [ ] Phase 2, Item 2.1 (m-11): in progress
+  - [ ] Phases 3 to 6, then the finish (review gate, tdd-audit)
 
 ## Decisions given
 
