@@ -51,18 +51,18 @@ MASKED = [
 # would catch is dropped before it sees it. The candidates' strings follow
 # the shipped ones.
 PREFILTER_SUBSTRINGS = [
-    "File exists",
-    "could not lock config file",
-    "can only add regular files",
-    "crw-",
-    "Read-only file system",
-    "Device or resource busy",
-    "Permission denied",
-    "No such file or directory",
-    "No conversation found",
-    "no active session",
-    "apply-seccomp",
-] + MASKED
+    "File exists",  # git-lock, config-lock
+    "could not lock config file",  # config-lock
+    "can only add regular files",  # phantom-gitadd
+    "crw-",  # phantom-chardev
+    "Read-only file system",  # readonly-path
+    "Device or resource busy",  # readonly-path
+    "Permission denied",  # tmpdir-unset
+    "No such file or directory",  # tmpdir-unset
+    "No conversation found",  # resume-lost
+    "no active session",  # zellij-socket (detectors.md), no matcher yet
+    "apply-seccomp",  # seccomp-init
+] + MASKED  # phantom-untracked
 
 
 def result_is_error(entry, block):

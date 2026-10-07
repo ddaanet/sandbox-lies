@@ -8,8 +8,10 @@
 #
 # Without jq on PATH, bash itself prints a command-not-found line on stderr; the
 # hook still exits 0, so Claude Code ignores it, and hooks/check-jq.sh reports
-# the missing jq at session start. With jq, the hook writes nothing to stderr:
-# one jq call reads stdin and cannot error on any input. `-Rs` takes it as one
+# the missing jq at session start. With jq, the parse writes nothing to stderr:
+# one jq call reads stdin and cannot error on any input. The probes are the
+# exception, by design: a failure they cannot classify, from lib/probes.sh's
+# `stat` or holder tool, passes its own stderr through. `-Rs` takes it as one
 # raw string and `fromjson?` decodes it, dropping what does not parse;
 # `select(type == "object")` drops a scalar or array, which jq cannot index
 # without a fatal error; only a string field is read as text. The output is the

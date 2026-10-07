@@ -3,9 +3,14 @@
 # (A-3 contract, docs/design.md FR-4): each probe reads the Bash tool result
 # text on stdin, takes the sandbox flag as $1, the payload cwd as $2 and the
 # payload's `tool_input.command` as $3 (read by probe_readonly_path only), and
-# prints an outcome token on its first line followed by key=value lines
-# (pid=, bytes=, age=, path=); exit 0. path= is left out when the resolved
-# path holds a newline, which would split the line and forge key lines.
+# prints an outcome token on its first line followed by key=value lines; exit
+# 0. The key lines per probe:
+# - probe_git_lock, probe_config_lock: pid=, bytes=, age=, path=;
+# - probe_readonly_path (lib/probes-readonly.sh): path= (none on nopath),
+#   then on writable and nopath readfile=, merge=, partial=, target=, match=;
+# - probe_resume_lost: none. Its outcome is lost, found or unknown.
+# path= is left out when the resolved path holds a newline, which would split
+# the line and forge key lines.
 #
 # set -u as in lib/matchers.sh and lib/verdicts.sh. hooks/annotate.sh sets it
 # before sourcing those; bats does not, so setting it here keeps an unset

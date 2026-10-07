@@ -14,12 +14,13 @@ precommit:
         "$@"
         passed="${passed:+$passed, }$name"
     }
-    # Tracked and untracked-unignored paths matching the pathspecs, so a new
-    # file is linted before its first commit, NUL-delimited through a file so
-    # names with whitespace survive and a git failure stops the gate.
+    # lint_paths: tracked and untracked-unignored paths matching the
+    # pathspecs, so a new file is linted before its first commit (wider than
+    # scripts/lib/tracked.sh's tracked-only list), NUL-delimited through a
+    # file so names with whitespace survive and a git failure stops the gate.
     list=$(mktemp "${TMPDIR:-/tmp}/sandbox-lies-precommit.XXXXXX")
     trap 'rm -f "$list"' EXIT
-    tracked() {
+    lint_paths() {
         git ls-files -z --cached --others --exclude-standard -- "$@" >"$list"
         files=()
         while IFS= read -r -d '' f; do files+=("$f"); done <"$list"
@@ -30,13 +31,19 @@ precommit:
     }
     report plugin.json jq empty .claude-plugin/plugin.json
     report hooks.json jq empty hooks/hooks.json
-    tracked '*.sh' '*.bash' '*.bats'
+    lint_paths '*.sh' '*.bash' '*.bats'
     report shellcheck shellcheck "${files[@]}"
-    tracked '*.sh'
+    lint_paths '*.sh'
     report 'bash -n' each_bash_n "${files[@]}"
     report rumdl rumdl fmt --check -q --no-cache
     report 'line limits' scripts/check-line-limits.sh
     report links scripts/check-links.sh
+    # No suite runs the two Python tools, so a syntax error would pass. A
+    # compile() over each source catches it and, unlike py_compile, writes no
+    # bytecode.
+    report 'python compile' python3 -c \
+        'import sys; [compile(open(f, encoding="utf-8").read(), f, "exec") for f in sys.argv[1:]]' \
+        tests/extract-fixtures.py tests/corpus-eval.py
     report tests just test
     printf 'precommit passed: %s\n' "$passed"
 
