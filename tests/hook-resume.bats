@@ -84,3 +84,19 @@ resume_cfg() {
   [ "$output" = "$plain" ]
   [ "$(printf '%s' "$output" | jq -r '.systemMessage')" = '--resume — transcript not persisted in sandbox' ]
 }
+
+@test "resume-lost through the hook: no config root to search, silent" {
+  # HOME and CLAUDE_CONFIG_DIR both unset: the probe has nowhere to look and
+  # its outcome is one the verdict has no text for. The case above emits for
+  # the same text once a root exists; here nothing reaches stdout or stderr
+  # (run_hook merges stderr into $output).
+  local text payload
+  text=$(cat "$FIXTURES/fire-resume-lost-two-turn.txt")
+  payload=$(post_payload "$text")
+
+  # shellcheck disable=SC2016 # $1 and $2 expand in the inner bash
+  run env -u HOME -u CLAUDE_CONFIG_DIR \
+    bash -c 'printf "%s" "$1" | bash "$2"' _ "$payload" "$HOOK_COPY/hooks/annotate.sh"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}

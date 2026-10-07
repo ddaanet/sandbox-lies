@@ -151,3 +151,108 @@ transcript() {
   [ "$status" -eq 0 ]
   [ "$output" = found ]
 }
+
+@test "resume-lost probe: no id extracted is unknown, never found" {
+  # A sed that fails, its status lost to the loop, left the probe with no id
+  # and its found default: a transcript claimed for an empty config dir.
+  # Nothing was checked, so the outcome is one the verdict has no text for,
+  # and sed's own message passes through.
+  mkdir -p "$BATS_TEST_TMPDIR/failsed"
+  printf '#!/bin/sh\necho "sed: stub failure" >&2\nexit 1\n' \
+    >"$BATS_TEST_TMPDIR/failsed/sed"
+  chmod 755 "$BATS_TEST_TMPDIR/failsed/sed"
+
+  PATH="$BATS_TEST_TMPDIR/failsed:$PATH" \
+    run_probe probe_resume_lost false "$BATS_TEST_TMPDIR" "$TEXT"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = unknown ]
+  [ "$stderr" = 'sed: stub failure' ]
+}
+
+@test "resume-lost probe: an invalid byte under a UTF-8 locale still extracts the ids" {
+  # BSD sed under a UTF-8 locale exits with "illegal byte sequence" on input
+  # holding an invalid byte (lib/probes.sh _probe_lock_path); the stub does
+  # so whenever LC_ALL is not C. Only ID_1 has a transcript: lost needs both
+  # ids read, and a probe left with none prints something else.
+  local real text
+  real=$(command -v sed)
+  mkdir -p "$BATS_TEST_TMPDIR/illseq"
+  # shellcheck disable=SC2016 # stub script text, expanded when the stub runs
+  printf '%s\n' '#!/bin/sh' \
+    'in=$(cat; printf x); in=${in%x}' \
+    'if [ "${LC_ALL-}" != C ]; then' \
+    '  LC_ALL=C; export LC_ALL' \
+    '  case $in in *"$(printf "\377")"*)' \
+    '    echo "sed: RE error: illegal byte sequence" >&2; exit 1 ;; esac' \
+    'fi' \
+    "printf '%s' \"\$in\" | exec '$real' \"\$@\"" \
+    >"$BATS_TEST_TMPDIR/illseq/sed"
+  chmod 755 "$BATS_TEST_TMPDIR/illseq/sed"
+  text=$(printf '\377\n%s' "$TEXT")
+  transcript "$ID_1"
+  unset LC_ALL
+
+  PATH="$BATS_TEST_TMPDIR/illseq:$PATH" \
+    run_probe probe_resume_lost false "$BATS_TEST_TMPDIR" "$text"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = lost ]
+  [ -z "$stderr" ]
+}
+
+@test "resume-lost probe: HOME and CLAUDE_CONFIG_DIR both unset is unknown" {
+  # No root to search: under set -u the probe died on HOME with a message on
+  # stderr. A transcript under the would-be fallback must not decide it.
+  transcript "$ID_1" "$HOME/.claude"
+  transcript "$ID_2" "$HOME/.claude"
+  unset CLAUDE_CONFIG_DIR HOME
+
+  run_probe probe_resume_lost false "$BATS_TEST_TMPDIR" "$TEXT"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = unknown ]
+  [ -z "$stderr" ]
+}
+
+@test "resume-lost probe: HOME unset, CLAUDE_CONFIG_DIR set, still found" {
+  # The partner of the case above: HOME is needed only for the fallback.
+  transcript "$ID_1"
+  transcript "$ID_2"
+  unset HOME
+
+  run_probe probe_resume_lost false "$BATS_TEST_TMPDIR" "$TEXT"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = found ]
+  [ -z "$stderr" ]
+}
+
+@test "resume-lost probe: CLAUDE_CONFIG_DIR set but empty is unknown" {
+  # CC 2.1.292 resolves its config dir as CLAUDE_CONFIG_DIR ?? homedir/.claude,
+  # so an empty value is not the HOME fallback: it is a cwd-relative
+  # projects/ the probe cannot locate. Transcripts sit under the fallback, so
+  # a probe treating empty as unset prints found.
+  transcript "$ID_1" "$HOME/.claude"
+  transcript "$ID_2" "$HOME/.claude"
+  export CLAUDE_CONFIG_DIR=
+
+  run_probe probe_resume_lost false "$BATS_TEST_TMPDIR" "$TEXT"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = unknown ]
+}
+
+@test "resume-lost probe: a caller's failglob does not abort the glob" {
+  # ID_2 has no transcript, so its glob matches nothing: under failglob that
+  # is an expansion error, which killed the probe with a message on stderr.
+  transcript "$ID_1"
+  shopt -s failglob
+
+  run_probe probe_resume_lost false "$BATS_TEST_TMPDIR" "$TEXT"
+  shopt -u failglob
+
+  [ "$status" -eq 0 ]
+  [ "$output" = lost ]
+  [ -z "$stderr" ]
+}

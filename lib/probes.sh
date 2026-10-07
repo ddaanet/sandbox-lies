@@ -27,20 +27,41 @@ unset _probes_lib_dir
 # <config dir>/projects/*/<id>.jsonl by glob; the ids are hex digits and
 # hyphens, so safe in one. Residual: archived/ and subagents/ sit below the
 # glob's depth and are not searched. The transcript is never opened.
-probe_resume_lost() {
-    local text id root verdict=found f hit
-    text=$(cat)
-    root=${CLAUDE_CONFIG_DIR:-$HOME/.claude}
+#
+# The config dir is CC's own resolution (2.1.292): CLAUDE_CONFIG_DIR when
+# set, even empty, else homedir/.claude. An empty one names a cwd-relative
+# projects/ and an unset HOME a passwd lookup, neither of which the probe
+# locates; those, and a sed that fails or extracts no id, print unknown, an
+# outcome the verdict has no text for, rather than a found nothing checked.
+# LC_ALL=C as in _probe_lock_path: BSD sed under a UTF-8 locale exits on an
+# invalid byte anywhere in the text. The body is a subshell so failglob is
+# unset here whatever the caller's shell options: it makes an id with no
+# transcript an expansion error. A no-match leaves hit empty either way:
+# nullglob drops the pattern, and without it the literal fails [ -f ].
+probe_resume_lost() (
+    local ids id root verdict=found f hit
+    shopt -u failglob
+    if [ "${CLAUDE_CONFIG_DIR+set}" = set ]; then
+        root=$CLAUDE_CONFIG_DIR
+    else
+        root=${HOME:+$HOME/.claude}
+    fi
+    ids=$(LC_ALL=C sed -nE \
+        's/^No conversation found with session ID: ([0-9a-fA-F-]+)[[:space:]]*$/\1/p') \
+        || ids=
+    if [ -z "$root" ] || [ -z "$ids" ]; then
+        printf '%s\n' unknown
+        return 0
+    fi
     while IFS= read -r id; do
         hit=
         for f in "$root"/projects/*/"$id".jsonl; do
             [ -f "$f" ] && { hit=1; break; }
         done
         [ -n "$hit" ] || verdict=lost
-    done < <(printf '%s\n' "$text" |
-        sed -nE 's/^No conversation found with session ID: ([0-9a-fA-F-]+)[[:space:]]*$/\1/p')
+    done < <(printf '%s\n' "$ids")
     printf '%s\n' "$verdict"
-}
+)
 
 probe_git_lock() {
     local flag="$1" text path
