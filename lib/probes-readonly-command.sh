@@ -226,12 +226,17 @@ _readonly_readfile_arg() {
         fi
         # A word opening with - is an option, never input, unless
         # a < in it redirects from the name after it, as wc -l<x.log does.
+        # A word holding *, ?, [ or $ is no name: skipped, quoted or not, since
+        # no quote state is kept, so a quoted literal *.log is skipped too.
         case "$word" in
             *"$nl"*) ;;
             [!-]* | *'<'*)
                 case "$word" in
                     *.log | *.output | *.out | *.err)
-                        [ -n "$candidate" ] || candidate="${word##*<}"
+                        case "$word" in
+                            *[*?[\$]*) ;;
+                            *) [ -n "$candidate" ] || candidate="${word##*<}" ;;
+                        esac
                         ;;
                 esac
                 ;;
