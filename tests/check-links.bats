@@ -8,6 +8,27 @@ load helpers/git-env
 
 SCRIPT="$ROOT/scripts/check-links.sh"
 
+# The body of "broken link is reported", shared with its BSD re-run below.
+broken_link_case() {
+  local dir
+  dir=$(make_fixture_root broken)
+  mkdir -p "$dir/docs"
+  # The one link in the fixture, and the only broken one — nothing else in
+  # the tree to source a second report line from.
+  printf '[m](missing.md)\n' >"$dir/docs/a.md"
+  # Decoys: a missing.md that exists, but at ROOT and in the CWD (see setup)
+  # rather than beside the linking file. A script resolving against either,
+  # falling back to either, or accepting a file of that name anywhere in the
+  # tree finds one of these and reports nothing.
+  : >"$dir/missing.md"
+  : >"$BATS_TEST_TMPDIR/missing.md"
+  git -C "$dir" add docs/a.md missing.md
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 1 ]
+  [ "$output" = "broken-link: docs/a.md -> missing.md" ]
+}
+
 @test "resolving link passes" {
   local dir
   dir=$(make_fixture_root resolving)
@@ -26,23 +47,13 @@ SCRIPT="$ROOT/scripts/check-links.sh"
 }
 
 @test "broken link is reported" {
-  local dir
-  dir=$(make_fixture_root broken)
-  mkdir -p "$dir/docs"
-  # The one link in the fixture, and the only broken one — nothing else in
-  # the tree to source a second report line from.
-  printf '[m](missing.md)\n' >"$dir/docs/a.md"
-  # Decoys: a missing.md that exists, but at ROOT and in the CWD (see setup)
-  # rather than beside the linking file. A script resolving against either,
-  # falling back to either, or accepting a file of that name anywhere in the
-  # tree finds one of these and reports nothing.
-  : >"$dir/missing.md"
-  : >"$BATS_TEST_TMPDIR/missing.md"
-  git -C "$dir" add docs/a.md missing.md
+  broken_link_case
+}
 
-  run --separate-stderr "$SCRIPT" "$dir"
-  [ "$status" -eq 1 ]
-  [ "$output" = "broken-link: docs/a.md -> missing.md" ]
+@test "broken link is reported with BSD grep and mktemp ahead on PATH" {
+  local bsd="$BATS_TEST_TMPDIR/bsdtools"
+  make_bsd_stubs "$bsd" grep mktemp
+  PATH="$bsd:$PATH" broken_link_case
 }
 
 # Item 2.2 slice 2: the tracked markdown scope, added from Item 2.1's

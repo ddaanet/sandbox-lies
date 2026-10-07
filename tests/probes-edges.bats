@@ -23,6 +23,24 @@ teardown() {
   kill_holder
 }
 
+# touch -t 209901010000 backdates nothing; it sets a future mtime, the clock
+# skew case. Age is clamped to 0, not left negative.
+# The body of "future mtime is age 0", shared with its BSD re-run.
+future_mtime_case() {
+  local repo="$BATS_TEST_TMPDIR/r" cwd="$BATS_TEST_TMPDIR/elsewhere" lock
+  mkdir -p "$repo/.git" "$cwd"
+  lock="$repo/.git/index.lock"
+  printf '1234567' >"$lock"
+  touch -t 209901010000 "$lock"
+
+  run_probe probe_git_lock false "$cwd" "$(git_lock_error "$lock")"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = orphan ]
+  printf '%s\n' "$output" | grep -qxF "age=0"
+}
+
 # A stat stub on PATH removes its path operand, then runs the real stat: the
 # window git's own lock cleanup can land in, between the presence test and
 # the mtime read. Recreates the lock between the two flag runs so the second
@@ -86,21 +104,14 @@ STUB
   [ "$(printf '%s\n' "$output" | grep -c '^bytes=')" -eq 0 ]
 }
 
-# touch -t 209901010000 backdates nothing; it sets a future mtime, the clock
-# skew case. Age is clamped to 0, not left negative.
 @test "future mtime is age 0" {
-  local repo="$BATS_TEST_TMPDIR/r" cwd="$BATS_TEST_TMPDIR/elsewhere" lock
-  mkdir -p "$repo/.git" "$cwd"
-  lock="$repo/.git/index.lock"
-  printf '1234567' >"$lock"
-  touch -t 209901010000 "$lock"
+  future_mtime_case
+}
 
-  run_probe probe_git_lock false "$cwd" "$(git_lock_error "$lock")"
-
-  [ "$status" -eq 0 ]
-  [ -z "$stderr" ]
-  [ "${output%%$'\n'*}" = orphan ]
-  printf '%s\n' "$output" | grep -qxF "age=0"
+@test "future mtime is age 0, with BSD sed, stat and wc" {
+  local bsd="$BATS_TEST_TMPDIR/bsdtools"
+  make_bsd_stubs "$bsd" sed stat wc
+  PATH="$bsd:$PATH" future_mtime_case
 }
 
 # A fuser stub on a tools-only PATH (no lsof) removes the lock, then prints

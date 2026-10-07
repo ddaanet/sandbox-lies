@@ -8,6 +8,7 @@ ROOT="$(cd "${BATS_TEST_DIRNAME}/.." && pwd)"
 bats_require_minimum_version 1.5.0
 
 load helpers/bsd-stubs
+load helpers/spy
 
 # The tools the script may need, linked into the jq-less PATH directory. The
 # set is a base chosen ahead of the implementation: the shell, plus the tools
@@ -95,9 +96,14 @@ assert_notice() {
   run_nojq ""
   assert_notice
   local plain="$output"
-  run_nojq "" TMPDIR="$BATS_TEST_TMPDIR/no-such-dir"
+  # A mktemp spy ahead on PATH: a silent `mktemp` with a /tmp fallback would
+  # leave the stdout and stderr unchanged, and only the log shows the call.
+  local spy_log="$BATS_TEST_TMPDIR/mktemp.log"
+  make_spy "$BATS_TEST_TMPDIR/spy-bin" "$spy_log" mktemp
+  run_nojq "$BATS_TEST_TMPDIR/spy-bin" TMPDIR="$BATS_TEST_TMPDIR/no-such-dir"
   assert_notice
   [ "$output" = "$plain" ]
+  [ ! -e "$spy_log" ]
 }
 
 @test "jq absent: a re-run with BSD stubs ahead on PATH gives the same stdout" {

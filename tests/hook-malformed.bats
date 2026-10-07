@@ -61,7 +61,9 @@ assert_no_failures() {
   [ -z "$failures" ] || { printf '%s' "$failures" >&2; return 1; }
 }
 
-@test "non-json, scalar, array and textless object" {
+# The body of "non-json, scalar, array and textless object", shared with its
+# BSD re-run below.
+malformed_inputs_case() {
   local gitadd porcelain
   gitadd=$(cat "$FIXTURES/fire-masks-gitadd-refused.txt")
   porcelain=$(cat "$FIXTURES/fire-masks-porcelain.txt")
@@ -86,6 +88,16 @@ assert_no_failures() {
       "$FIXTURES/payload-post.json")"
 
   assert_no_failures
+}
+
+@test "non-json, scalar, array and textless object" {
+  malformed_inputs_case
+}
+
+@test "non-json, scalar, array and textless object, with BSD tools" {
+  local bsd="$BATS_TEST_TMPDIR/bsdtools"
+  make_bsd_stubs "$bsd" sed grep
+  PATH="$bsd:$PATH" malformed_inputs_case
 }
 
 # The phantom matchers are line-anchored, and jq renders an object or array

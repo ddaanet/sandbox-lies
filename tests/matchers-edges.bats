@@ -146,6 +146,26 @@ tmpdir_unset_quoted_words_pair() {
   assert_verdict '' "$(printf 'Untracked files:\n\t%s\n' .bashrc)"
 }
 
+@test "phantom-untracked counts a slash-suffixed name toward the threshold" {
+  # Exactly two masked names, one carrying the trailing slash. Only the
+  # slash-suffixed line is matched through the `/?` in the grep pattern, so
+  # dropping it leaves a count of one.
+  local block
+  block=$(printf 'Untracked files:\n\t%s\n\t%s\n' .bashrc .claude/skills/)
+  [ "$(command grep -c $'^\t' <<< "$block")" -eq 2 ]
+  assert_verdict phantom-untracked "$block"
+}
+
+@test "phantom-untracked counts one name once, with and without the slash" {
+  # The same name twice, spelled both ways, is one name. Dropping the `/?`
+  # from the sed strip leaves two distinct spellings and the count reaches
+  # the threshold.
+  local block
+  block=$(printf 'Untracked files:\n\t%s\n\t%s\n' .claude/skills .claude/skills/)
+  [ "$(command grep -c $'^\t' <<< "$block")" -eq 2 ]
+  assert_verdict '' "$block"
+}
+
 # --------------------------------------------------------------- portability
 
 @test "a near-miss pair survives BSD grep and sed" {

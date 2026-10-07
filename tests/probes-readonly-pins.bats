@@ -47,6 +47,26 @@ assert_merge_without_target() {
   run ! grep -q '^target=' <<<"$output"
 }
 
+# `git pull` has no candidate word after its subcommand, so
+# _readonly_merge_segment's cands array stays empty — the shape that aborted
+# the probe on bash 3.2 under set -u (Major Issue 1) before every possibly-
+# empty array was guarded. The suite runs bash 5, which does not reproduce
+# that abort even unguarded, so this test pins the outcome rather than the
+# crash path itself.
+# The body of "a bare git pull gives merge=1 with a clean exit", shared with
+# its BSD re-run.
+bare_pull_case() {
+  local text
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
+
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" 'git pull' \
+    "$text"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  printf '%s\n' "$output" | grep -qxF 'merge=1'
+}
+
 # The index is back-dated so a rewrite moves its mtime even within the second
 # the fixture was made in, and snapshotted around the probe call only. `d` is
 # stat-dirty with unchanged content — the state the review's Critical Issue 3
@@ -83,22 +103,14 @@ assert_merge_without_target() {
   run ! grep -qxF "match=$repo/d" <<<"$facts"
 }
 
-# `git pull` has no candidate word after its subcommand, so
-# _readonly_merge_segment's cands array stays empty — the shape that aborted
-# the probe on bash 3.2 under set -u (Major Issue 1) before every possibly-
-# empty array was guarded. The suite runs bash 5, which does not reproduce
-# that abort even unguarded, so this test pins the outcome rather than the
-# crash path itself.
 @test "a bare git pull gives merge=1 with a clean exit" {
-  local text
-  text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/x'")
+  bare_pull_case
+}
 
-  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" 'git pull' \
-    "$text"
-
-  [ "$status" -eq 0 ]
-  [ -z "$stderr" ]
-  printf '%s\n' "$output" | grep -qxF 'merge=1'
+@test "a bare git pull gives merge=1 with a clean exit, with BSD sed" {
+  local bsd="$BATS_TEST_TMPDIR/bsdtools"
+  make_bsd_stubs "$bsd" sed
+  PATH="$bsd:$PATH" bare_pull_case
 }
 
 # Major Issue 2: a candidate whose type is not a commit used to print to

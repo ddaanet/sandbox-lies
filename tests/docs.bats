@@ -23,9 +23,12 @@ is_exempt() {
   return 1
 }
 
-@test "no tracked file outside the fixtures fires a detector" {
+# sweep_tracked_files [<prefix>...] — the exemption check, then every tracked
+# regular file outside the fixtures (only those under a <prefix>, when given)
+# through the matchers; fails naming each file that fires.
+sweep_tracked_files() {
   local index="$BATS_TEST_TMPDIR/index" meta path mode verdicts firing=""
-  local checked=0 e status
+  local checked=0 e status prefix in_scope
   # The exemptions quote live diagnostics whole: each must still fire, or the
   # sweep below could be passing because the matchers never ran.
   for e in "${EXEMPT[@]}"; do
@@ -44,6 +47,13 @@ is_exempt() {
     case "$mode" in 120000|160000) continue ;; esac
     case "$path" in tests/fixtures/*) continue ;; esac
     is_exempt "$path" && continue
+    if [ "$#" -gt 0 ]; then
+      in_scope=0
+      for prefix in "$@"; do
+        case "$path" in "$prefix"*) in_scope=1 ;; esac
+      done
+      [ "$in_scope" -eq 1 ] || continue
+    fi
     status=0
     verdicts=$(bash "$MATCHERS" <"$ROOT/$path") || status=$?
     checked=$((checked + 1))
@@ -59,4 +69,24 @@ is_exempt() {
     echo "files firing a detector or failing the matchers:$firing" >&2
     return 1
   }
+}
+
+@test "no tracked file outside the fixtures fires a detector" {
+  sweep_tracked_files
+}
+
+# A full second sweep would double the suite's 90 s, so the BSD re-run covers
+# the files that carry the matchers' own patterns: lib/ and hooks/. The
+# exemptions, which must fire, give identical verdicts under both tool sets.
+@test "the exempt files give the same verdicts, and lib and hooks stay quiet, with BSD tools" {
+  local bsd="$BATS_TEST_TMPDIR/bsdtools" e plain stubbed
+  make_bsd_stubs "$bsd" sed grep
+  for e in "${EXEMPT[@]}"; do
+    plain=$(bash "$MATCHERS" <"$ROOT/$e")
+    [ -n "$plain" ]
+    # `detect` exits 1 when nothing fires: that must reach the comparison.
+    stubbed=$(PATH="$bsd:$PATH" bash "$MATCHERS" <"$ROOT/$e") || :
+    [ "$stubbed" = "$plain" ]
+  done
+  PATH="$bsd:$PATH" sweep_tracked_files lib/ hooks/
 }

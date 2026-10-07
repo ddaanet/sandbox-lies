@@ -97,7 +97,9 @@ cap_hook() {
   sys=${sys%x}
 }
 
-@test "paragraph past 2 KB is dropped, human line kept" {
+# The body of "paragraph past 2 KB is dropped, human line kept", shared with
+# its BSD re-run below.
+drops_paragraph_past_cap() {
   local marker='STUBMARKER-GITADD-1900' stub_human='stub — gitadd 1900'
   local untracked_para untracked_human ctx sys
   untracked_para=$(verdict_line phantom_untracked 1)
@@ -120,6 +122,16 @@ cap_hook() {
   esac
   # systemMessage keeps both human lines regardless of the drop.
   [ "$sys" = "$untracked_human; $stub_human" ]
+}
+
+@test "paragraph past 2 KB is dropped, human line kept" {
+  drops_paragraph_past_cap
+}
+
+@test "paragraph past 2 KB is dropped, human line kept, with BSD tools" {
+  local bsd="$BATS_TEST_TMPDIR/bsdtools"
+  make_bsd_stubs "$bsd" sed grep wc
+  PATH="$bsd:$PATH" drops_paragraph_past_cap
 }
 
 @test "a paragraph bringing the context to exactly 2 KB is kept" {

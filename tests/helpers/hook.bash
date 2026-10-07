@@ -3,8 +3,9 @@
 # so a case can stub a copied lib file without touching the tracked source,
 # and builds payload JSON from the Item 1.4 recorded fixtures with jq.
 #
-# stub_probe and stub_probe_kv (below) are shared by tests/hook-locks.bats
-# and tests/hook-candidates.bats: any case that fires a probe-gated detector
+# stub_probe and stub_probe_kv (below) are shared by tests/hook-locks.bats,
+# tests/hook-locks-pathless.bats, tests/hook-malformed.bats and
+# tests/hook-candidates.bats: any case that fires a probe-gated detector
 # stubs its probe, so no fixture's absolute path reaches the host
 # filesystem.
 

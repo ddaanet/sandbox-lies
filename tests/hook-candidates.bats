@@ -11,6 +11,7 @@ bats_require_minimum_version 1.5.0
 load helpers/bsd-stubs
 load helpers/git-env
 load helpers/hook
+load helpers/probes
 
 setup() {
   hook_copy_tree
@@ -152,6 +153,10 @@ run_hook() {
   # overridden to a writable scratch dir, onto which the probe joins the
   # mkdir fixture's relative path, so it reads writable.
   local text payload ctx sys cmd_mkdir cmd_busy
+
+  # The real probe runs from $BATS_TEST_TMPDIR: a repository above it would
+  # supply a walk-up result the case does not mean to test.
+  assert_no_git_above "$BATS_TEST_TMPDIR"
 
   # positive control: the git-mkdir fixture's own line is one of git's three
   # partial-checkout needles, so partial=1 leads the restore-them clause.

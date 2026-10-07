@@ -59,7 +59,9 @@ readonly_path_text() {
 # `e f` unstaged at feat's content, c edited to a third value neither commit
 # holds, d untouched. d's working-tree content equals feat's too, so it is
 # the decoy for the modified-against-HEAD filter; `e f` holds a blank. Shared
-# by tests/probes-readonly-facts.bats and tests/probes-readonly-pins.bats.
+# by tests/probes-readonly-facts.bats, tests/probes-readonly-members.bats,
+# tests/probes-readonly-pins.bats, tests/probes-edges.bats and
+# tests/hook-writes.bats.
 make_scratch_repo() {
   local repo="$1"
   git init -q -b main "$repo"
@@ -147,8 +149,8 @@ tools_only_path() {
 # the probe's subshell, which inherits it — no longer names the holder: a
 # probe printing its own $! cannot pass for one naming the holder.
 #
-# Shared by tests/probes.bats and tests/probes-edges.bats: each file's own
-# setup() resets _probe_holder_pid and its own teardown() calls kill_holder.
+# Shared by tests/probes.bats, tests/probes-edges.bats and
+# tests/probes-lock-newline.bats: each file's own setup() resets _probe_holder_pid and its own teardown() calls kill_holder.
 hold_lock() {
   local ready="$BATS_TEST_TMPDIR/holder-ready" tries=0
   (
@@ -206,9 +208,11 @@ assert_no_git_above() {
 # that exited since the poll, so errexit cannot end the test before $status
 # is set.
 #
-# Shared by tests/probes-edges.bats, tests/probes-config.bats,
-# tests/probes-readonly-pins.bats and tests/shim.bats, whose <probe> is the
-# shim and whose <flag> and <cwd> are its arguments.
+# The 3 s bound (30 polls of 0.1 s) is load-sensitive: a probe that returns
+# correctly but slowly on a loaded box reads as the timeout.
+#
+# Shared by tests/probes-edges.bats, tests/probes-config.bats and
+# tests/probes-readonly-pins.bats.
 run_probe_bounded() {
   local out="$BATS_TEST_TMPDIR/bounded-out" err="$BATS_TEST_TMPDIR/bounded-err"
   local rc="$BATS_TEST_TMPDIR/bounded-status" pid tries=0

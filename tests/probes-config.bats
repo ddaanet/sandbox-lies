@@ -19,7 +19,8 @@ setup() {
 # suffix), unlike git-lock's "Unable to create '<path>.lock'" line; the probe
 # appends ".lock". The text names an absolute path, so this case is
 # independent of $2's base-resolution rules (slices below).
-@test "config-lock reads its own error" {
+# The body of "config-lock reads its own error", shared with its BSD re-run.
+config_lock_own_error_case() {
   local repo="$BATS_TEST_TMPDIR/r" cwd="$BATS_TEST_TMPDIR/elsewhere" lock
   mkdir -p "$repo/.git" "$cwd"
   lock="$repo/.git/config.lock"
@@ -40,6 +41,16 @@ setup() {
   [ "${output%%$'\n'*}" = orphan ]
   printf '%s\n' "$output" | grep -qxF "bytes=7"
   printf '%s\n' "$output" | grep -qxF "path=$lock"
+}
+
+@test "config-lock reads its own error" {
+  config_lock_own_error_case
+}
+
+@test "config-lock reads its own error, with BSD sed, stat and wc" {
+  local bsd="$BATS_TEST_TMPDIR/bsdtools"
+  make_bsd_stubs "$bsd" sed stat wc
+  PATH="$bsd:$PATH" config_lock_own_error_case
 }
 
 # The suffix goes on the file the text names, whatever its name: from a linked
