@@ -24,7 +24,10 @@ Scope: Major 1, m-1 to m-6, m-9 to m-18. Out: m-7, m-8 (fixed upstream).
   - [x] Q5 answered (approved): `CLAUDE.md` BSD-stub rule narrowed
   - [x] Phase 5 (Items 5.1 to 5.4): one opus dispatch,
         `reports/item-5.md`, committed
-  - [ ] Phase 6, then the finish (review gate, tdd-audit)
+  - [x] Phase 6 (Item 6.1): one opus dispatch, `reports/item-6-1.md`,
+        committed
+  - [ ] Finish: review gate (code and tests with the owed mutation
+        testing, Phase 4, docs, skill), then tdd-audit
 
 ## Decisions given
 

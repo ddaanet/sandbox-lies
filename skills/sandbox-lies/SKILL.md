@@ -19,14 +19,18 @@ the recipe, the gate or the directive, before any output exists.
   `dangerouslyDisableSandbox: true` or an `excludedCommands` entry covers every
   command in it.** Any uncovered command, or a forfeiting shape listed below —
   git's absolute, `~`-led or `..`-bearing path arguments among them — keeps the
-  call sandboxed. Observed on CC 2.1.289: a bare covered `git status` from the
-  project root listed no masks, `true && git status` listed them. Re-probe with
-  that bare `git status` before relying on an exclusion; earlier "not honoured"
+  call sandboxed. Observed on CC 2.1.289 and again on CC 2.1.293: a bare covered
+  `git status` from the project root listed no masks, while the uncovered form,
+  the same status behind `true &&`, ran sandboxed and listed them. Before
+  relying on an exclusion, re-probe with a bare
+  `git status --porcelain --ignored`: without `--ignored`, a sandboxed listing
+  leaves out every mask name the repository ignores. Earlier "not honoured"
   probes were confounded.
 - **A visible mask proves nothing about the call that saw it.** Mask paths are
   visible from every process while any sandboxed command runs, this session's or
   a parallel agent's. The evidence runs one way: no mask in a listing of the
-  call's own working directory proves the call ran unsandboxed.
+  call's own working directory, ignored names included, proves the call ran
+  unsandboxed.
 - **The mask-free test is a write only the sandbox refuses.**
   `touch /tmp/<name>` fails with the read-only-filesystem error only inside the
   sandbox. `${TMPDIR-UNSET}` also discriminates: `/tmp/claude-<uid>` sandboxed,
@@ -52,9 +56,9 @@ every command in the call. Before writing one:
   `~`-led or `..`-bearing path argument (`git init`, `git clone`,
   `git worktree add`, among others).
 - It does not grant approval: the rest of the permission pipeline still judges
-  the command, clearing a bare read-only command from the original working
-  directory before any classifier call, unless the session has server-side
-  review.
+  the command. An allow rule covering it clears it before any classifier call,
+  and so does the read-only validator for a bare read-only command from the
+  original working directory, unless the session has server-side review.
 
 The full list of forfeiting shapes, what was observed beyond the documented
 ones, the confounded probes, wrapper unwrapping, the read-only validator's
@@ -66,15 +70,17 @@ refusals and why an exclusion beats a rewriting hook:
 - **Per call:** `dangerouslyDisableSandbox: true`. **Standing:**
   `sandbox.excludedCommands`, for a call whose every command an entry covers,
   honoured in strict mode too.
-- **Strict mode refuses the per-call flag.** It is
-  `sandbox.allowUnsandboxedCommands: false`, shown in `/sandbox` as Strict
+- **Strict mode ignores the per-call flag**: the call still runs, sandboxed. It
+  is `sandbox.allowUnsandboxedCommands: false`, shown in `/sandbox` as Strict
   sandbox mode; check it rather than assume. Under it, ask the human partner to
   run the command as `! <command>` or to change the mode; never retry the same
-  sandboxed command.
-- **An unsandboxed command reaches the permission classifier** unless the
-  read-only validator clears it, and the classifier denies benign compounds
-  unpredictably. Keep an escaped command in its own call rather than appending a
-  compound to it, even where batching would save a call.
+  sandboxed command. In a background session, and on Linux with
+  `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` set, a `!` command runs sandboxed too:
+  there, ask for the mode change.
+- **An unsandboxed command reaches the permission classifier** unless an allow
+  rule covering it or the read-only validator clears it, and the classifier
+  denies benign compounds unpredictably. Keep an escaped command in its own call
+  rather than appending a compound to it, even where batching would save a call.
 - **Read-only inspection is not mutation.** Where the human partner has made
   reading local git state or a masked path unsandboxed a standing default, call
   it directly, without asking. Anything that writes follows normal confirmation.

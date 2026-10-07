@@ -5,17 +5,23 @@
 command an entry covers ([excluded-commands.md](excluded-commands.md)), honoured
 in strict mode too.
 
-## Strict mode blocks the per-call flag
+## Strict mode ignores the per-call flag
 
 Strict mode is `sandbox.allowUnsandboxedCommands: false`, shown in the
-`/sandbox` Overrides tab as *Strict sandbox mode*. Under it,
-`dangerouslyDisableSandbox` is refused and git writes fail with the
+`/sandbox` Overrides tab as *Strict sandbox mode*. Under it, Claude Code ignores
+`dangerouslyDisableSandbox`: the call is not refused, it runs sandboxed, so what
+the sandbox permits still happens and git writes fail with the
 read-only-filesystem error on `.git/index.lock` (recorded by 2026-07-16, CC
 version not recorded). Commands stay sandboxed unless they match an
 `excludedCommands` entry, so a fully covered call still runs unsandboxed. Ask
 the human partner to run the command via `! git …` or to toggle the mode — do
 not retry the same sandboxed command. Strict mode is a user setting: check the
 key rather than assume.
+
+A `!` command does not always leave the sandbox under strict mode. The settings
+reference names two cases where it runs sandboxed too: a background session, and
+a Linux session with `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` set. There, ask for the
+mode change rather than a `!` command.
 
 ## The read-only-inspection default
 
@@ -49,18 +55,24 @@ for an auto-mode command carrying per-command allowed domains; and in auto mode
 where the session has server-side classifier review of sandboxed commands. The
 permission-modes doc's decision order puts read-only commands behind that
 server-side review too, where the session has it. Leaving the sandbox by either
-escape moves the command *into* classifier evaluation unless the read-only
-validator ([excluded-commands.md](excluded-commands.md)) clears it. Observed
-2026-08-16 (CC version not recorded; how each call left the sandbox, by flag or
-by exclusion, was not recorded): `ls -a | wc -l; echo …`,
-`find … | wc -l; echo …` and `claude --version; echo …` were each refused, while
-`ls -a; echo …`, `find …; echo …`, `git log …; echo …` and a bare
-`claude --version` passed. No stable rule separates them — the pipe is not it.
+escape moves the command *into* classifier evaluation unless an allow rule
+covering it or the read-only validator
+([excluded-commands.md](excluded-commands.md)) clears it. Observed 2026-08-16
+(CC version not recorded; how each call left the sandbox, by flag or by
+exclusion, was not recorded): `ls -a | wc -l; echo …`, `find … | wc -l; echo …`
+and `claude --version; echo …` were each refused, while `ls -a; echo …`,
+`find …; echo …`, `git log …; echo …` and a bare `claude --version` passed. No
+stable rule separates them — the pipe is not it.
 
-Mitigation is shape, not settings: keep an escaped command in its own call
-rather than appending a compound to it, even where batching would save a call. A
-classifier call is a model call that generates a verdict; a denied compound
-costs that call and a reshaped retry besides.
+The documented mitigation is an allow rule: per the sandboxing doc, a command an
+allow rule covers runs outside the sandbox without a prompt, and a matching
+allow rule also approves the unsandboxed retry of a sandboxed failure. Allow
+rules are the human partner's permission settings, so propose one for a command
+escaped routinely rather than writing it. Without one, mitigation is shape: keep
+an escaped command in its own call rather than appending a compound to it, even
+where batching would save a call. A classifier call is a model call that
+generates a verdict; a denied compound costs that call and a reshaped retry
+besides.
 
 The classifier does let through the unsandboxed retry of a write the user's own
 prompt asked for (CC version not recorded). Routing around a sandbox write

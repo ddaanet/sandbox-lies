@@ -9,7 +9,10 @@ command is the recipe runner.
 
 A sandboxed `claude --print` turn never persists its transcript —
 `~/.claude/projects` is read-only inside the sandbox — so resuming it by id
-fails (CC version not recorded). The Agent SDK's `query()` resumes the same way.
+fails. A sandboxed turn on a session whose transcript already exists is lost
+silently instead: it resumes and answers normally, but the turn is dropped and
+the transcript is unchanged afterwards. Both verified on CC 2.1.292. The Agent
+SDK's `query()` resumes the same way.
 
 Any two-turn (or N-turn) flow relying on `--resume` must therefore run
 **unsandboxed**: `dangerouslyDisableSandbox`, a `claude *` exclusion for a call

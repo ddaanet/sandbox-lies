@@ -290,3 +290,12 @@ or not. Re-observed on CC 2.1.293, the exclusion re-probe became
 only as `!!`. NFR-2's per-suite BSD case now binds only a suite whose code under
 test calls a stubbed tool, the FR-4 pinned-by list names test families rather
 than files, and `just precommit` gained a Python compile check.
+
+The skill follows: strict mode ignores the per-call flag, so the call runs
+sandboxed, and a `!` command runs sandboxed too in a background session or on
+Linux with `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` set; an allow rule joins the
+read-only validator as what clears an unsandboxed command before the classifier,
+and is the documented mitigation for its cost; the exclusion re-probe is
+`git status --porcelain --ignored`, with the CC 2.1.293 observation; and a
+sandboxed turn on a persisted session, verified on CC 2.1.292, answers but is
+dropped.

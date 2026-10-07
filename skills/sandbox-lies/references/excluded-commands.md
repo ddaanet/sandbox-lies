@@ -20,9 +20,20 @@ call with no `dangerouslyDisableSandbox`:
 - a covered `git config --file /tmp/<name> …` failed on the read-only file
   system: git with an absolute path argument stays sandboxed.
 
-Re-probe with that bare covered `git status` from the project root. A listing
-with no masks proves the call ran unsandboxed; a listing with masks proves
-nothing on its own, since another call's sandbox may be showing them.
+Re-observed on CC 2.1.293, 2026-10-07, with `--ignored` added. A bare covered
+`git status --porcelain --ignored` from the project root listed the tree's own
+ignored build directories as `!!` and no mask name. The uncovered form,
+`true && command git status --porcelain --ignored`, shown sandboxed by a write
+to `/tmp/<name>` refused read-only in the same call, listed 20 mask names as
+`??`, and one more, `.claude/settings.local.json`, as `!!`: the repository
+ignores that name, so a listing without `--ignored` leaves it out.
+
+Re-probe with a bare covered `git status --porcelain --ignored` from the project
+root. Without `--ignored`, a sandboxed listing leaves out every mask name the
+repository ignores, so in a repository ignoring all of them it shows none and
+reads as an unsandboxed run. A listing with no mask name proves the call ran
+unsandboxed; a listing with masks proves nothing on its own, since another
+call's sandbox may be showing them.
 
 ### Earlier probes that read "not honoured"
 
@@ -124,14 +135,17 @@ sandboxed, so deny and ask rules and then the rest of the permission pipeline
 still evaluate it — a `Bash(sudo:*)` deny rule refused a call carrying an
 excluded segment (observed before the every-command rule; version not recorded).
 
-What catches it next is a **sandbox-independent read-only auto-allow** (decision
-reason `Read-only command is allowed`), which sits ahead of the auto-mode
-classifier and never consults sandbox state: `git log`, `git diff`, `git show`,
-`ls -a` and `find` are allowed locally whether sandboxed or not, so unsandboxing
-them is free. Where the session has server-side review, read-only commands wait
-for it too ([escapes-and-costs.md](escapes-and-costs.md)). The classifier is
-reached only where that validator refuses. It requires **every** segment to
-pass, and rejects:
+Two things clear it ahead of the classifier. An **allow rule** covering the
+command does: per the sandboxing doc, a command an allow rule covers runs
+outside the sandbox without a prompt. So does a
+**sandbox-independent read-only auto-allow** (decision reason
+`Read-only command is allowed`), which sits ahead of the auto-mode classifier
+and never consults sandbox state: `git log`, `git diff`, `git show`, `ls -a` and
+`find` are allowed locally whether sandboxed or not, so unsandboxing them is
+free. Where the session has server-side review, read-only commands wait for it
+too ([escapes-and-costs.md](escapes-and-costs.md)). The classifier is reached
+only where no allow rule covers the command and that validator refuses it. The
+validator requires **every** segment to pass, and rejects:
 
 - any subshell or `compound_statement` anywhere, any `&`, any unquoted `$VAR`;
 - a `cd` in the same call as any git segment;
