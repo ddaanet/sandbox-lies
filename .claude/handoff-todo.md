@@ -1,15 +1,21 @@
 ## Open decisions
 
-- Delete the scratch transcripts the m-3 resume probing left in `~/.claude/projects/-tmp-claude-resume-probe-A/` and `-B/` (outside the repo, in the Claude config). Default: delete them, unsandboxed.
-- FR-5's list of suites pairing both flag values omits `tests/hook-resume.bats`, deferred by the build's docs review because `docs/design.md` sits at 399 of its 400-line cap. Default: fold into the next review cycle.
+- Delete the scratch transcripts the m-3 resume probing left in `~/.claude/projects/-tmp-claude-resume-probe-A/` and `-B/` (outside the repo, in the Claude config). Default: delete them, unsandboxed. Still undecided; not checked, not touched.
 - `skills/sandbox-lies/references/excluded-commands.md` keeps facts sourced only from a separate-session brief, relabelled as observed vs read from the CC 2.1.289 bundle. Keep or drop (default: keep).
-- Publishing the sandbox-lies plugin: it has no git remote; README and plugin.json presuppose github.com/ddaanet/sandbox-lies. Default: a separate session; the host is my human partner's choice.
-- The held /gitlore:push stays held until the plugin installs in the other ddaanet repos, unless my human partner releases it (default: held).
-- Whether to comment on anthropics/claude-code#96225 with the named-vs-unnamed delegate probe (outward-facing: my human partner's call).
 
 ## Remaining
 
-- A SessionStart notice from some installed plugin warns that ~/.claude/settings.json lacks `git:*`, `find:*`, `ls:*`, `claude:*` and `just release:*` under sandbox.excludedCommands, checking the legacy `:*` syntax while my human partner writes `git *`. Identify the emitting plugin and leave a note in its repo (read-only: a note only).
-- Probe `path=` lines: replace the newline guards (readonly `nopath`, the dropped lock `path=`) with an encoding that carries newlines; candidate: raw path when it has no control characters, `printf %q` form only when it does.
-- Deferred items from the first review: m-1 quadratic tokenizer, m-7 line-cap gate coverage, m-8 corpus-eval idempotency, m-9 extract-fixtures robustness, Tests m-6 (suite on macOS).
-- Later work from plans/sandbox-lies/reports/build-finish.md §Carry-forward: readonly-path nopath shapes, partial-checkout relative-path resolution from a subdirectory, the phantom "project root" wording, Item 8.2's deferred remainder.
+- Publish, in this order, each step a prerequisite for the next: `/gitlore:push` (the `ddaanet` tier is merged and published; memory's `live` branch is on https://github.com/ddaanet/sandbox-lies-memory, the `.gitmodules` url is repointed and staged, not committed), then the repo push to `origin` (https://github.com/ddaanet/sandbox-lies; added locally, nothing pushed yet: `git ls-remote origin` is empty), then the release.
+- Remove the rejected `plans/sandbox-lies-review-fixes/reports/deliverable-review-build-only-range.md` (untracked; the agent's removal was denied by the auto-mode classifier, so my human partner runs it): `rm /Users/david/code/sandbox-lies/plans/sandbox-lies-review-fixes/reports/deliverable-review-build-only-range.md`. The file was still present when this list was updated.
+- Probe `path=` lines: replace the newline guards (readonly `nopath`, the dropped lock `path=`) with an encoding that carries newlines; candidate: raw path when it has no control characters, `printf %q` form only when it does. Open: both guards stand (`lib/probes.sh:12`, `lib/probes-readonly.sh:37-57`, `readonly-path.md:51`).
+- Deferred items from the first review, all still open at HEAD (code read at HEAD; `plans/sandbox-lies-review-fixes/reports/deliverable-review-code.md` confirmed m-1, m-7, m-8 and m-9 open and the second review's "Carried, not counted" lists m-8 and m-9 again):
+  - m-1 quadratic tokenizer: `lib/probes-readonly-command.sh` still grows each word by `word="$word$ch"`, bounded at 16384 characters; timing not re-measured, bash 3.2 unmeasured.
+  - m-7 line-cap gate coverage: `scripts/check-line-limits.sh` `handle_file` still caps only `.sh`, `.bash`, `.bats`, `.py` and markdown; the tracked `scripts/lib/strip-code.awk` (68), `.gitlore/bin/claude` (38) and the JSON files (under 40) are far under 400.
+  - m-8 corpus-eval idempotency: `tests/corpus-eval.py` still never clears `survivors/`, its documented loop still appends (`>>DIR/verdicts.tsv`), `aggregate` still indexes `manifest[f]` directly, and the prefilter comment still says "strictly broader than any matcher" (`crw-` against `cr--r--r--`).
+  - m-9 extract-fixtures robustness: `tests/extract-fixtures.py` still does `e.get("timestamp", "")[:10]` and `(b.get("input") or {}).get(...)`, so a null timestamp or a non-dict input crashes it; the all-projects branch of `pick()` is unreachable only by the second review's reading, not re-run.
+  - Tests m-6, suite on macOS: still open. `stat -c` in `tests/probes.bats` and `tests/helpers/probes.bash`, and `C.UTF-8` in `tests/probes.bats` and `tests/hook-cap.bats`, remain; the BSD-stub cases cover the code under test, not the suite on a real Mac (unverified).
+- Later work from plans/sandbox-lies/reports/build-finish.md §Carry-forward:
+  - Readonly-path `nopath` shapes (`tee: <path>:`, sed's temporary file, git's `could not write config file`, `warning: failed to remove`, an empty `cp` operand): open; `docs/design.md` Now/Next still lists three of them as "worth a form", no extractor for any.
+  - Partial-checkout relative-path resolution from a subdirectory: open, documented as a residual in `readonly-path.md:43`; `_probe_readonly_resolve` still joins onto the payload `cwd` (the lock probes alone resolve from the nearest `.git`).
+  - The phantom "project root" wording: open; `lib/verdicts.sh:16,22` still say "the project root"; `hook.md:103-105` records the persisted-`cd` case as the exception.
+  - Item 8.2's deferred remainder: open. `memory/ddaanet/sandbox-effects.md` and its `MEMORY.md` index line still exist; `detectors.md:311-314` still defers the translation-map audit to Item 8.2; `tests/docs.bats` has no retired-path case; `tests/matchers.bats` still reads the live memory file.

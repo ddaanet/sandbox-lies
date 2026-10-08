@@ -17,10 +17,10 @@ this hub that a node does not carry.
 
 ## Now
 
-- **Focus:** closing the review-fixes jobs — their review and TDD audit.
-- **Next:** publish the plugin; then publish the memory tier, held until the
-  plugin installs in the other ddaanet repos. `nopath` shapes worth a form:
-  `tee:`, `sed`'s temporary file, git's `could not write config file`.
+- **Focus:** publishing. Both public remotes exist; nothing is pushed yet.
+- **Next:** the gitlore push, then the repo push, then the release, each a
+  prerequisite of the next. `nopath` shapes worth a form: `tee:`, `sed`'s
+  temporary file, git's `could not write config file`.
 - **Do not re-litigate:** output annotation over command matching (D-1); hooks
   do not block or rewrite (D-2); exit status is not a gate (D-4); the skill
   lives here, not in `craft` (D-9); no verdict instructs a removal (D-7);
