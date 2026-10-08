@@ -10,7 +10,7 @@ Scope: Major 1, m-1 to m-6, m-9 to m-18. Out: m-7, m-8 (fixed upstream).
 - [x] m-3 empirical probe run and recorded (`resume-probe-evidence.md`)
 - [x] Outline written (`outline.md`)
 - [x] Outline approved: my human partner took every default (Q1 to Q6)
-- [ ] `/edify:build plans/sandbox-lies-review-fixes-2` (the outline routes to
+- [x] `/edify:build plans/sandbox-lies-review-fixes-2` (the outline routes to
       `/build` with no runbook)
   - [x] Phase 1, Item 1.1: Slice A (probe) and Slice B (`found` verdict, no
         flag policy), each with RED, test review, GREEN and code review
@@ -38,7 +38,11 @@ Scope: Major 1, m-1 to m-6, m-9 to m-18. Out: m-7, m-8 (fixed upstream).
       (FR-5's flag-pairing list omits `tests/hook-resume.bats`).
     - `reports/review-skill.md` (fable, report-only): major 2, minor 6,
       all fixed in session. `SKILL.md` now sits at its 200-line cap.
-  - [ ] tdd-audit
+  - [x] tdd-audit: `reports/tdd-audit.md`, critical 0, major 2, minor 5.
+        Important 1 (re-mutate four Phase 3 BSD cases) done in
+        `reports/tdd-audit-remediation.md`: all four red on a new mutation,
+        none blind, no test changed. Important 2 folded into
+        §Mutation testing above.
 
 ## Decisions given
 
@@ -90,7 +94,10 @@ corrector runs mutation tests, one mutation per behaviour, over:
   branches, guards and fallbacks the implementer wrote beyond the red tests;
 - every test written after its code (pins and regression cases such as
   Major 1, m-14 and m-16), which have no red phase;
-- any behaviour whose fixture changed between red and green.
+- any behaviour whose fixture changed between red and green;
+- every line a corrector's own fix adds: a review that adds a branch
+  mutates each added line, not only shows its new tests red (tdd-audit
+  Important 2).
 
 It skips a behaviour whose RED report already shows the test failing on its
 assertion against the unchanged code, with the fixture unchanged since.
@@ -133,18 +140,16 @@ them:
 
 ## Resume
 
-Phases 1 to 6 and the review gate are committed. Next: the tdd-audit
-(`edify:tdd-auditor`, dispatch name `tdd-audit`, report
-`reports/tdd-audit.md`) over the slice reports of Items 1.1 (Slices A and B)
-and 2.1, then the run summary. Build baseline: 72e34d7 (the outline-approval
-commit). The follow-up after the build is `/deliverable-review
-plans/sandbox-lies-review-fixes-2` (opus, fresh session).
+The build is finished: Phases 1 to 6, the review gate, the tdd-audit and its
+remediation are committed. Build baseline: 72e34d7 (the outline-approval
+commit). Next, in a fresh session: `/deliverable-review
+plans/sandbox-lies-review-fixes-2` (opus).
 
-Build mechanics: `just precommit` runs unsandboxed with `run_in_background`
-and exceeds 600 s; read its own `precommit passed:` line. Every dispatch cites
-`dispatch-rules.md` and names its report under `reports/`. Subagents launch
-unnamed.
+Open, deferred by the review gate (minor): FR-5's flag-pairing suite list in
+`docs/design.md` omits `tests/hook-resume.bats`; the design doc sits at 399 of
+400 lines. `skills/sandbox-lies/SKILL.md` sits at its 200-line cap, so the next
+hub addition must move detail to a node.
 
-Carry list: §Carry list above (the `unknown` outcome is now documented in
-`lib/probes.sh` and `detectors.md`; the m-3 scratch transcripts on the host
-remain for my human partner to delete).
+Carry list: §Carry list above. The `unknown` outcome is now documented in
+`lib/probes.sh` and `detectors.md`. The m-3 scratch transcripts on the host
+remain for my human partner to delete.
