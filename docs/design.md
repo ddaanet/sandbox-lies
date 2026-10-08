@@ -1,11 +1,12 @@
 # sandbox-lies — design
 
-**Status:** Partial. Built and tested: the hook, the `phantom-*` and lock
-verdicts, the hook's lock and `resume-lost` probe calls, the `tmpdir-unset`,
-`resume-lost` and `seccomp-init` verdicts, the `readonly-path` verdicts composed
-from their probe's facts, the `SessionStart` `jq` check, and the skill.
-Dogfooded 2026-09-27 on CC 2.1.283. The memory file is not retired: its zellij
-section has no detector. **Verified against:** `d8a8591` (2026-10-08).
+**Status:** Built and tested: the hook, the `phantom-*` and lock verdicts, the
+hook's lock and `resume-lost` probe calls, the `tmpdir-unset`, `resume-lost` and
+`seccomp-init` verdicts, the `readonly-path` verdicts composed from their
+probe's facts, the `SessionStart` `jq` check, and the skill. Dogfooded
+2026-09-27 on CC 2.1.283, before the `resume-lost` probe. One requirement is
+`Partial`: FR-10, because the memory file is not retired and its zellij section
+has no detector.
 
 Changelog: [changelog.md](changelog.md). This document is a hub; `references/`
 holds one node per mechanism — per detector in
@@ -88,19 +89,22 @@ function reads both, and the flag. Four probes: lock existence and holder
 (`git-lock`, `config-lock`), path writability (`readonly-path`), which also
 reports the command facts and the partial-merge files its acts depend on (D-17),
 and transcript existence (`resume-lost`). Each probe is proved once against a
-live reproduction before it ships; the reproduction is recorded in
-`references/`. Where · pinned by: `lib/probes.sh`, `lib/probes-readonly*.sh` ·
+live reproduction before it ships; the reproduction is recorded in `references/`
+(for `resume-lost`, CC's behaviour its probe reads, not a run of the probe on a
+live refusal). Where · pinned by: `lib/probes.sh`, `lib/probes-readonly*.sh` ·
 the `tests/probes*.bats` family over synthetic trees and the `tests/hook-*.bats`
 family over the hook's calls. Done.
 
 **FR-5 — Sandbox-state awareness.** The payload's
 `tool_input.dangerouslyDisableSandbox` (absent means false) decides wording: a
 symptom on a call that ran unsandboxed has a different cause, and the verdict
-says so or the detector stays silent. Every detector states its flag policy in
+says so or the detector stays silent, except `resume-lost`, whose probe decides
+under either value (D-8). Every detector states its flag policy in
 `references/`; the gating lives in the hook or the verdict, never in a matcher.
 Where · pinned by: `hooks/annotate.sh` · `tests/hook.bats`,
 `tests/hook-locks.bats` and `tests/hook-candidates.bats` pair each fixture with
-both flag values against that policy. Done.
+both flag values against that policy, and `tests/hook-resume.bats` pairs
+`resume-lost`'s four transcript states with both. Done.
 
 **FR-6 — Verdict text.** Each verdict is a short paragraph of acts the agent
 performs, under 400 characters before a probe value (a path, a pid) is
@@ -176,8 +180,11 @@ re-measured with its shipped matcher as arbiter, not gated).
 
 **NFR-2 — Portability.** bash 3.2, BSD `grep`/`sed`/`mktemp`/`stat`/`wc`, `jq`.
 A suite whose code under test calls one of those five tools keeps one case
-re-run with BSD-strict stubs on `PATH`. Where · pinned by:
-`tests/helpers/bsd-stubs.bash` · every bats file loads it. Done.
+re-run with BSD-strict stubs on `PATH`. The code under test is what the suite's
+assertions are about: a library it only runs to build its input
+(`verdicts*.bats` pipe text through `lib/matchers.sh`) is covered by its own
+suites. Where · pinned by: `tests/helpers/bsd-stubs.bash` · every bats file
+loads it. Done.
 
 **NFR-3 — Cost.** No verdict, no output: the hook exits 0 silently, and that
 path runs after every Bash call, so its wall time on a quiet result is recorded
@@ -196,7 +203,10 @@ opening one. Where · pinned by: `tests/hook.bats` and `tests/matchers.bats` run
 the hook and `detect` with `TMPDIR` naming a missing directory,
 `tests/hook-writes.bats` the hook through a real readonly-path and git-lock
 probe, `tests/probes-edges.bats` those two probes, `tests/check-jq.bats` the
-`SessionStart` check with a `mktemp` spy. Done (read scope: review, not gated).
+`SessionStart` check with a `mktemp` spy, `tests/probes-resume.bats` the
+`resume-lost` read scope (`HOME/.claude` unread when `CLAUDE_CONFIG_DIR` is set)
+and `tests/probes-resume-tree.bats` its other half (no transcript opened). Done
+(read scope: `resume-lost`'s pinned, the rest review, not gated).
 
 **NFR-5 — Size and links.** Every document and script is at most 400 lines (a
 `SKILL.md` at most 200), and every inline relative link resolves (reference
@@ -330,23 +340,13 @@ takes both. Argued in [references/hook.md](references/hook.md).
 presence with no removal instruction. Argued in
 [references/lock-detectors.md](references/lock-detectors.md).
 
-**D-15 — Candidate ship rule.** A candidate ships when the replay finds at least
-one true positive and every false positive is classified as self-reference
-(D-10) or as a named residual recorded beside the figure. Any other
-false-positive class tightens the matcher or keeps it a candidate. A precision
-floor was rejected: on two- and four-hit bases a single hit swings precision by
-tens of points, so the number would gate on noise while the classification names
-what actually fired.
+**D-15 — Candidate ship rule.** A candidate ships when the replay finds a true
+positive and every false positive is classified, not when it clears a precision
+floor. Argued in [references/detectors.md](references/detectors.md).
 
-**D-16 — Dogfood through the toolkit's shim.** `plugin-dev/bin/claude`, vendored
-with the release toolkit, syncs the plugin into `dist/plugin/` at launch (and on
-`just dogfood`) and chains to the next `claude` on `PATH` with that copy as its
-plugin dir; `.envrc` adds `plugin-dev/bin` last so it sits ahead of the gitlore
-launcher. The marketplace route clones with submodules and aborts on the memory
-submodule's relative url, and the flag typed by hand is forgotten. Loading the
-working tree itself, as the earlier `.bin/claude` shim did with `--plugin-dir`,
-left agent edits in the checkout without a permission verdict and ran
-half-edited hook scripts.
+**D-16 — Dogfood through the toolkit's shim.** `plugin-dev/bin/claude` syncs the
+plugin into `dist/plugin/` and chains to the next `claude` on `PATH` with that
+copy as its plugin dir. Argued in [references/hook.md](references/hook.md).
 
 **D-17 — The script decides conditions.** Text a hook emits for the agent
 carries no conditional the script could evaluate itself. The probe or the

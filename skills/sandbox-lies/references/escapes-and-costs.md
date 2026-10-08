@@ -3,7 +3,8 @@
 **Per call:** `dangerouslyDisableSandbox: true` on the Bash tool. **Standing:**
 `sandbox.excludedCommands` in `~/.claude/settings.json`, for a call whose every
 command an entry covers ([excluded-commands.md](excluded-commands.md)), honoured
-in strict mode too.
+in strict mode too, bar a project-scope entry under managed or `--settings`
+strict mode.
 
 ## Strict mode ignores the per-call flag
 
@@ -15,13 +16,16 @@ read-only-filesystem error on `.git/index.lock` (recorded by 2026-07-16, CC
 version not recorded). Commands stay sandboxed unless they match an
 `excludedCommands` entry, so a fully covered call still runs unsandboxed. Ask
 the human partner to run the command via `! git …` or to toggle the mode — do
-not retry the same sandboxed command. Strict mode is a user setting: check the
-key rather than assume.
+not retry the same sandboxed command. Strict mode is a user setting, or a
+managed or `--settings` one, which makes the sandbox admin-required: Claude Code
+then ignores the repository's settings that loosen it, `excludedCommands`
+entries included. Check the key rather than assume.
 
-A `!` command does not always leave the sandbox under strict mode. The settings
-reference names two cases where it runs sandboxed too: a background session, and
-a Linux session with `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` set. There, ask for the
-mode change rather than a `!` command.
+A `!` command does not always leave the sandbox under strict mode. The
+sandboxing doc (§Turn off the retry with strict sandbox mode) names two cases
+where it runs sandboxed too: a background session, and a Linux session with
+`CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` set. There, ask for the mode change rather
+than a `!` command.
 
 ## The read-only-inspection default
 
@@ -55,7 +59,7 @@ for an auto-mode command carrying per-command allowed domains; and in auto mode
 where the session has server-side classifier review of sandboxed commands. The
 permission-modes doc's decision order puts read-only commands behind that
 server-side review too, where the session has it. Leaving the sandbox by either
-escape moves the command *into* classifier evaluation unless an allow rule
+escape moves the command *into* classifier evaluation unless a narrow allow rule
 covering it or the read-only validator
 ([excluded-commands.md](excluded-commands.md)) clears it. Observed 2026-08-16
 (CC version not recorded; how each call left the sandbox, by flag or by
@@ -67,11 +71,14 @@ stable rule separates them — the pipe is not it.
 The documented mitigation is an allow rule: per the sandboxing doc, a command an
 allow rule covers gets no prompt when it runs outside the sandbox, and a
 matching allow rule also approves the unsandboxed retry of a sandboxed failure.
-Allow rules are the human partner's permission settings, so propose one for a
-command escaped routinely rather than writing it. Without one, mitigation is
-shape: keep an escaped command in its own call rather than appending a compound
-to it, even where batching would save a call. A classifier call is a model call
-that generates a verdict; a denied compound costs that call and a reshaped retry
+Auto mode drops broad allow rules on entry (`Bash(*)`, wildcarded interpreters)
+and sends a command carrying per-command allowed domains to the classifier
+whatever rule matches (permission-modes doc). Allow rules are the human
+partner's permission settings, so propose a narrow one for a command escaped
+routinely rather than writing it. Without one, mitigation is shape: keep an
+escaped command in its own call rather than appending a compound to it, even
+where batching would save a call. A classifier call is a model call that
+generates a verdict; a denied compound costs that call and a reshaped retry
 besides.
 
 The classifier does let through the unsandboxed retry of a write the user's own

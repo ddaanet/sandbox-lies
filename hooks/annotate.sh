@@ -9,11 +9,8 @@
 # Without jq on PATH, bash itself prints a command-not-found line on stderr; the
 # hook still exits 0, so Claude Code ignores it, and hooks/check-jq.sh reports
 # the missing jq at session start. With jq, the parse writes nothing to stderr:
-# one jq call reads stdin and cannot error on any input. The probes are the
-# exception, by design: a failure they cannot classify, from lib/probes.sh's
-# `stat`, holder tool or probe_resume_lost's `sed`, passes its own stderr
-# through. `-Rs` takes it as one raw string and `fromjson?` decodes it,
-# dropping what does not parse;
+# one jq call reads stdin and cannot error on any input. `-Rs` takes stdin as
+# one raw string and `fromjson?` decodes it, dropping what does not parse;
 # `select(type == "object")` drops a scalar or array, which jq cannot index
 # without a fatal error; only a string field is read as text. The output is the
 # event, the sandbox flag, the payload cwd, `tool_input.command`, then each text
@@ -24,6 +21,11 @@
 # empty, as a non-object `tool_input` also does), so the first four newlines are
 # always the split points for event/flag/cwd/command. NUL bytes are dropped in
 # jq: bash drops them from a `$(...)` too, but warns on stderr.
+#
+# The stages after the parse are not silent by design: a failure a probe
+# cannot classify passes its own stderr through (e.g. lib/probes.sh's `stat`,
+# its holder tool, its `wc -c` redirect, probe_resume_lost's `sed`), and so
+# does a read failure in `detect`'s `tr` (lib/matchers.sh).
 #
 # Writes nothing (NFR-4): no here-document, which bash before 5.1 spools
 # through a temp file.

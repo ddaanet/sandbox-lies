@@ -21,6 +21,9 @@ output. Design and per-detector mechanism: `docs/design.md`, `docs/references/`.
   look like.
 - **Every new bats file loads `helpers/bsd-stubs`**, and a suite whose code
   under test calls a stubbed tool (`sed`, `grep`, `mktemp`, `stat`, `wc`) keeps
-  one case re-run with `make_bsd_stubs` on `PATH`.
+  one case re-run with `make_bsd_stubs` on `PATH`. The code under test is what
+  the suite's assertions are about: a library it only runs to build its input
+  (`verdicts*.bats` pipe text through `lib/matchers.sh`) is covered by its own
+  suites.
 
 @memory/ddaanet/shared-claude.md

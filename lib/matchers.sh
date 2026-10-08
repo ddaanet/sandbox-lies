@@ -186,8 +186,14 @@ match_tmpdir_unset() {
 # store's index line quotes the refusal mid-line and truncates the id with
 # an ellipsis, so anchoring to the line start is what separates a live
 # refusal from the quotation.
+#
+# The line shape is held once, in _RESUME_LOST_LINE, with the id as its one
+# group: probe_resume_lost (lib/probes.sh) extracts the ids with the same
+# text, so the probe cannot drift from what the matcher detected and print
+# unknown on a refusal the matcher fired on.
+_RESUME_LOST_LINE='^No conversation found with session ID: ([0-9a-fA-F-]+)[[:space:]]*$'
 match_resume_lost() {
-    grep -qE '^No conversation found with session ID: [0-9a-fA-F-]+[[:space:]]*$'
+    grep -qE "$_RESUME_LOST_LINE"
 }
 
 # Live, the seccomp apply failure is the whole result: alone on its line from

@@ -9,7 +9,7 @@ runbook item shape, so `/build` can walk this outline directly.
 
 - **Derived from:** `plans/sandbox-lies-review-fixes/reports/deliverable-review.md`,
   superseding `plans/sandbox-lies-review-fixes/outline.md`
-- **Base:** `52e6dd82b831a1cc2b7b516d4c248df6fb1ebc8c`, copied verbatim from
+- **Base:** `52e6dd82b831a1cc2b7b516d4c248df6fb1ebc8c` — copied verbatim from
   the superseded outline. The review that motivated this job ran over that
   whole range.
 

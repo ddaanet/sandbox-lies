@@ -3,10 +3,18 @@
 The mechanism behind `docs/design.md` FR-7. One entry per detector: the memory
 section it replaces, the matcher's discriminator, the probe and its outcomes,
 the verdict text per outcome, and the corpus figure. A detector without a corpus
-figure is a candidate and does not ship. The two lock detectors and
-`readonly-path` keep a stub here and their entries in
+figure is a candidate and does not ship (D-15, below). The two lock detectors
+and `readonly-path` keep a stub here and their entries in
 [lock-detectors.md](lock-detectors.md) and [readonly-path.md](readonly-path.md);
 read the node before making a claim about, or changing, one of them.
+
+**Candidate ship rule (D-15).** A candidate ships when the replay finds at least
+one true positive and every false positive is classified as self-reference
+(D-10) or as a named residual recorded beside the figure. Any other
+false-positive class tightens the matcher or keeps it a candidate. A precision
+floor was rejected: on two- and four-hit bases a single hit swings precision by
+tens of points, so the number would gate on noise while the classification names
+what actually fired.
 
 Conventions. A **matcher** reads the tool-result text on stdin and exits 0/1; it
 never reads the command or the exit status. The text is the `error` string of a
@@ -192,17 +200,22 @@ hyphens) and nothing but trailing blanks. The store quotes it mid-line.
 **Probe.** `probe_resume_lost` takes every session id from a refusal line in the
 text, the line shape the matcher anchors on, and tests each for a regular file
 `<config dir>/projects/*/<id>.jsonl`. The config dir is CC's own resolution:
-`CLAUDE_CONFIG_DIR` when set, else `$HOME/.claude`. The search is a shell glob
-over the project directories, so it never derives a project-directory name from
-the `cwd`; the ids are hex digits and hyphens, safe inside a glob. The
-transcript is tested for existence only, never opened, and the probe prints no
-key lines. Outcomes:
+`CLAUDE_CONFIG_DIR` when set, else `$HOME/.claude`, read from the hook's
+environment, the session's, not the Bash call's: a `CLAUDE_CONFIG_DIR=` prefix
+on the call never reaches the probe, which is why `found` fits E5 below. The
+search is a shell glob over the project directories, so it never derives a
+project-directory name from the `cwd`; the ids are hex digits and hyphens, safe
+inside a glob. The transcript is tested for existence only, never opened, and
+the probe prints no key lines. Outcomes:
 
 - `lost` — some id has no transcript.
 - `found` — every id has one.
 - `unknown` — nothing checkable: no id extracted, `CLAUDE_CONFIG_DIR` set but
-  empty, or it unset and `HOME` unset or empty. The verdict has no text for it,
-  so the hook is silent.
+  empty, or it unset and `HOME` unset or empty; a config dir whose `projects/`
+  is missing or cannot be listed (a relative `CLAUDE_CONFIG_DIR`, resolved
+  against the hook's directory, is the likeliest); or an id with no hit while a
+  project directory cannot be listed, since the transcript may sit in it. The
+  verdict has no text for it, so the hook is silent.
 
 Residuals: `archived/` and `subagents/` sit below the glob's depth and are not
 searched, and whether `--resume` reads `archived/` is untested. The fire

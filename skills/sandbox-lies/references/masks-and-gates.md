@@ -23,7 +23,8 @@ otherwise use a subshell, `(cd <dir> && …)`, whose `cd` cannot persist, or end
 the call with a `cd <root>` line. `git -C`, a git absolute-path argument, a `cd`
 and a subshell each keep the call sandboxed under any `excludedCommands` entry;
 run with `dangerouslyDisableSandbox`, `git -C`, a subshell and a `cd` beside git
-each cost a classifier call
+each forfeit the read-only auto-allow and, absent an allow rule, cost a
+classifier call
 ([excluded-commands.md](excluded-commands.md)).
 
 This plugin annotates a listing or a status that shows them. What it cannot
@@ -31,13 +32,14 @@ annotate is code that consumes such output without an agent reading it.
 
 ## A porcelain gate reports DIRTY against a clean tree
 
-The masks are reported as `??` lines unconditionally, so any check whose rule is
-"non-empty `git status --porcelain` means dirty" inverts under the sandbox.
-edify's build step verifier did exactly this and failed a step whose tree was
-genuinely clean; the failure is indistinguishable from a real one in its output.
-An unsandboxed status is clean of masks only while no sandboxed command runs
-alongside it, this session's or a parallel agent's: the masks are visible from
-every process for as long as one does.
+A mask the repository does not ignore is reported as a `??` line whatever else
+the call did, so any check whose rule is "non-empty `git status --porcelain`
+means dirty" inverts under the sandbox; one it ignores shows only under
+`--ignored`, as `!!`. edify's build step verifier did exactly this and failed a
+step whose tree was genuinely clean; the failure is indistinguishable from a
+real one in its output. An unsandboxed status is clean of masks only while no
+sandboxed command runs alongside it, this session's or a parallel agent's: the
+masks are visible from every process for as long as one does.
 
 ## A slash command's `## Context` block is a Bash call
 

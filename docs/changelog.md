@@ -284,12 +284,12 @@ config directory, and drops its flag policy: `lost` keeps the old verdict,
 `found` gets its own, saying the sandbox is not the cause and naming the config
 directory, and `unknown` is silent. What D-8 still accepts is a covered `git`
 whose lock was gone by probe time reading `mask`, whose re-run is harmless. The
-`readfile=` scan passes over a candidate holding a glob or an expansion, quoted
-or not. Re-observed on CC 2.1.293, the exclusion re-probe became
-`git status --porcelain --ignored`, since a mask the repository ignores shows
-only as `!!`. NFR-2's per-suite BSD case now binds only a suite whose code under
-test calls a stubbed tool, the FR-4 pinned-by list names test families rather
-than files, and `just precommit` gained a Python compile check.
+`readfile=` scan passes over a candidate holding a glob, a brace or a `$`
+expansion, quoted or not. Re-observed on CC 2.1.293, the exclusion re-probe
+became `git status --porcelain --ignored`, since a mask the repository ignores
+shows only as `!!`. NFR-2's per-suite BSD case now binds only a suite whose code
+under test calls a stubbed tool, the FR-4 pinned-by list names test families
+rather than files, and `just precommit` gained a Python compile check.
 
 The skill follows: strict mode ignores the per-call flag, so the call runs
 sandboxed, and a `!` command runs sandboxed too in a background session or on
@@ -299,3 +299,13 @@ and is the documented mitigation for its cost; the exclusion re-probe is
 `git status --porcelain --ignored`, with the CC 2.1.293 observation; and a
 sandboxed turn on a persisted session, verified on CC 2.1.292, answers but is
 dropped.
+
+The suite gained the pins the previous review asked for: the slash-suffixed
+`phantom-untracked` forms, a guard that the real-probe case runs with no `.git`
+above its tree, a `mktemp` spy for NFR-4, and a BSD-stub case in seven suites.
+The review of those fixes tightened the probe: a config directory it cannot
+search (`projects/` missing or unreadable, or an id unfound while a project
+directory cannot be listed) reads `unknown` rather than `lost`, a caller's
+`noglob` no longer turns every id missing, the refusal line shape is held once
+and shared with the matcher, the transcript is pinned as never opened, and the
+`readfile=` skip covers a brace expansion.

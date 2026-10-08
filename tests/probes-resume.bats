@@ -11,10 +11,7 @@ bats_require_minimum_version 1.5.0
 
 load helpers/bsd-stubs
 load helpers/probes
-
-ID_1=37b5f8f7-cd46-44d7-8416-946cf6729b30
-ID_2=7ded81f3-920a-40b7-bf8b-5f08e913c333
-ID_OTHER=11111111-2222-4333-8444-555555555555
+load helpers/resume
 
 setup() {
   source "$ROOT/lib/probes.sh"
@@ -23,15 +20,6 @@ setup() {
   export HOME="$BATS_TEST_TMPDIR/home"
   mkdir -p "$CLAUDE_CONFIG_DIR/projects/-p" "$HOME"
   TEXT=$(cat "$BATS_TEST_DIRNAME/fixtures/fire-resume-lost-two-turn.txt")
-}
-
-# transcript <id> [root] [project] — a regular file
-# <root>/projects/<project>/<id>.jsonl, root defaulting to the config dir and
-# project to -p. It holds one JSON line, as a transcript CC wrote would.
-transcript() {
-  local root="${2:-$CLAUDE_CONFIG_DIR}" project="${3:--p}"
-  mkdir -p "$root/projects/$project"
-  printf '{}\n' >"$root/projects/$project/$1.jsonl"
 }
 
 @test "resume-lost probe: both ids have a transcript, found" {

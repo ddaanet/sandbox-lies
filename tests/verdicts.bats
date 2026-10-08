@@ -111,10 +111,14 @@ load helpers/verdicts
 
 @test "resume-lost verdict prints nothing for an outcome it has no text for" {
   # verdict_text maps `-` to a call with no argument; this passes the
-  # literal `-`, the outcome the verdict used to be called with.
-  run bash -c '. "$1"; verdict_resume_lost -' _ "$VERDICTS"
-  [ "$status" -eq 0 ]
-  [ -z "$output" ]
+  # literal `-`, the outcome the verdict used to be called with, and
+  # `unknown`, the one the probe prints when it could not search.
+  local outcome
+  for outcome in - unknown; do
+    run bash -c '. "$1"; verdict_resume_lost "$2"' _ "$VERDICTS" "$outcome"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ] || { echo "text for '$outcome': $output" >&2; return 1; }
+  done
 }
 
 @test "readonly-path writable verdict text matches readonly-path.md" {

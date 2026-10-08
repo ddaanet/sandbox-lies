@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 # lib/probes-readonly.sh's probe_readonly_path: a readfile candidate holding
-# *, ?, [ or $ is a pattern or an expansion, never a name the command wrote,
+# *, ?, [, { or $ is a pattern or an expansion, never a name the command wrote,
 # so it is skipped, quoted or not (plans/sandbox-lies-review-fixes-2/outline.md
 # Q4, Item 2.1). Each negative is paired, in the same case, with the same
 # command shape minus the metacharacter, which must print readfile=: only the
@@ -60,6 +60,15 @@ probe_for() {
   printf '%s\n' "$output" | grep -qxF 'readfile=run1.log'
 
   probe_for 'cat run[12].log'
+  assert_no_readfile
+}
+
+@test "cat {a,b}.log gives no readfile for the brace expansion" {
+  probe_for 'cat a.log'
+  [ "$status" -eq 0 ]
+  printf '%s\n' "$output" | grep -qxF 'readfile=a.log'
+
+  probe_for 'cat {a,b}.log'
   assert_no_readfile
 }
 

@@ -27,44 +27,55 @@ _probes_lib_dir=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd) ||
 . "$_probes_lib_dir/probes-readonly.sh" || return 1
 unset _probes_lib_dir
 
-# The ids come from the refusal lines in the text (the shape
-# match_resume_lost anchors on). Each is tested for a regular file
-# <config dir>/projects/*/<id>.jsonl by glob; the ids are hex digits and
-# hyphens, so safe in one. Residual: archived/ and subagents/ sit below the
-# glob's depth and are not searched. The transcript is never opened.
+# The ids come from the refusal lines in the text, in the shape
+# match_resume_lost anchors on (_RESUME_LOST_LINE, lib/matchers.sh). Each is
+# tested for a regular file <config dir>/projects/*/<id>.jsonl by glob; the
+# ids are hex digits and hyphens, so safe in one. Residual: archived/ and
+# subagents/ sit below the glob's depth and are not searched. The transcript
+# is never opened.
 #
 # The config dir is CC's own resolution (2.1.292): CLAUDE_CONFIG_DIR when
 # set, even empty, else homedir/.claude. An empty one names a cwd-relative
 # projects/ and an unset HOME a passwd lookup, neither of which the probe
-# locates; those, and a sed that fails or extracts no id, print unknown, an
-# outcome the verdict has no text for, rather than a found nothing checked.
+# locates; those, a root whose projects/ is missing or cannot be listed, an
+# id not found while a project directory cannot be listed (the transcript
+# may sit in it), and a sed that fails or extracts no id, print unknown, an
+# outcome the verdict has no text for, rather than a found or lost nothing
+# checked.
 # LC_ALL=C as in _probe_lock_path: BSD sed under a UTF-8 locale exits on an
-# invalid byte anywhere in the text. The body is a subshell so failglob is
-# unset here whatever the caller's shell options: it makes an id with no
-# transcript an expansion error. A no-match leaves hit empty either way:
-# nullglob drops the pattern, and without it the literal fails [ -f ].
+# invalid byte anywhere in the text. The body is a subshell so failglob and
+# noglob are unset here whatever the caller's shell options: failglob makes
+# an id with no transcript an expansion error, and noglob leaves the pattern
+# unexpanded, so every id reads as missing. A no-match leaves the pattern
+# literal, which fails the [ -f ] test: no nullglob is needed.
 probe_resume_lost() (
-    local ids id root verdict=found f hit
+    local ids id root verdict=found d hit blind=
     shopt -u failglob
+    set +f
     if [ "${CLAUDE_CONFIG_DIR+set}" = set ]; then
         root=$CLAUDE_CONFIG_DIR
     else
         root=${HOME:+$HOME/.claude}
     fi
-    ids=$(LC_ALL=C sed -nE \
-        's/^No conversation found with session ID: ([0-9a-fA-F-]+)[[:space:]]*$/\1/p') \
-        || ids=
-    if [ -z "$root" ] || [ -z "$ids" ]; then
+    ids=$(LC_ALL=C sed -nE "s/$_RESUME_LOST_LINE/\\1/p") || ids=
+    if [ -z "$root" ] || [ -z "$ids" ] \
+        || [ ! -d "$root/projects" ] || [ ! -r "$root/projects" ] \
+        || [ ! -x "$root/projects" ]; then
         printf '%s\n' unknown
         return 0
     fi
     while IFS= read -r id; do
         hit=
-        for f in "$root"/projects/*/"$id".jsonl; do
-            [ -f "$f" ] && { hit=1; break; }
+        for d in "$root"/projects/*/; do
+            [ -d "$d" ] || continue
+            [ -f "$d$id.jsonl" ] && { hit=1; break; }
+            { [ -r "$d" ] && [ -x "$d" ]; } || blind=1
         done
         [ -n "$hit" ] || verdict=lost
     done < <(printf '%s\n' "$ids")
+    if [ "$verdict" = lost ] && [ -n "$blind" ]; then
+        verdict=unknown
+    fi
     printf '%s\n' "$verdict"
 )
 

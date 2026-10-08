@@ -25,6 +25,15 @@ baseline excludes `claude` as well as `git`. What it costs, per detector:
 - **A lock that exists outside the sandbox** is reported as such whichever way
   the call ran: `held`, `orphan` and `unknown` come from the probe, not the
   flag.
+- **`tmpdir-unset` is silent.** It fires only when the flag is true, and a
+  covered call carries none, so an empty `$TMPDIR` in one draws no verdict.
+- **The lock verdicts word their re-run for a sandboxed call.** With the flag
+  absent, a lock that exists outside the sandbox draws the clause telling the
+  agent to add `dangerouslyDisableSandbox: true`, to a call that already ran
+  unsandboxed.
+- **A flagged `--resume` of an id that never existed** reads `lost`: the flag
+  policy that kept the detector silent on it is gone
+  ([detectors.md](detectors.md#resume-lost), Corpus).
 - **What is left is a lock gone by probe time.** The probe reads a missing lock
   as `mask` when the flag is absent and `gone` when it is true, so a covered
   `git` whose lock git had already cleaned reads `mask`. Its act, a re-run, is

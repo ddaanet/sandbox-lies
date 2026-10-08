@@ -161,3 +161,26 @@ resume_verdict() {
   resume_cfg "$RESUME_ID_2"
   resume_verdict true "$LOST_CTX" "$LOST_SYS"
 }
+
+@test "resume-lost through the hook: a config dir that does not exist, silent" {
+  # The probe could not search it, so it names no cause: nothing reaches
+  # stdout or stderr, where an empty one reads as a lost transcript.
+  local payload
+  payload=$(post_payload "$(cat "$FIXTURES/fire-resume-lost-two-turn.txt")")
+  export CLAUDE_CONFIG_DIR="$BATS_TEST_TMPDIR/nonexistent"
+
+  run_hook "$payload"
+
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "resume-lost through the hook: unreadable transcripts, the exists verdict" {
+  # The read scope: the probe tests the files and opens neither, so a
+  # permission error never reaches the output the verdict is parsed from.
+  [ "$(id -u)" -ne 0 ] || skip "root reads past chmod 000"
+  resume_cfg "$RESUME_ID_1" "$RESUME_ID_2"
+  chmod 000 "$BATS_TEST_TMPDIR/cfg/projects/-p/$RESUME_ID_1.jsonl" \
+    "$BATS_TEST_TMPDIR/cfg/projects/-p/$RESUME_ID_2.jsonl"
+  resume_verdict "" "$FOUND_CTX" "$FOUND_SYS"
+}
