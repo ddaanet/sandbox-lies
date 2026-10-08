@@ -54,8 +54,9 @@ the tool's own diagnostic shape. Nine ship:
 - `readonly-path` — a write refused as read-only; the hook checks whether the
   path is writable outside the sandbox.
 - `tmpdir-unset` — an unsandboxed call whose `$TMPDIR` path collapsed to `/`.
-- `resume-lost` — a `claude --resume` whose transcript the sandbox never let
-  persist.
+- `resume-lost` — `claude`'s resume refusal; the hook checks outside the sandbox
+  whether the transcript exists and reports one the sandbox never let persist,
+  or one that exists, so the sandbox is not the cause.
 - `seccomp-init` — the sandbox failing to start before the command ran.
 
 The matchers, probes, verdict text, flag policies and the corpus precision each

@@ -134,8 +134,9 @@ _readonly_tokenize() {
 # descriptor duplication (2>&1, >&2): awk's own `print > "f"` writes, so a
 # quoted `>` in a grep pattern costing readfile= is the safe side. A name
 # holding a newline cannot be a key line's value and is passed over, and so
-# is one holding *, ?, [ or $, a glob or an expansion: quoted too, since the
-# tokenizer has removed the quotes. The rule's residuals (other options'
+# is one holding *, ?, [ or $, a glob or a $ expansion: quoted too, since the
+# tokenizer has removed the quotes. A backtick substitution, which the scan
+# does not parse, is not skipped. The rule's residuals (other options'
 # separate arguments, clustered and long -e/-f forms, sed's w, a descriptor
 # duplication in an operand slot, and more) are listed in readonly-path.md
 # after its Probe facts table.

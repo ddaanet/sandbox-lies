@@ -37,6 +37,7 @@ config_lock orphan true
 config_lock unknown true
 tmpdir_unset -
 resume_lost lost
+resume_lost found
 seccomp_init -
 readonly_path writable
 readonly_path readonly

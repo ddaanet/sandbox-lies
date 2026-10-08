@@ -2,7 +2,8 @@
 # lib/probes.sh: probe_resume_lost (Item 1.1). The probe reads the refusal
 # lines in the result text for session ids and tests each for a regular file
 # <config dir>/projects/*/<id>.jsonl; `lost` when some id has none, `found`
-# when every id has one. The ids are those of fire-resume-lost-two-turn.txt.
+# when every id has one, `unknown` when there is no config dir it can locate
+# or no id to test. The ids are those of fire-resume-lost-two-turn.txt.
 
 ROOT="${BATS_TEST_DIRNAME}/.."
 
@@ -138,9 +139,9 @@ transcript() {
 }
 
 @test "resume-lost probe: found survives BSD grep, sed, mktemp, stat and wc" {
-  # found needs both ids taken from the text. A GNU-ism that leaves the
-  # probe with no ids and a lost default reads as the correct answer in the
-  # hook's no-transcript BSD case; here it prints lost.
+  # found needs both ids taken from the text and tested, where the hook's BSD
+  # case expects lost: a GNU-ism costing one id there still reads lost. Here
+  # it prints lost, and one costing every id prints unknown.
   transcript "$ID_1"
   transcript "$ID_2"
   make_bsd_stubs "$BATS_TEST_TMPDIR/bsd" sed grep mktemp stat wc
@@ -163,6 +164,24 @@ transcript() {
   chmod 755 "$BATS_TEST_TMPDIR/failsed/sed"
 
   PATH="$BATS_TEST_TMPDIR/failsed:$PATH" \
+    run_probe probe_resume_lost false "$BATS_TEST_TMPDIR" "$TEXT"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = unknown ]
+  [ "$stderr" = 'sed: stub failure' ]
+}
+
+@test "resume-lost probe: a sed failing after printing an id is unknown" {
+  # BSD sed stopping at an invalid byte has printed the ids ahead of it. Only
+  # ID_1, the one printed, has a transcript, so a probe keeping the partial
+  # output tests ID_1 alone and claims found for ID_2, never checked.
+  mkdir -p "$BATS_TEST_TMPDIR/partsed"
+  printf '#!/bin/sh\necho %s\necho "sed: stub failure" >&2\nexit 1\n' \
+    "$ID_1" >"$BATS_TEST_TMPDIR/partsed/sed"
+  chmod 755 "$BATS_TEST_TMPDIR/partsed/sed"
+  transcript "$ID_1"
+
+  PATH="$BATS_TEST_TMPDIR/partsed:$PATH" \
     run_probe probe_resume_lost false "$BATS_TEST_TMPDIR" "$TEXT"
 
   [ "$status" -eq 0 ]

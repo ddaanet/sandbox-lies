@@ -65,13 +65,13 @@ and `claude --version; echo …` were each refused, while `ls -a; echo …`,
 stable rule separates them — the pipe is not it.
 
 The documented mitigation is an allow rule: per the sandboxing doc, a command an
-allow rule covers runs outside the sandbox without a prompt, and a matching
-allow rule also approves the unsandboxed retry of a sandboxed failure. Allow
-rules are the human partner's permission settings, so propose one for a command
-escaped routinely rather than writing it. Without one, mitigation is shape: keep
-an escaped command in its own call rather than appending a compound to it, even
-where batching would save a call. A classifier call is a model call that
-generates a verdict; a denied compound costs that call and a reshaped retry
+allow rule covers gets no prompt when it runs outside the sandbox, and a
+matching allow rule also approves the unsandboxed retry of a sandboxed failure.
+Allow rules are the human partner's permission settings, so propose one for a
+command escaped routinely rather than writing it. Without one, mitigation is
+shape: keep an escaped command in its own call rather than appending a compound
+to it, even where batching would save a call. A classifier call is a model call
+that generates a verdict; a denied compound costs that call and a reshaped retry
 besides.
 
 The classifier does let through the unsandboxed retry of a write the user's own

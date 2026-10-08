@@ -5,7 +5,7 @@ applies to a call only when it covers every command in it. Any uncovered
 command, or one of the shapes under [Matching](#matching), keeps the whole call
 sandboxed.
 
-## Observed on CC 2.1.289
+## Observed on CC 2.1.289 and 2.1.293
 
 On 2026-10-05, on Linux, with user-scope
 `["git *", "find *", "ls *", "claude *", "just release *"]`, each probe a single
@@ -23,10 +23,11 @@ call with no `dangerouslyDisableSandbox`:
 Re-observed on CC 2.1.293, 2026-10-07, with `--ignored` added. A bare covered
 `git status --porcelain --ignored` from the project root listed the tree's own
 ignored build directories as `!!` and no mask name. The uncovered form,
-`true && command git status --porcelain --ignored`, shown sandboxed by a write
-to `/tmp/<name>` refused read-only in the same call, listed 20 mask names as
-`??`, and one more, `.claude/settings.local.json`, as `!!`: the repository
-ignores that name, so a listing without `--ignored` leaves it out.
+`true && command git status --porcelain --ignored` (`command` is unwrapped for
+matching, so `true` alone makes it uncovered), shown sandboxed by a write to
+`/tmp/<name>` refused read-only in the same call, listed 20 mask names as `??`,
+and one more, `.claude/settings.local.json`, as `!!`: the repository ignores
+that name, so a listing without `--ignored` leaves it out.
 
 Re-probe with a bare covered `git status --porcelain --ignored` from the project
 root. Without `--ignored`, a sandboxed listing leaves out every mask name the
@@ -136,8 +137,8 @@ still evaluate it — a `Bash(sudo:*)` deny rule refused a call carrying an
 excluded segment (observed before the every-command rule; version not recorded).
 
 Two things clear it ahead of the classifier. An **allow rule** covering the
-command does: per the sandboxing doc, a command an allow rule covers runs
-outside the sandbox without a prompt. So does a
+command does: per the sandboxing doc, a command an allow rule covers gets no
+prompt when run outside the sandbox. So does a
 **sandbox-independent read-only auto-allow** (decision reason
 `Read-only command is allowed`), which sits ahead of the auto-mode classifier
 and never consults sandbox state: `git log`, `git diff`, `git show`, `ls -a` and

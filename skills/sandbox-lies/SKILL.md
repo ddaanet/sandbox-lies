@@ -22,10 +22,10 @@ the recipe, the gate or the directive, before any output exists.
   call sandboxed. Observed on CC 2.1.289 and again on CC 2.1.293: a bare covered
   `git status` from the project root listed no masks, while the uncovered form,
   the same status behind `true &&`, ran sandboxed and listed them. Before
-  relying on an exclusion, re-probe with a bare
-  `git status --porcelain --ignored`: without `--ignored`, a sandboxed listing
-  leaves out every mask name the repository ignores. Earlier "not honoured"
-  probes were confounded.
+  relying on an exclusion, re-probe with `git status --porcelain --ignored`
+  alone in its call: without `--ignored`, a sandboxed listing leaves out every
+  mask name the repository ignores. Earlier "not honoured" probes were
+  confounded.
 - **A visible mask proves nothing about the call that saw it.** Mask paths are
   visible from every process while any sandboxed command runs, this session's or
   a parallel agent's. The evidence runs one way: no mask in a listing of the
@@ -56,9 +56,10 @@ every command in the call. Before writing one:
   `~`-led or `..`-bearing path argument (`git init`, `git clone`,
   `git worktree add`, among others).
 - It does not grant approval: the rest of the permission pipeline still judges
-  the command. An allow rule covering it clears it before any classifier call,
-  and so does the read-only validator for a bare read-only command from the
-  original working directory, unless the session has server-side review.
+  the command. An allow rule covering the command clears it before any
+  classifier call. So does the read-only validator, for a bare read-only command
+  from the original working directory, except where the session has server-side
+  review.
 
 The full list of forfeiting shapes, what was observed beyond the documented
 ones, the confounded probes, wrapper unwrapping, the read-only validator's
@@ -102,7 +103,8 @@ working directory resets per call. In order of preference:
 `git -C`, a git absolute-path argument, a `cd` and a subshell each keep the call
 sandboxed under any `excludedCommands` entry. Run with
 `dangerouslyDisableSandbox`, `git -C`, a subshell and a `cd` beside git each
-forfeit the read-only auto-allow and cost a classifier call:
+forfeit the read-only auto-allow and, absent an allow rule, cost a classifier
+call:
 [references/excluded-commands.md](references/excluded-commands.md).
 
 ## Writing a recipe or script that must run unsandboxed
@@ -113,8 +115,9 @@ forfeit the read-only auto-allow and cost a classifier call:
   `git` or `claude` inside the recipe: the top-level segment is the recipe
   runner.
 - **A multi-turn `claude --resume` flow must run unsandboxed.** A sandboxed
-  `claude --print` turn never persists its transcript, so turn 2 cannot resume
-  it. A single-turn connectivity probe passes sandboxed and cannot detect this.
+  `claude --print` turn never persists: a new session cannot be resumed, and a
+  turn on a persisted one answers but is dropped (CC 2.1.292). A single-turn
+  connectivity probe passes sandboxed and cannot detect this.
 - **A sandboxed `claude -p` skips every `SessionStart` hook** of every plugin,
   silently. Unsandbox the whole call whenever its point is a hook's side effect.
 
@@ -137,9 +140,10 @@ The observed collapse:
 
 ## Writing a cleanliness gate
 
-- **A porcelain gate inverts under the sandbox.** Masks are reported as `??`
-  lines unconditionally, so "non-empty `git status --porcelain` means dirty"
-  fails a genuinely clean tree, indistinguishably from a real failure.
+- **A porcelain gate inverts under the sandbox.** Masks the repository does not
+  ignore are reported as `??` lines, so "non-empty `git status --porcelain`
+  means dirty" fails a genuinely clean tree, indistinguishably from a real
+  failure.
 - **Do not filter the mask names.** The set is version-dependent, and a filter
   hides real untracked files sharing those names. Run the status unsandboxed
   with no sandboxed command running alongside it, or scope the gate to tracked

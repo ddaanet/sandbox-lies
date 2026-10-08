@@ -201,8 +201,8 @@ key lines. Outcomes:
 - `lost` — some id has no transcript.
 - `found` — every id has one.
 - `unknown` — nothing checkable: no id extracted, `CLAUDE_CONFIG_DIR` set but
-  empty, or both it and `HOME` unset. The verdict has no text for it, so the
-  hook is silent.
+  empty, or it unset and `HOME` unset or empty. The verdict has no text for it,
+  so the hook is silent.
 
 Residuals: `archived/` and `subagents/` sit below the glob's depth and are not
 searched, and whether `--resume` reads `archived/` is untested. The fire

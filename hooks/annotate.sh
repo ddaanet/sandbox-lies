@@ -11,8 +11,9 @@
 # the missing jq at session start. With jq, the parse writes nothing to stderr:
 # one jq call reads stdin and cannot error on any input. The probes are the
 # exception, by design: a failure they cannot classify, from lib/probes.sh's
-# `stat` or holder tool, passes its own stderr through. `-Rs` takes it as one
-# raw string and `fromjson?` decodes it, dropping what does not parse;
+# `stat`, holder tool or probe_resume_lost's `sed`, passes its own stderr
+# through. `-Rs` takes it as one raw string and `fromjson?` decodes it,
+# dropping what does not parse;
 # `select(type == "object")` drops a scalar or array, which jq cannot index
 # without a fatal error; only a string field is read as text. The output is the
 # event, the sandbox flag, the payload cwd, `tool_input.command`, then each text
