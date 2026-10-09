@@ -361,7 +361,8 @@ at or under 400 lines with no crammed lines.
 ## Questions
 
 None open. My human partner answered all five. The answers are folded into
-§Provenance, the verdict table, §A Scope and the Items.
+§Provenance, the verdict table, §A Scope and the Items. They also kept the
+`Derived from:` restructure and the `evidence.md` split.
 
 ## Route
 
@@ -372,14 +373,11 @@ The items already carry their slices.
 
 ## Resume
 
-Revised for my human partner's five answers, then stopped at `/edify:proof`'s
-orientation checkpoint, which needs my human partner.
+Approved by my human partner at `/edify:proof`, as it stands: no per-item
+iteration, no revisions, no kills.
 
-- **Done:** the answers are folded into this outline, `classification.md` and
-  the new `evidence.md`. `edify-review-range.sh` prints `RANGE:` for this
-  outline.
-- **Next:** my human partner answers the proof's orientation checkpoint, then
-  item iteration runs (the outline-corrector fires on revise or kill). On
-  approval, commit and name `/build plans/sandbox-lies-review-fixes-3`.
+- **Done:** the five answers are folded into this outline, `classification.md`
+  and `evidence.md`. `edify-review-range.sh` prints `RANGE:` for this outline.
+- **Next:** `/build plans/sandbox-lies-review-fixes-3`.
 - The bash 3.2.0 build sits in a scratch directory that will not survive. To
   rebuild it, follow `evidence.md`.
