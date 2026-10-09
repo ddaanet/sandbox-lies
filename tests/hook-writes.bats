@@ -125,3 +125,30 @@ run_spied() {
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   printf '%s' "$ctx" | grep -qF "restore \`$repo/a\`, \`$repo/b\`, \`$repo/e f\` from HEAD"
 }
+
+# The probe prints path= in printf %q form (Item 1.1); the verdict decodes it
+# (Item 1.2), so a relative path under a cwd holding a blank reads in the
+# agent paragraph as the raw absolute path: no escaping backslash. The cwd
+# exists and is writable, so the probe answers writable on the absent path.
+@test "hook names a blank-holding path raw, with no backslash" {
+  local cwd="$BATS_TEST_TMPDIR/dir with blank" text ctx expected
+  mkdir "$cwd"
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'f'")
+  failure_payload "$text" |
+    jq --arg c "$cwd" '.cwd = $c | del(.tool_input.dangerouslyDisableSandbox)' \
+      >"$PAYLOAD_FILE"
+  expected="\`$cwd/f\` is writable outside the sandbox, whose allowlist refused it."
+
+  run bash "$HOOK_COPY/hooks/annotate.sh" <"$PAYLOAD_FILE"
+
+  [ "$status" -eq 0 ]
+  ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
+  [ "${ctx#"$expected"}" != "$ctx" ]
+  assert_lacks "$ctx" "\\"
+
+  make_bsd_stubs "$BATS_TEST_TMPDIR/bsd" grep sed stat wc
+  run env PATH="$BATS_TEST_TMPDIR/bsd:$PATH" \
+    bash "$HOOK_COPY/hooks/annotate.sh" <"$PAYLOAD_FILE"
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')" = "$ctx" ]
+}

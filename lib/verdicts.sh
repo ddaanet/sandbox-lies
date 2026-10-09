@@ -71,15 +71,16 @@ verdict_git_lock() {
 # for *Re-run*, under either flag (lock-detectors.md's config-lock Verdicts);
 # any other path, or none, keeps *Re-run*, worded by the flag as git_lock's is.
 verdict_config_lock() {
-  local outcome="$1" flag="${2:-false}" line path='' act
+  local outcome="$1" flag="${2:-false}" line wire='' act
   case "$outcome" in
     mask)
       while IFS= read -r line || [ -n "$line" ]; do
         case "$line" in
-          path=*) path=${line#path=} ;;
+          path=*) wire=${line#path=} ;;
         esac
       done
-      case "$path" in
+      _verdict_path_read "$wire"
+      case "$_verdict_path_raw" in
         */.claude/settings.json.lock)
           # shellcheck disable=SC2016 # backticks are literal prose, not expansion
           act='Write `.claude/settings.json` through the `update-config` skill.'
@@ -136,6 +137,51 @@ _verdict_lock_present() {
   esac
 }
 
+# `_verdict_path_read <wire>` — decodes a probe's `path=` value (the
+# `printf %q` form) without eval into `_verdict_path_raw`, and sets
+# `_verdict_path_shown` to what the verdict prints: the decoded bytes, or the
+# wire form when they hold a control byte, which would split the verdict's
+# paragraph from its human line. Returns 1 with both empty for a value that
+# is neither form, which reads as no path.
+_verdict_path_read() {
+  local wire="$1" body
+  # The pattern and replacement sit in variables: a quoted \' in the
+  # substitution has meant different things across bash versions.
+  local bq="\\'" q="'" re="^\\\$'([^'\\\\]|\\\\.)*'\$"
+  _verdict_path_raw='' _verdict_path_shown=''
+  case "$wire" in
+    /*)
+      # read without -r drops each escaping backslash; the process
+      # substitution keeps the value off disk and out of eval.
+      # shellcheck disable=SC2162 # -r would keep the backslashes
+      IFS= read _verdict_path_raw < <(printf '%s\n' "$wire")
+      ;;
+    \$\'*)
+      [[ $wire =~ $re ]] || return 1
+      body=${wire#\$\'}
+      body=${body%\'}
+      body=${body//"$bq"/"$q"}
+      printf -v _verdict_path_raw %b "$body"
+      ;;
+    *) return 1 ;;
+  esac
+  _verdict_path_shown=$_verdict_path_raw
+  if _verdict_has_control "$_verdict_path_raw"; then
+    _verdict_path_shown=$wire
+  fi
+}
+
+# `_verdict_has_control <text>` — succeeds when text holds a byte in
+# \001-\037 or \177. LC_ALL=C keeps [:cntrl:] to those bytes: a UTF-8 locale
+# would add the C1 range, which is valid text in a path.
+_verdict_has_control() {
+  local LC_ALL=C
+  case "$1" in
+    *[[:cntrl:]]*) return 0 ;;
+  esac
+  return 1
+}
+
 # `verdict_readonly_path <outcome>` — writable and readonly open with the
 # probe's path= stdin line in backticks, or with "The path" when that line is
 # missing or empty, which the probe contract rules out. The path is joined by
@@ -163,8 +209,8 @@ verdict_readonly_path() {
       match=*) matches+=("${line#match=}") ;;
     esac
   done
-  if [ -n "$path" ]; then
-    subject="\`$path\`"
+  if _verdict_path_read "$path"; then
+    subject="\`$_verdict_path_shown\`"
   else
     subject='The path'
   fi
@@ -175,7 +221,7 @@ verdict_readonly_path() {
         act="Re-run the command that wrote \`$readfile\`."
         act_low="re-run the command that wrote \`$readfile\`."
       else
-        case "$outcome:$path" in
+        case "$outcome:$_verdict_path_raw" in
           writable:*/.claude/settings.json)
             # shellcheck disable=SC2016 # backticks are literal prose, not expansion
             act='Write `.claude/settings.json` through the `update-config` skill.'

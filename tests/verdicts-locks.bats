@@ -221,3 +221,38 @@ load helpers/verdicts
     text_lacks "$text" 'update-config'
   done
 }
+
+@test "verdict_config_lock matches the settings.json.lock suffix on the decoded path" {
+  local text flag value
+  for flag in false true; do
+    # shellcheck disable=SC1090 # $VERDICTS is lib/verdicts.sh, resolved above
+    text=$(printf '%s\n' "path=\$'/h/jos\\303\\251/.claude/settings.json.lock'" \
+      | ( . "$VERDICTS"; verdict_config_lock mask "$flag" ))
+    printf '%s' "$text" | grep -qF 'update-config'
+    text_lacks "$text" 'Re-run'
+
+    # The same $'...' form under another lock file keeps the flag-worded act.
+    # shellcheck disable=SC1090
+    text=$(printf '%s\n' "path=\$'/h/jos\\303\\251/.git/config.lock'" \
+      | ( . "$VERDICTS"; verdict_config_lock mask "$flag" ))
+    text_lacks "$text" 'update-config'
+    printf '%s' "$text" | grep -qF 'Re-run'
+
+    # A value that reads as no path keeps the flag-worded act even when its
+    # wire text ends in the suffix, and so does a near-miss file name.
+    for value in "\$'a'b/.claude/settings.json.lock" "relative/.claude/settings.json.lock" \
+      "\$'x'/.claude/settings.json.lock" "/h/.claude/settings.json.lockx"; do
+      # shellcheck disable=SC1090
+      text=$(printf '%s\n' "path=$value" \
+        | ( . "$VERDICTS"; verdict_config_lock mask "$flag" ))
+      text_lacks "$text" 'update-config'
+      printf '%s' "$text" | grep -qF 'Re-run' \
+        || { printf 'value %s gave: %s\n' "$value" "$text" >&2; return 1; }
+    done
+    # A newline in the directory: the decoded value still selects the act.
+    # shellcheck disable=SC1090
+    text=$(printf '%s\n' "path=\$'/h/a\\nb/.claude/settings.json.lock'" \
+      | ( . "$VERDICTS"; verdict_config_lock mask "$flag" ))
+    printf '%s' "$text" | grep -qF 'update-config'
+  done
+}

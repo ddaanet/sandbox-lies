@@ -125,13 +125,15 @@ load helpers/verdicts
   # Transcribed from docs/references/readonly-path.md's readonly-path Verdicts
   # list, <path> substituted by the probe's path= stdin line. The path holds
   # a blank and the characters a sed replacement or an eval would act on, as
-  # an extracted path may. The path renders in backticks, as the doc writes
-  # the placeholder; with no path= line it is "The path".
-  local p rest text line1 line2
+  # an extracted path may; the stdin line carries it in the probe's printf %q
+  # form and the verdict shows it decoded. The path renders in backticks, as
+  # the doc writes the placeholder; with no path= line it is "The path".
+  local p wire rest text line1 line2
   p='/r/a b&c\1/x'
+  wire='/r/a\ b\&c\\1/x'
   rest=" is writable outside the sandbox, whose allowlist refused it.$(readonly_path_tail)"
   # shellcheck disable=SC1090 # $VERDICTS is lib/verdicts.sh, resolved above
-  text=$(printf '%s\n' "path=$p" | ( . "$VERDICTS"; verdict_readonly_path writable ))
+  text=$(printf '%s\n' "path=$wire" | ( . "$VERDICTS"; verdict_readonly_path writable ))
   line1=$(printf '%s\n' "$text" | sed -n '1p')
   line2=$(printf '%s\n' "$text" | sed -n '2p')
   [ "$line1" = "\`$p\`$rest" ]
@@ -145,12 +147,14 @@ load helpers/verdicts
   # Transcribed from docs/references/readonly-path.md's readonly-path Verdicts
   # list, <path> interpolated in backticks as the writable case does, and
   # "The path" with no path= line (outside the probe contract, as the
-  # row-driven cases call it), so no subjectless sentence.
-  local p text line1 line2
+  # row-driven cases call it), so no subjectless sentence. The stdin line is
+  # the printf %q form of p, as in the writable case.
+  local p wire text line1 line2
   p='/r/a b&c\1/x'
+  wire='/r/a\ b\&c\\1/x'
 
   # shellcheck disable=SC1090 # $VERDICTS is lib/verdicts.sh, resolved above
-  text=$(printf '%s\n' "path=$p" | ( . "$VERDICTS"; verdict_readonly_path readonly ))
+  text=$(printf '%s\n' "path=$wire" | ( . "$VERDICTS"; verdict_readonly_path readonly ))
   line1=$(printf '%s\n' "$text" | sed -n '1p')
   line2=$(printf '%s\n' "$text" | sed -n '2p')
   [ "$line1" = "\`$p\` is not writable outside the sandbox either; this is not a sandbox effect. Unsandboxing will not help: write somewhere writable, or ask before changing its permissions." ]
