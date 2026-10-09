@@ -11,85 +11,39 @@ can walk this outline directly.
 
 ## Provenance
 
-- **Derived from:**
+- **Derived from:** `none` as a review lineage. The items come from
   `plans/sandbox-lies-review-fixes-2/reports/deliverable-review.md` and
-  `deliverable-review-fixes.md`, superseding
-  `plans/sandbox-lies-review-fixes-2/outline.md`
-- **Base:** `52e6dd82b831a1cc2b7b516d4c248df6fb1ebc8c` — copied verbatim from
-  the superseded outline. Q5 asks whether to keep it.
+  `deliverable-review-fixes.md`, and this outline takes over the open items of
+  `plans/sandbox-lies-review-fixes-2/outline.md`.
+- **Base:** `2309ae69527623112aced16277775ea241a96a3c` is this job's start.
+
+The base deviates from edify's rule of copying the superseded outline's base
+verbatim (`52e6dd8`). My human partner asked for it explicitly, so the
+deliverable review covers this build alone. The rule's checker,
+`edify-review-range.sh`, compares the base with the prior outline's whenever
+`Derived from:` names one as superseded. With the old wording it printed
+`CONFLICT:`, so `Derived from:` opens with `none` and names the prior outline
+only in prose. It then prints `RANGE: 2309ae6…..HEAD`.
 
 ## Verdict per item
 
 | # | Item | Verdict | Why |
 | --- | --- | --- | --- |
-| A | `path=` as `printf %q` | Build (Q1) | Decided. Only one input triggers it: a newline in the payload `cwd`. The cost is two slices. |
+| A | `path=` as `printf %q` | Build | Decided, and confirmed as designed. Only one input triggers it: a newline in the payload `cwd`. The cost is two items. |
 | B | Partial-checkout path from a subdirectory | Build | Today it can produce a wrong `readonly` verdict, which says unsandboxing will not help. |
 | C | Phantom "project root" wording | Build | False after a persisted `cd`. It is a three-site string edit. |
 | D | m-1 quadratic tokenizer | Build | Times out on bash 3.2.0: 38.7 s at the cap, against a 10 s hook timeout. |
 | E | Tests m-6 (suite on macOS) | Build | Two lines. Both helpers already exist. |
 | F | m-7 line-cap coverage | Build | One `case` arm and one test. No file is near the cap today. |
-| G | m-8, m-9 Python tools | Close (Q3) | Dev tools run by hand. Their failures are loud, except one false comment. |
+| G | m-8, m-9 Python tools | Build | My human partner's call. Each fix is small, and each behavioural one gets a red case. |
 | H | Five `nopath` shapes | Close | In every recorded case, a path would not change the act. |
-| I | Item 8.2 remainder | Close (Q4) | The zellij section keeps the file alive, so the remainder stays gated. |
+| I | Item 8.2 remainder | Close | `memory/ddaanet/sandbox-effects.md` stays as the home of zellij, whose detector cannot ship under D-15 with 0 corpus hits, and of the leak. FR-10 is reworded (Items 7.1, 7.4). |
 
 ## Evidence
 
-Each probe below ran on this box (Linux). Bash 3.2 means a 3.2.0 built from
-the GNU tarball (gnu89, glibc malloc, `-O1`). It is indicative only: Apple's
-3.2.57 is unverified, and so is everything about macOS. To rebuild it, take
-`bash-3.2.tar.gz` from ftp.gnu.org. Configure with `--without-bash-malloc`,
-and pass `-std=gnu89` with gcc 14's implicit-declaration, int-conversion,
-incompatible-pointer, implicit-int and return-mismatch errors demoted to
-warnings, in both `CC` and `CC_FOR_BUILD`. Before `make`, `touch` `y.tab.c`
-and `y.tab.h`. The 3.2.57 tarball's `y.tab.c` is stale against its `parse.y`
-and fails to link without bison. The `CC` string used, passed as both `CC` and
-`CC_FOR_BUILD`, was `gcc -O1 -std=gnu89 -w -fcommon
--Wno-error=implicit-function-declaration -Wno-error=int-conversion
--Wno-error=incompatible-pointer-types -Wno-error=implicit-int
--Wno-error=return-mismatch`.
-
-- **`printf %q` forms.** Bytes 1 to 255 were run through it, between two
-  letters, on both versions under `C` and `C.UTF-8`. Each byte gives one of
-  two forms:
-  - backslash form: a backslash before each shell-special printable byte;
-  - `$'…'` form: whenever a byte is not printable. Its escapes are `\a \b \E
-    \f \n \r \t \v`, three-digit octal `\NNN`, and `\\` and `\'`.
-
-  The two versions agree byte for byte on single bytes. They diverge in two
-  ways:
-  - bash 5.2 escapes a leading `~` and bash 3.2 does not;
-  - under `C.UTF-8`, bash 5.2 prints a valid multibyte character raw (`café`),
-    where bash 3.2 and any `C` locale print `$'caf\303\251'`.
-- **The locale pin works.** `LC_ALL=C printf %q …`, as a prefix on the
-  builtin, gives the `$'…'` form for non-ASCII under a UTF-8 session on both
-  versions. So the wire form does not depend on the hook's locale. The
-  extractors already pin `LC_ALL=C` for byte safety.
-- **Assignment eval decodes wrongly on 3.2.** bash 3.2's `%q` leaves `~` bare.
-  `eval "x=$q"` then tilde-expands after a `:`: `/a:~root/b c` decoded to
-  `/a:/root/b c`. A word-context eval and `read` without `-r` both decode it
-  right. `printf %b` decodes `\NNN`, `\E` and `\\` on both versions, but not
-  `\'`.
-- **Tokenizer cost** (`_readonly_tokenize`, 16384 characters):
-
-  | input | bash 5.2.37 | bash 3.2.0 |
-  | --- | --- | --- |
-  | one word | 4.2 s | 38.7 s |
-  | 1600 short words | 1.3 s | 2.5 s |
-
-  The gap between the rows is the `word="$word$ch"` copy. On 3.2 a single word
-  past about 8 KB alone exceeds the hook's 10 s timeout, and the annotation is
-  then lost with no signal.
-- **`nopath` hits.** From `plans/sandbox-lies/reports/item-8-1-dogfood-numbers.md`:
-  11 of 195 `readonly-path` hits, in five shapes:
-  - tee's refusal of a `/tmp` file;
-  - sed's temporary file in a relative directory;
-  - git's refusal to write `.git/config`, busy rather than read-only;
-  - a removal warning on `.bash_profile`;
-  - `cp` with an empty operand.
-
-  Every extractable path there is writable outside the sandbox, so `writable`
-  would give the same act `nopath` gives: re-run the whole call unsandboxed.
-  None names `.claude/settings.json`. The empty operand holds no path at all.
+The probes behind §A, §D and Item H are in `evidence.md`: the `printf %q`
+forms on bash 5.2.37 and 3.2.0, the locale pin, assignment eval on 3.2, the
+tokenizer timings, the `nopath` hits, and how to rebuild bash 3.2.0.
 
 ## Design
 
@@ -128,13 +82,26 @@ and fails to link without bison. The `CC` string used, passed as both `CC` and
 - **Why not eval.** Two arguments:
   - The producer is our own probe (`harden-human-gates`), so a guard there is
     not the point.
-  - Assignment eval is wrong on 3.2 (§Evidence), and word-context eval puts an
-    executable surface where a decoder needs none. The pattern-substitution
-    step for `\'` has changed meaning across bash versions, so the executor
-    runs it on the 3.2.0 build with the pattern and the replacement held in
-    variables.
-- **Scope.** Only `path=` changes. `readfile=`, `match=` and `target=` keep
-  their documented newline skips (Q2).
+  - Assignment eval is wrong on 3.2 (`evidence.md`), and word-context eval
+    puts an executable surface where a decoder needs none. The
+    pattern-substitution step for `\'` has changed meaning across bash
+    versions, so the executor runs it on the 3.2.0 build with the pattern and
+    the replacement held in variables.
+- **Scope.** Only `path=` changes, by my human partner's call; `readfile=`,
+  `match=` and `target=` keep their newline skips. The reason, checked against
+  `docs/references/readonly-path.md:65-91` and
+  `lib/probes-readonly-facts.sh:148-173`: only a newline in `path=` loses the
+  path, degrading the outcome to `nopath`. The others lose one optional fact:
+  - A `readfile=` with a newline is not printed; the act becomes the generic
+    re-run.
+  - A ref name cannot hold a newline (git forbids control characters in ref
+    names, and the probe skips any candidate holding a blank). The `target=`
+    skip comes instead from a repository root holding one, which would split
+    every `match=` line. With no `match=` there is no `target=`, so the merge
+    clause degrades to the generic `partial=1` wording, or to none.
+  - A newline in a changed file's name drops its `match=` line. If that was
+    the only match, the merge clause is dropped rather than made generic: the
+    one place the reason as first stated is too strong.
 
 ### B. Partial-checkout path from the worktree top
 
@@ -262,10 +229,10 @@ to flag.
 
 - Item 4.1: `lib/probes-readonly-command.sh` — §D. Requirements: NFR-3,
   NFR-2. The `probes-readonly*.bats` suites are the guard and pass unchanged.
-  The report records the §Evidence timing table re-run after the change, on
-  bash 5.2 and on the 3.2.0 build; the target is under 5 s on 3.2 for one
-  16384-character word. Measured, not gated: a timing case would be flaky on
-  this box.
+  The report records the timing table in `evidence.md`, re-run after the
+  change on bash 5.2 and on the 3.2.0 build; the target is under 5 s on 3.2
+  for one 16384-character word. Measured, not gated: a timing case would be
+  flaky on this box.
 
 ### Phase 5: small fixes (type: general)
 
@@ -284,38 +251,89 @@ to flag.
     files (`.gitlore/bin/claude`, gitlore-generated) as out of scope.
   - Add one case to `tests/check-line-limits.bats` (at 350 lines): a 401-line
     `.awk` is reported.
-- Item 5.3: `tests/corpus-eval.py:48-52` — correct the prefilter comment: `crw-`
-  covers the `/dev/null` mask's mode, not every mode `match_phantom_chardev`
-  accepts. That is all of G under Q3's default.
 
-### Phase 6: docs (type: general)
+### Phase 6: Python dev tools (type: tdd)
+
+Each case runs the tool under a scratch `HOME` holding a JSONL corpus written
+at run time. Any diagnostic text it needs is built from fragments, so
+`tests/docs.bats` stays quiet.
+Each new suite loads `helpers/bsd-stubs` and keeps no `make_bsd_stubs` case:
+the Python calls no stubbed tool. Each fix gets a mutation check: revert it,
+and its case goes red on the assertion.
+
+- Item 6.1: `tests/corpus-eval.py` — m-8, and m-9's shape. Requirements:
+  NFR-1, its replay harness. New suite `tests/corpus-eval.bats`.
+  Slices:
+  1. `extract` first removes every file in `survivors/` and any
+     `verdicts.tsv`, both left by an earlier survivor set. Case: extract over
+     two survivors, write a `verdicts.tsv`, shrink the corpus to one, extract
+     again. One survivor file and no TSV remain; today both stale files do.
+  2. `aggregate` skips a verdict line whose file has no manifest entry, and
+     prints the skipped count. Today the `manifest[f]` reads at `:234`, `:235`
+     and `:246` raise `KeyError`.
+  3. A Bash `tool_use` whose `input` is not a dict reads as no command
+     (`:152-153`). Case: a string `input` beside one survivor; `extract` exits
+     0 and writes it. Today it raises `AttributeError`.
+
+  With no case, since no test reaches them:
+  - The docstring loop redirects once, with `>` after `done`, so re-running
+    it does not duplicate lines.
+  - The prefilter comment (`:48-52`) stops claiming the list is broader than
+    every matcher: `crw-` covers the `/dev/null` mask's mode only, not every
+    mode `match_phantom_chardev` accepts.
+- Item 6.2: `tests/extract-fixtures.py` — m-9. Requirements: FR-8. New suite
+  `tests/extract-fixtures.bats`. `OUT` resolves next to the script, so each
+  case copies the script into a scratch `tests/`, never cutting into the
+  repo's `tests/fixtures/`. The corpus holds a call matching one `SPEC` entry,
+  and the case passes that entry's name.
+  Slices:
+  1. A `null` `timestamp` reads as no day (`:160`; the `.get` default does
+     not cover an explicit `null`). Case: such a line before the matching
+     call; exit 0, and the cut file's bytes equal the call's output. Today it
+     raises `TypeError`.
+  2. A non-dict `input` reads as no command (`:165`). Case: a string `input`
+     before the matching call, same assertions. Today: `AttributeError`.
+
+  With no case: `pick()`'s all-projects branch goes, with `(project or '*')`
+  at `:229`. Every `SPEC` entry names a project and `main()` passes it
+  through, so the branch is unreachable; reaching it would need a
+  project-less entry no fixture wants. Both cases staying green is the guard.
+
+### Phase 7: docs (type: general)
 
 One item per file. Each runs `just format-docs`, and `docs/design.md` must stay
 at or under 400 lines with no crammed lines.
 
-- Item 6.1: `docs/design.md`.
+- Item 7.1: `docs/design.md`.
   - Now: drop the `nopath` sentence.
   - FR-4: one clause, "a `path=` value is printed in `printf %q` form".
-  - FR-10: per Q4.
-  - Status: bump "Verified against".
-- Item 6.2: `docs/references/readonly-path.md`.
+  - FR-10 (`:150-161`): every section the plugin carries is retired, and the
+    memory file keeps what it does not. The deletion, index-line, inbound-link
+    and `docs.bats` retired-path clauses go, and so does the `Item 8.2`
+    pointer. FR-10's status becomes Done.
+  - Status (`:3-9`): drop the `Partial` sentence, and bump "Verified against".
+  - The file is at 399 lines, so the FR-10 rewrite must not grow it.
+- Item 7.2: `docs/references/readonly-path.md`.
   - `:28`: `path=` is in `%q` form.
   - `:51`: `nopath` means only that no path was extracted.
   - `:42-45`: the partial-checkout residual becomes the resolution rule, and
     `git -C` stays a residual.
-  - Add a residual for the five shapes (§Evidence, described, never quoted).
-    It notes that a removal refused on a leaked phantom mask gets the re-run
-    act, which the leak makes futile.
+  - Add a residual for the five shapes (`evidence.md`; described, never
+    quoted). It notes that a removal refused on a leaked phantom mask gets the
+    re-run act, which the leak makes futile.
   - Verdicts: the display rule from §A Reader.
-- Item 6.3: `docs/references/lock-detectors.md:30-31` — the `%q` contract
+- Item 7.3: `docs/references/lock-detectors.md:30-31` — the `%q` contract
   replaces the newline exception.
-- Item 6.4: `docs/references/detectors.md`.
+- Item 7.4: `docs/references/detectors.md`.
   - `:84` and its twin: the new phantom text.
-  - Translation map: per Q4.
-- Item 6.5: `docs/references/hook.md:101-105` — §C.
-- Item 6.6: `docs/changelog.md` — one entry covering the code changes and the
-  test-side changes, and naming the closed items with their reasons.
-- Item 6.7: the comments that state the old contract.
+  - Translation map: the intro (`:313-315`) stops promising a deletion
+    and drops the Item 8.2 audit. The zellij row says the section stays in
+    memory, and a new leak row says the same.
+- Item 7.5: `docs/references/hook.md:101-105` — §C.
+- Item 7.6: `docs/changelog.md` — one entry covering the code changes, the
+  test-side changes and the Python tools, and naming the closed items (H, I)
+  with their reasons.
+- Item 7.7: the comments that state the old contract.
   - `lib/probes.sh:8-13` and `:105-111`;
   - `lib/probes-readonly.sh:6-7`, `:36-39` and `:54-55`;
   - `lib/verdicts.sh:139-145`. Its "never a printf format, sed or eval"
@@ -323,75 +341,45 @@ at or under 400 lines with no crammed lines.
 
 ## Scope
 
-- **IN:** Items 1.1 to 6.7.
+- **IN:** Items 1.1 to 7.7.
 - **OUT, closed with a reason:**
-  - **G, m-8 idempotency.** The out directory is an operator's scratch.
-  - **G, m-9 null fields.** A null timestamp or a non-dict input crashes
-    loudly, and neither occurred over 4055 transcripts.
-  - **H, the five `nopath` shapes.** See §Evidence.
-  - **I, the Item 8.2 remainder.** See Q4.
+  - **H, the five `nopath` shapes.** See `evidence.md`.
+  - **I, the Item 8.2 remainder.** The file's deletion, the `docs.bats`
+    retired-path case, the audit column and the index-line edits are moot.
+    `tests/matchers.bats:280` stays, since the file persists.
 - **OUT, not code:** the publishing steps, the m-3 scratch transcripts, and the
   rejected `deliverable-review-build-only-range.md`. They stay in
   `.claude/handoff-todo.md`.
+- **A step for my human partner, not an item:** the opening paragraph of
+  `memory/ddaanet/sandbox-effects.md` says the leak section is "not yet in the
+  skill". Reword it to say the file keeps that section. The build edits nothing
+  under `memory/`.
 - **Observation, not built:** `readonly-path` fires on a removal refused on a
   leaked mask, the symptom of the memory file's leak section. A detector of its
   own would need a corpus replay under D-15.
 
 ## Questions
 
-1. **Item A: build as designed?** It decodes the `%q` form in the verdict and
-   shows the raw path unless the path holds a control byte. The alternative is
-   to close A as a residual: its only trigger is a newline in the payload
-   `cwd`, and today's guards are correct and pinned. Default: build.
-2. **Encoding scope.** Should only `path=` take `%q`? `readfile=`, `match=` and
-   `target=` keep their newline skips. Default: `path=` only.
-3. **m-8 and m-9.** Close both and correct only the false comment (Item 5.3)?
-   The alternative builds `isinstance` guards, survivor clearing and one bats
-   case per tool against a crafted JSONL under a scratch `HOME`. Default:
-   close.
-4. **Item 8.2.** `memory/ddaanet/sandbox-effects.md` now holds two sections:
-   zellij, whose detector cannot ship under D-15 with 0 corpus hits, and the
-   phantom-mask leak. Under the default, the file stays as the home of both.
-   - FR-10 is rewritten to "every section the plugin carries is retired; the
-     file keeps what it does not".
-   - The translation map gains a leak row ("stays in memory").
-   - The deletion, the `docs.bats` retired-path case, the audit column and the
-     index-line edits are dropped as moot.
-   - `tests/matchers.bats:280` stays, since the file persists.
-   - One memory step for you to approve. The file's opening paragraph says
-     the leak section is "not yet in the skill"; reword it to say the file
-     keeps that section.
-
-   The alternative folds the leak section into
-   `skills/sandbox-lies/references/masks-and-gates.md`, and you approve three
-   memory steps:
-   - (a) delete the leak section from `sandbox-effects.md`;
-   - (b) rewrite its `description` to zellij only;
-   - (c) rewrite both index lines (`memory/ddaanet/MEMORY.md:19`,
-     `memory/MEMORY.md:7`) to match.
-
-   Default: leave the file.
-5. **Review base.** The Provenance rule copies `52e6dd8` verbatim, so the next
-   review covers the whole range again (about 300 commits). The alternative is
-   this job's start, `2309ae69527623112aced16277775ea241a96a3c`: a range of
-   this build alone, which suits one clean review. Default: copy verbatim, as
-   the rule says.
+None open. My human partner answered all five. The answers are folded into
+§Provenance, the verdict table, §A Scope and the Items.
 
 ## Route
 
-After approval: commit this outline and name `/build plans/sandbox-lies-review-fixes-3`.
-No runbook. Phase 1 → 2 → 3 is the only ordering, and the items already carry
-their slices.
+After approval: commit this outline and name
+`/build plans/sandbox-lies-review-fixes-3`. No runbook. Phases run in order,
+1 to 7. Phase 1 must come first, and Items 5.1 and 7.7 depend on its encoder.
+The items already carry their slices.
 
 ## Resume
 
-Stopped at the hard context stop, before `/edify:proof`.
+Revised for my human partner's five answers, then stopped at `/edify:proof`'s
+orientation checkpoint, which needs my human partner.
 
-- **Done:** `classification.md` and this outline are written. `just precommit`
-  exits 0, and both files run quiet under `lib/matchers.sh`.
-- **Open:** my human partner's answers to Q1 to Q5. Revise the outline to
-  match them.
-- **Next:** `/edify:proof plans/sandbox-lies-review-fixes-3/outline.md`. On
+- **Done:** the answers are folded into this outline, `classification.md` and
+  the new `evidence.md`. `edify-review-range.sh` prints `RANGE:` for this
+  outline.
+- **Next:** my human partner answers the proof's orientation checkpoint, then
+  item iteration runs (the outline-corrector fires on revise or kill). On
   approval, commit and name `/build plans/sandbox-lies-review-fixes-3`.
 - The bash 3.2.0 build sits in a scratch directory that will not survive. To
-  rebuild it, follow §Evidence.
+  rebuild it, follow `evidence.md`.

@@ -12,8 +12,8 @@
 - **Completeness:** each item names a file:line site and a mechanism (Y). The
   NFRs it touches (NFR-2 portability, NFR-3 cost, NFR-4 hermetic, NFR-5 size)
   each carry a measurable criterion in `docs/design.md` (Y).
-- **Routing:** proceed to triage. Five forks remain, each a numbered question
-  with a default in `outline.md` §Questions.
+- **Routing:** proceed to triage. The five forks the first outline raised are
+  answered by my human partner and folded into `outline.md`.
 
 ## Triage recall
 
@@ -36,9 +36,9 @@ dispatch folds every open code item into one job).
 | D. m-1 tokenizer append | Yes (changed accumulation, same output) | Moderate | Production | production |
 | E. Tests m-6 (suite on macOS) | No (tests only) | Simple | Production | production |
 | F. m-7 line-cap coverage | Yes (one `case` arm) | Moderate | Production | production |
-| G. m-8, m-9 Python tools | Yes if built; No if closed | Moderate / Simple | Production | production |
+| G. m-8, m-9 Python tools | Yes (stale-file clearing, input guards) | Moderate | Production | production |
 | H. `nopath` shapes | No (closed as a residual) | Simple | Investigation | investigation |
-| I. Item 8.2 remainder | No (docs; memory steps proposed) | Simple | Investigation | investigation |
+| I. Item 8.2 remainder | No (docs; one memory step for my human partner) | Simple | Investigation | investigation |
 
 ## Job classification
 
@@ -47,10 +47,10 @@ dispatch folds every open code item into one job).
   A-3 probe contract, `_readonly_git_dir`, `_readonly_partial_checkout_text`,
   `index_mtime`, `utf8_locale`. The one new mechanism, the `%q` decoder, was
   probed on bash 5.2.37 and on a bash 3.2.0 built from GNU source
-  (`outline.md` §Evidence).
-- **Requirement stability:** High for A to F, H and I. G and the Item 8.2
-  disposition are forks with defaults.
-- **Behavioural code check:** Yes (A, B, D, F), so Moderate is the minimum.
+  (`evidence.md`).
+- **Requirement stability:** High for every item. G and the Item 8.2
+  disposition were forks; my human partner settled both.
+- **Behavioural code check:** Yes (A, B, D, F, G), so Moderate is the minimum.
 - **Work type:** Production.
 - **Artifact destination:** production, with investigation-type doc edits.
 - **Evidence:** per-item sites in `outline.md`; `docs/design.md` at 399/400
