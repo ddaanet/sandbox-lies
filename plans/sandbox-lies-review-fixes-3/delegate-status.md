@@ -40,3 +40,17 @@ Review range for the deliverable review is `2309ae6..HEAD` (outline Provenance).
 - [x] Entry gate: tree clean apart from the exempt entries, precommit green
       (371 bats passed)
 - [x] Recall: `recall-artifact.md` written
+- [x] Item 0: bash 3.2.0 built at `/tmp/claude/bash32/bash` (`reports/item-0-bash32.md`)
+- [x] Item 1.1 (Sonnet, grouped slices 1-4 RED + slice 5 in GREEN): RED
+      `item-1-1-red.md`, test review `item-1-1-test-review.md` (one weakness
+      fixed), GREEN `item-1-1-green.md` (commit 5bfd2e2, 15 tests rewritten),
+      code review `item-1-1-code-review.md` (11 mutations, 1 survived and
+      pinned; commit 37dbf50)
+
+## Regrouping decided at the context budget
+
+Small items are paired so each pair runs one RED, one test review, one GREEN and
+one code review: Items 2.1 + 3.1; Items 6.1 + 6.2. Items 4.1, 5.1 and 5.2 run as
+one general dispatch pair (Sonnet implementer, Sonnet review); Items 7.1 to 7.7
+as one docs dispatch with a review. Models as in the table above, except that
+GREEN of a pair runs Haiku only where both items are Haiku rows.

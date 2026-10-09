@@ -152,3 +152,23 @@ run_spied() {
   [ "$status" -eq 0 ]
   [ "$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')" = "$ctx" ]
 }
+
+# The same seam for a control byte: the probe's `$'...'` value decodes to a
+# path holding a newline, which would split the paragraph from its human line,
+# so the paragraph shows the wire form on one line.
+@test "hook shows the wire form for a path holding a newline, on one line" {
+  local cwd="$BATS_TEST_TMPDIR/dir"$'\n'"with newline" text ctx wire
+  mkdir "$cwd"
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'f'")
+  failure_payload "$text" |
+    jq --arg c "$cwd" '.cwd = $c | del(.tool_input.dangerouslyDisableSandbox)' \
+      >"$PAYLOAD_FILE"
+  wire=$(LC_ALL=C printf '%q' "$cwd/f")
+  [ "${wire#\$\'}" != "$wire" ]
+
+  run bash "$HOOK_COPY/hooks/annotate.sh" <"$PAYLOAD_FILE"
+
+  [ "$status" -eq 0 ]
+  ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
+  [ "$ctx" = "\`$wire\` is writable outside the sandbox, whose allowlist refused it. Re-run the whole call with \`dangerouslyDisableSandbox: true\`." ]
+}

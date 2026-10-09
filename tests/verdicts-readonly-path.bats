@@ -40,7 +40,8 @@ path_verdict() {
 @test "readonly-path shows the wire form for every control byte, the decoded form past them" {
   local text byte real wire
   # \001 and \037 bound the range, \177 is the extra one; \200 and \377 sit
-  # outside it and show decoded.
+  # outside it and show decoded, and so does U+0080 (\302\200), a C1 control
+  # that is valid UTF-8 text and that [:cntrl:] matches under a UTF-8 locale.
   for byte in $'\001' $'\t' $'\033' $'\037' $'\177'; do
     real="/x/a${byte}b/f"
     wire=$(LC_ALL=C printf '%q' "$real")
@@ -50,7 +51,7 @@ path_verdict() {
       || { printf 'byte %s gave: %s\n' "$wire" "$text" >&2; return 1; }
     [ "$(printf '%s\n' "$text" | sed -n '$=')" = 2 ]
   done
-  for byte in $'\200' $'\377'; do
+  for byte in $'\200' $'\377' $'\302\200'; do
     real="/x/a${byte}b/f"
     wire=$(LC_ALL=C printf '%q' "$real")
     [ "${wire#\$\'}" != "$wire" ]
@@ -86,7 +87,9 @@ path_verdict() {
   # The probe's own forms: a quote, and a quote after a literal backslash, next
   # to a UTF-8 byte (which is what puts %q in the $'...' form); a literal
   # backslash and "n" is two characters, never a newline.
-  for real in "/x/caf${eacute}'s\\n/f" "/x/caf${eacute}\\'s/f" "/x/caf${eacute}'\\/f"; do
+  # Two quotes in one value: every \' is swapped, not the first alone.
+  for real in "/x/caf${eacute}'s\\n/f" "/x/caf${eacute}\\'s/f" "/x/caf${eacute}'\\/f" \
+    "/x/caf${eacute}'a'b/f" "/x/caf${eacute}''\\'/f"; do
     wire=$(LC_ALL=C printf '%q' "$real")
     [ "${wire#\$\'}" != "$wire" ]
     line1=$(path_verdict writable "$wire" | sed -n '1p')
@@ -117,6 +120,17 @@ path_verdict() {
     [ "$line1" = "The path is writable outside the sandbox, whose allowlist refused it.$(readonly_path_tail)" ] \
       || { printf 'value %s gave: %s\n' "$value" "$line1" >&2; return 1; }
   done
+}
+
+@test "_verdict_path_read empties both outputs for a malformed value after a good read" {
+  local result
+  # shellcheck disable=SC1090,SC2154 # $VERDICTS is lib/verdicts.sh, resolved
+  # above; the reader sets the two outputs
+  result=$(. "$VERDICTS"
+    _verdict_path_read "\$'/x/caf\\303\\251/f'"
+    if _verdict_path_read "\$'a'b"; then printf 'accepted '; fi
+    printf '[%s][%s]' "$_verdict_path_raw" "$_verdict_path_shown")
+  [ "$result" = '[][]' ]
 }
 
 @test "readonly-path never runs a forged value, well-formed or not" {
