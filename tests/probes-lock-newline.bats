@@ -8,10 +8,10 @@
 # newline), whose path= line is the backslash form, and asserts both twins
 # against literals: the outcome and every non-path= line, then each path= line
 # in its literal encoded form, so an encoder that escapes only blanks, or one
-# that leaves the newline raw, fails on <b>. Five of _probe_lock_at's six
-# path= print sites are pinned: absent under each flag, character device,
-# held, and the final orphan print. The gone print after a lock vanishes
-# mid-probe has no deterministic trigger and stays a residual.
+# that leaves the newline raw, fails on <b>. Every one of _probe_lock_at's
+# path= print sites is pinned: absent under each flag, character device,
+# held, gone after the lock vanishes mid-probe (a stat stub removes it), and
+# the final orphan print.
 # Opened as a separate file: tests/probes-config.bats would pass 400 lines.
 
 ROOT="${BATS_TEST_DIRNAME}/.."
@@ -203,6 +203,32 @@ orphan_twins() {
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
   assert_lines "$(good_wire /.git/index.lock)" gone
+}
+
+# The lock is present at the presence test, and the stat stub removes it
+# while failing, as git does when its holder exits. Flag false, so an absent
+# lock at the presence test would read mask: gone can only come from the
+# vanish print after the stat reads.
+@test "git-lock vanishing mid-probe: a newline-bearing path gives gone and one encoded path= line" {
+  local bad="$BATS_TEST_TMPDIR/r"$'\n'"age=99999"$'\n'"x"
+  local stubs="$BATS_TEST_TMPDIR/vanish"
+  mkdir -p "$bad/.git" "$stubs"
+  printf 'abc' >"$bad/.git/index.lock"
+  cat >"$stubs/stat" <<'STUB'
+#!/bin/sh
+for last; do :; done
+rm -f -- "$last"
+echo "stat: cannot statx '$last': No such file or directory" >&2
+exit 1
+STUB
+  chmod 755 "$stubs/stat"
+
+  PATH="$stubs:$PATH" run_probe probe_git_lock false "$bad" \
+    "$(git_lock_error .git/index.lock)"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ ! -e "$bad/.git/index.lock" ]
+  assert_lines "$(bad_wire /.git/index.lock)" gone
 }
 
 # A newline and a non-ASCII byte pair in one path, under a UTF-8 locale: the
