@@ -54,7 +54,7 @@ ro_dir() {
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
   [ "${output%%$'\n'*}" = writable ]
-  printf '%s\n' "$output" | grep -qxF "path=$target"
+  printf '%s\n' "$output" | grep -qxF "path=$BATS_TEST_TMPDIR/a\\ dir/target"
 }
 
 # Interpretation (the entry's Probe paragraph is silent on a relative
@@ -217,7 +217,7 @@ ro_dir() {
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
   [ "${output%%$'\n'*}" = writable ]
-  printf '%s\n' "$output" | grep -qxF "path=$p"
+  printf '%s\n' "$output" | grep -qxF "path=\$'$BATS_TEST_TMPDIR/curly \\342\\200\\224 target'"
 
   text="/opt/tools—2/mkdir: cannot create directory ‘$p’"
   text="$text ‘$BATS_TEST_TMPDIR/second’: $(erofs_message)"
@@ -227,7 +227,7 @@ ro_dir() {
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
   [ "${output%%$'\n'*}" = writable ]
-  printf '%s\n' "$output" | grep -qxF "path=$p"
+  printf '%s\n' "$output" | grep -qxF "path=\$'$BATS_TEST_TMPDIR/curly \\342\\200\\224 target'"
 }
 
 @test "bash line-N path is extracted" {
@@ -239,7 +239,7 @@ ro_dir() {
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
   [ "${output%%$'\n'*}" = writable ]
-  printf '%s\n' "$output" | grep -qxF "path=$p"
+  printf '%s\n' "$output" | grep -qxF "path=$BATS_TEST_TMPDIR/bash\\ line\\ 3:\\ target"
 }
 
 @test "dash redirect path is extracted" {
@@ -251,7 +251,7 @@ ro_dir() {
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
   [ "${output%%$'\n'*}" = writable ]
-  printf '%s\n' "$output" | grep -qxF "path=$p"
+  printf '%s\n' "$output" | grep -qxF "path=$BATS_TEST_TMPDIR/dash\\ 2:\\ cannot\\ create\\ target"
 }
 
 @test "git config-lock path is extracted" {
@@ -263,7 +263,7 @@ ro_dir() {
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
   [ "${output%%$'\n'*}" = writable ]
-  printf '%s\n' "$output" | grep -qxF "path=$p"
+  printf '%s\n' "$output" | grep -qxF "path=$BATS_TEST_TMPDIR/error:\\ could\\ not\\ lock\\ config\\ file\\ target"
 }
 
 @test "git mkdir path is extracted" {
@@ -275,7 +275,7 @@ ro_dir() {
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
   [ "${output%%$'\n'*}" = writable ]
-  printf '%s\n' "$output" | grep -qxF "path=$p"
+  printf '%s\n' "$output" | grep -qxF "path=$BATS_TEST_TMPDIR/fatal:\\ cannot\\ mkdir\\ target"
 }
 
 # The move's source is quoted first on the line; the removed target after it
@@ -291,7 +291,7 @@ ro_dir() {
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
   [ "${output%%$'\n'*}" = writable ]
-  printf '%s\n' "$output" | grep -qxF "path=$p"
+  printf '%s\n' "$output" | grep -qxF "path=$BATS_TEST_TMPDIR/mv\\ target"
 }
 
 # Regression: straight-quoted forms the extractor already handled before this
@@ -308,7 +308,7 @@ ro_dir() {
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
   [ "${output%%$'\n'*}" = writable ]
-  printf '%s\n' "$output" | grep -qxF "path=$p"
+  printf '%s\n' "$output" | grep -qxF "path=$BATS_TEST_TMPDIR/touch\\ target"
 
   p="$BATS_TEST_TMPDIR/ln target"
   text="ln: failed to create symbolic link '$p': $(erofs_message)"
@@ -318,7 +318,7 @@ ro_dir() {
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
   [ "${output%%$'\n'*}" = writable ]
-  printf '%s\n' "$output" | grep -qxF "path=$p"
+  printf '%s\n' "$output" | grep -qxF "path=$BATS_TEST_TMPDIR/ln\\ target"
 }
 
 # Near-miss: an unquoted path outside the four fixed unquoted forms (bash's
@@ -357,7 +357,7 @@ ro_dir() {
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
   [ "${output%%$'\n'*}" = writable ]
-  printf '%s\n' "$output" | grep -qxF "path=$target"
+  printf '%s\n' "$output" | grep -qxF "path=$BATS_TEST_TMPDIR/a\\ dir/target"
 }
 
 # The widened extraction through BSD grep and sed (NFR-2): the curly-quoted
@@ -373,7 +373,7 @@ ro_dir() {
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
   [ "${output%%$'\n'*}" = writable ]
-  printf '%s\n' "$output" | grep -qxF "path=$p"
+  printf '%s\n' "$output" | grep -qxF "path=\$'$BATS_TEST_TMPDIR/curly \\342\\200\\224 target'"
 
   p="$BATS_TEST_TMPDIR/bash target"
   text="/bin/bash: line 4: $p: $(erofs_message)"
@@ -383,5 +383,5 @@ ro_dir() {
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
   [ "${output%%$'\n'*}" = writable ]
-  printf '%s\n' "$output" | grep -qxF "path=$p"
+  printf '%s\n' "$output" | grep -qxF "path=$BATS_TEST_TMPDIR/bash\\ target"
 }

@@ -71,7 +71,8 @@ config_lock_own_error_case() {
   [ -z "$stderr" ]
   [ "${output%%$'\n'*}" = orphan ]
   printf '%s\n' "$output" | grep -qxF "bytes=7"
-  printf '%s\n' "$output" | grep -qxF "path=$lock"
+  printf '%s\n' "$output" | grep -qxF \
+    "path=$BATS_TEST_TMPDIR/it\\'s\\ here/main/.git/worktrees/wt/config.worktree.lock"
 }
 
 # Each probe reads its own line from a text holding both, the other probe's
@@ -107,8 +108,7 @@ config_lock_own_error_case() {
   run_probe probe_config_lock false "$cwd" "$(git_lock_error "$index")"
 
   [ "$status" -eq 0 ]
-  [ "${output%%$'\n'*}" = mask ]
-  printf '%s\n' "$output" | grep -qxF "path="
+  [ "$output" = mask ]
   [ "${output%%$'\n'*}" != orphan ]
   [ "${output%%$'\n'*}" != held ]
   [ "$(printf '%s\n' "$output" | grep -cxF "path=$index")" -eq 0 ]
@@ -150,8 +150,7 @@ config_lock_own_error_case() {
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  [ "${output%%$'\n'*}" = mask ]
-  printf '%s\n' "$output" | grep -qxF "path="
+  [ "$output" = mask ]
   [ "${output%%$'\n'*}" != held ]
   [ "${output%%$'\n'*}" != orphan ]
   [ "$(printf '%s\n' "$output" | grep -c '^pid=')" -eq 0 ]
@@ -160,8 +159,7 @@ config_lock_own_error_case() {
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  [ "${output%%$'\n'*}" = gone ]
-  printf '%s\n' "$output" | grep -qxF "path="
+  [ "$output" = gone ]
   [ "${output%%$'\n'*}" != held ]
   [ "${output%%$'\n'*}" != orphan ]
   [ "$(printf '%s\n' "$output" | grep -c '^pid=')" -eq 0 ]

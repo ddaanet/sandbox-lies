@@ -51,9 +51,7 @@ probe_readonly_path() {
     path=$(printf '%s\n' "$text" | _readonly_path_line \
         | _probe_readonly_path_from_line)
     path=$(_probe_readonly_resolve "$path" "$cwd")
-    # A newline in the resolved path (a relative path joined onto a
-    # newline-bearing cwd) would split the path= line and forge key lines.
-    if [ -z "$path" ] || [[ $path == *$'\n'* ]]; then
+    if [ -z "$path" ]; then
         printf '%s\n' nopath
         _readonly_print_facts "$text" "$command" "" "$cwd"
         return 0
@@ -77,9 +75,22 @@ probe_readonly_path() {
     else
         outcome="readonly"
     fi
-    printf '%s\n' "$outcome" "path=$path"
+    printf '%s\n' "$outcome"
+    _probe_path_line "$path"
     if [ "$outcome" != readonly ]; then
         _readonly_print_facts "$text" "$command" "$path" "$cwd"
+    fi
+}
+
+# _probe_path_line <path> — the path= line: <path> in printf %q form, so a
+# blank, a quote or a newline cannot split the line or forge a key line.
+# LC_ALL=C keeps a UTF-8 byte in octal, as bash 5.2 under a UTF-8 locale would
+# print it raw. Nothing for an empty <path>.
+_probe_path_line() {
+    local quoted
+    if [ -n "$1" ]; then
+        LC_ALL=C printf -v quoted %q "$1"
+        printf 'path=%s\n' "$quoted"
     fi
 }
 

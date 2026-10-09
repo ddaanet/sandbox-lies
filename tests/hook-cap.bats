@@ -17,6 +17,7 @@ bats_require_minimum_version 1.5.0
 load helpers/bsd-stubs
 load helpers/git-env
 load helpers/hook
+load helpers/locale
 
 setup() {
   hook_copy_tree
@@ -35,21 +36,6 @@ stub_paragraph() {
 # arithmetic drops the padding BSD wc puts before the number.
 byte_count() {
   echo "$(($(printf '%s' "$1" | LC_ALL=C wc -c)))"
-}
-
-# utf8_locale — prints the first UTF-8 locale this system provides, checked
-# by bash counting an em dash as one character under it; fails when none is,
-# rather than letting the bytes-not-characters case pass under a byte locale.
-utf8_locale() {
-  local loc
-  for loc in C.UTF-8 en_US.UTF-8; do
-    if [ "$(LC_ALL="$loc" bash -c 'x="—"; printf %s "${#x}"')" = 1 ]; then
-      printf '%s\n' "$loc"
-      return 0
-    fi
-  done
-  echo "no UTF-8 locale found" >&2
-  return 1
 }
 
 # verdict_line <name> <n> — line <n> of the real verdict_<name>, read from

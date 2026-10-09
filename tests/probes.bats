@@ -10,6 +10,7 @@ ROOT="${BATS_TEST_DIRNAME}/.."
 bats_require_minimum_version 1.5.0
 
 load helpers/bsd-stubs
+load helpers/locale
 load helpers/probes
 
 setup() {
@@ -71,7 +72,59 @@ teardown() {
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  printf '%s\n' "$output" | grep -qxF "path=$lock"
+  printf '%s\n' "$output" | grep -qxF \
+    "path=\$'$BATS_TEST_TMPDIR/r\\351n/r/.git/index.lock'"
+}
+
+# The cwd's name holds a blank, so the resolved lock path is printed in
+# printf %q form: the blank escaped by a backslash. The precondition keeps
+# the expected line honest: were BATS_TEST_TMPDIR itself to hold a byte %q
+# escapes, the literal below would differ from the encoder's output for a
+# reason other than the blank.
+@test "a relative lock path under a cwd holding a blank prints path= in %q form" {
+  local cwd="$BATS_TEST_TMPDIR/r b"
+  [ "$(LC_ALL=C printf %q "$BATS_TEST_TMPDIR")" = "$BATS_TEST_TMPDIR" ]
+  mkdir -p "$cwd/.git"
+
+  run_probe probe_git_lock false "$cwd" "$(git_lock_error .git/index.lock)"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = mask ]
+  [ "$(printf '%s\n' "$output" | grep '^path=')" \
+    = "path=$BATS_TEST_TMPDIR/r\\ b/.git/index.lock" ]
+}
+
+# Text with no config-lock line names no path, so the probe answers mask
+# alone: an empty path prints no path= line, where it used to print a bare
+# `path=`.
+@test "probe_config_lock with no config-lock line prints mask and no path=" {
+  run_probe probe_config_lock false "$BATS_TEST_TMPDIR" \
+    "$(printf 'quiet preamble text\n')"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "$output" = mask ]
+}
+
+# The directory name holds e-acute as its two UTF-8 bytes, run under a UTF-8
+# locale. The encoder pins LC_ALL=C, so each byte prints as an octal escape;
+# unpinned on bash 5.2, %q under a UTF-8 locale prints the character raw, and
+# the printed form would depend on the hook's locale.
+@test "a lock path holding e-acute prints the octal form under a UTF-8 locale" {
+  local loc cwd="$BATS_TEST_TMPDIR/caf"$'\303\251'
+  [ "$(LC_ALL=C printf %q "$BATS_TEST_TMPDIR")" = "$BATS_TEST_TMPDIR" ]
+  loc=$(utf8_locale)
+  mkdir -p "$cwd/.git"
+
+  LC_ALL="$loc" run_probe probe_git_lock false "$cwd" \
+    "$(git_lock_error .git/index.lock)"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = mask ]
+  [ "$(printf '%s\n' "$output" | grep '^path=')" \
+    = "path=\$'$BATS_TEST_TMPDIR/caf\\303\\251/.git/index.lock'" ]
 }
 
 # The lock holds exactly 7 bytes, no trailing newline. No holder process ever
@@ -147,7 +200,8 @@ teardown() {
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
   [ "${output%%$'\n'*}" = orphan ]
-  printf '%s\n' "$output" | grep -qxF "path=$lock"
+  printf '%s\n' "$output" | grep -qxF \
+    "path=$BATS_TEST_TMPDIR/it\\'s\\ here/r/.git/index.lock"
   printf '%s\n' "$output" | grep -qxF "bytes=12"
   printf '%s\n' "$output" | grep -qE '^age=[0-9]+$'
 }

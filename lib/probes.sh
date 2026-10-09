@@ -111,11 +111,7 @@ probe_config_lock() {
 # but its path= line is left out: printed, it would split and forge key lines.
 _probe_lock_at() {
     local flag="$1" path="$2" pids holder_status=0 holder_pid mtime bytes=''
-    local now age outcome pathline=1
-
-    if [[ $path == *$'\n'* ]]; then
-        pathline=
-    fi
+    local now age outcome
 
     # Only the literal `true` reads as unsandboxed, as FR-5 reads an absent
     # flag as false. A wrong mask still ends in the right diagnosis (its
@@ -123,9 +119,11 @@ _probe_lock_at() {
     # sandboxed call to retry unchanged.
     if [ ! -e "$path" ] && [ ! -L "$path" ]; then
         if [ "$flag" = true ]; then
-            printf '%s\n' gone ${pathline:+"path=$path"}
+            printf '%s\n' gone
+            _probe_path_line "$path"
         else
-            printf '%s\n' mask ${pathline:+"path=$path"}
+            printf '%s\n' mask
+            _probe_path_line "$path"
         fi
         return 0
     fi
@@ -138,7 +136,8 @@ _probe_lock_at() {
     # read held. `[ -c ]`
     # follows a symlink, so a link to a device masks too.
     if [ -c "$path" ]; then
-        printf '%s\n' mask ${pathline:+"path=$path"}
+        printf '%s\n' mask
+        _probe_path_line "$path"
         return 0
     fi
 
@@ -156,7 +155,8 @@ _probe_lock_at() {
     pids=${pids#"${pids%%[0-9]*}"}
     holder_pid=${pids%%[!0-9]*}
     if [ -n "$holder_pid" ]; then
-        printf '%s\n' held "pid=$holder_pid" ${pathline:+"path=$path"}
+        printf '%s\n' held "pid=$holder_pid"
+        _probe_path_line "$path"
         return 0
     fi
 
@@ -181,7 +181,8 @@ _probe_lock_at() {
     elif ! mtime=$(stat -c %Y "$path" 2>&1) \
         || ! _probe_is_seconds "$mtime"; then
         if [ ! -e "$path" ] && [ ! -L "$path" ]; then
-            printf '%s\n' gone ${pathline:+"path=$path"}
+            printf '%s\n' gone
+            _probe_path_line "$path"
             return 0
         fi
         printf '%s\n' "$mtime" >&2
@@ -216,9 +217,7 @@ _probe_lock_at() {
         fi
         printf 'age=%s\n' "$age"
     fi
-    if [ -n "$pathline" ]; then
-        printf 'path=%s\n' "$path"
-    fi
+    _probe_path_line "$path"
 }
 
 # Prints the lock path from git's "Unable to create '<path>.lock': <reason>"

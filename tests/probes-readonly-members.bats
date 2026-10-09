@@ -132,19 +132,31 @@ setup() {
 
 # A relative refused path is joined onto the payload cwd, so a newline in the
 # cwd's name would split the path= line and forge the key line after the
-# newline (here readfile=). A resolved path holding a newline is nopath, and
-# nopath prints no path= line. The sibling named with a blank where the other
-# has the newline gives writable and path=, so a guard dropping blanks too
-# fails; the absolute refused path $good/a under the newline cwd gives the
-# same, so a guard keyed on the cwd rather than the resolved path fails. All
-# three outputs are compared whole; cat build.out gives readfile=build.out
-# under each.
-@test "a resolved refused path holding a newline gives nopath, not path=" {
+# newline (here readfile=). path= is printed in printf %q form, so the path
+# stays one line: the outcome is the real one (writable) and path= is one
+# $'...' line with the newline written \n. The sibling named with a blank
+# where the other has the newline gives writable and the backslash form, so an
+# encoder escaping only blanks, or only the newline, fails; the absolute
+# refused path $good/a under the newline cwd gives the same as the sibling, so
+# a guard keyed on the cwd rather than the resolved path fails. The newline
+# case runs first, so a failure shows its own assertion rather than the
+# blank's. All three outputs are compared whole; cat build.out gives
+# readfile=build.out under each. The literals interpolate BATS_TEST_TMPDIR as
+# itself, which the first line pins.
+@test "a resolved refused path holding a newline gives writable and one encoded path= line" {
   local good="$BATS_TEST_TMPDIR/r readfile=x"
   local bad="$BATS_TEST_TMPDIR/r"$'\n'"readfile=x" text expected
+  [ "$(LC_ALL=C printf %q "$BATS_TEST_TMPDIR")" = "$BATS_TEST_TMPDIR" ]
   mkdir "$good" "$bad"
   text=$(readonly_path_text fire-readonly-path-cp-tmp "'a'")
-  expected=$(printf '%s\n' writable "path=$good/a" readfile=build.out)
+  expected=$(printf '%s\n' writable "path=$BATS_TEST_TMPDIR/r\\ readfile=x/a" \
+    readfile=build.out)
+
+  run_probe_command probe_readonly_path false "$bad" 'cat build.out' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "$output" = "$(printf '%s\n' writable \
+    "path=\$'$BATS_TEST_TMPDIR/r\\nreadfile=x/a'" readfile=build.out)" ]
 
   run_probe_command probe_readonly_path false "$good" 'cat build.out' "$text"
   [ "$status" -eq 0 ]
@@ -156,11 +168,6 @@ setup() {
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
   [ "$output" = "$expected" ]
-
-  run_probe_command probe_readonly_path false "$bad" 'cat build.out' "$text"
-  [ "$status" -eq 0 ]
-  [ -z "$stderr" ]
-  [ "$output" = $'nopath\nreadfile=build.out' ]
 }
 
 # --- readfile names --------------------------------------------------------
