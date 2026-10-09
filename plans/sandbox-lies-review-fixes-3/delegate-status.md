@@ -54,3 +54,60 @@ one code review: Items 2.1 + 3.1; Items 6.1 + 6.2. Items 4.1, 5.1 and 5.2 run as
 one general dispatch pair (Sonnet implementer, Sonnet review); Items 7.1 to 7.7
 as one docs dispatch with a review. Models as in the table above, except that
 GREEN of a pair runs Haiku only where both items are Haiku rows.
+- [x] Item 1.2 (Sonnet): RED `item-1-2-red.md`, test review
+      `item-1-2-test-review.md`, GREEN `item-1-2-green.md` (commit d16cbb5),
+      code review plus Phase 1 boundary check in one dispatch
+      `item-1-2-code-review.md` (three survivors pinned; commit 1c5fd42).
+      Phase 1 is done.
+- [ ] Items 2.1 + 3.1 (paired group): RED written and reported, test review next
+
+## Resume
+
+Stopped at my human partner's request ("enough for now"). Last commit:
+`1c5fd42` (Item 1.2 code-review fixes and Phase 1 boundary review). Done:
+entry gate, recall, Item 0, Items 1.1 and 1.2 with all four dispatches each.
+
+**In flight: the paired group Items 2.1 + 3.1, at the test-review step.** The RED
+tests are uncommitted in the tree, by design (RED commits nothing):
+
+- `tests/probes-readonly-resolve.bats` (new, untracked) and the Item 3.1 edit in
+  `tests/verdicts.bats`;
+- the RED report `plans/sandbox-lies-review-fixes-3/reports/item-2-1-red.md`
+  (untracked). Four Item 2.1 cases and two Item 3.1 cases fail on their
+  assertions against the unchanged `lib/`; three regression cases are green and
+  carry mutation proofs. `lib/` is unchanged and no `# MUT` edit remains.
+
+A stalled first RED agent and its replacement both wrote this group: the second
+agent's report overwrote the first's, and it left the first's two test files in
+place. The test review should read both files whole.
+
+Next steps, in order, for the group (the regrouping above holds):
+
+1. Test review (Sonnet `edify:corrector`, report `item-2-1-test-review.md`).
+2. GREEN (Haiku `edify:test-driver`, both items' lib changes: section B in
+   `lib/probes-readonly.sh`, section C in `lib/verdicts.sh:16,22`), one commit,
+   reports `item-2-1-green.md`; stage the RED and test-review reports with it.
+3. Code review with mutation testing (Sonnet), report `item-2-1-code-review.md`.
+4. Items 4.1, 5.1, 5.2 as one general dispatch pair (4.1 needs the bash 3.2.0
+   binary at `/tmp/claude/bash32/bash`; rebuild per `evidence.md` if `/tmp` was
+   cleared), then Items 6.1 + 6.2 (RED, review, GREEN, review), then Items 7.1
+   to 7.7 (one Sonnet docs dispatch plus a review; `docs/design.md` must not
+   grow past 400 lines).
+5. Review gate over `git diff --name-only d6d0043173f6a692cc5d2e2a74d7e83c0710ab44`
+   (baseline in `tmp/build-baseline`; `tmp/` is excluded locally through
+   `.git/info/exclude`), triage feedback, then `edify:tdd-auditor` over the
+   slice reports, then the run summary.
+
+Decisions given: the model rule and grouping in the plan above; the Phase 1
+boundary review was folded into the Item 1.2 code review. Dispatch lesson: a
+subagent can stall silently on a classifier prompt (no file change for an hour);
+check file mtimes and the agent's output-file mtime, then `SendMessage` it or
+dispatch a replacement. A background wait is
+`/tmp/claude/wait-report.sh <report-name>` (recreate if `/tmp` was cleared: poll
+for the report file, then print it).
+
+Carry list: the `memory/ddaanet/sandbox-effects.md` opening-paragraph reword is a
+step for my human partner (the file keeps its leak section); `docs/design.md` Item
+7.1 FR-10 rewrite; nothing under `memory/` is edited by this build. The
+deliverable review follows the build: `/deliverable-review
+plans/sandbox-lies-review-fixes-3`, range `2309ae6..HEAD`.
