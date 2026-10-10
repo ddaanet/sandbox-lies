@@ -149,6 +149,21 @@ oversized-file: tools/plugin-dev/x.sh: 401 lines > 400
 oversized-file: x.sh: 401 lines > 400" ]
 }
 
+@test "oversized awk is reported" {
+  local dir
+  dir=$(make_fixture_root awk)
+  mkdir -p "$dir/lib"
+  # 401 lines: one over the 400 cap the awk arm shares with the script arm.
+  # The exact "> 400" pins the cap, and the path pins the arm to `*.awk` at
+  # depth, not only a root-level `.awk`.
+  seq 401 >"$dir/lib/x.awk"
+  git -C "$dir" add lib/x.awk
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 1 ]
+  [ "$output" = "oversized-file: lib/x.awk: 401 lines > 400" ]
+}
+
 @test "plans/ is out of scope" {
   local dir
   dir=$(make_fixture_root plans-scope)

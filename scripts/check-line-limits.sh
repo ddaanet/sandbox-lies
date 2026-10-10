@@ -10,8 +10,11 @@
 # Scope, in root-relative paths, where a `case` `*` crosses `/`: markdown
 # at any depth under docs/, cap 400; under skills/, cap 200 for a
 # `skills/*/SKILL.md` and 400 for any other; at the root itself (no `/` in
-# the path), cap 400. A script (`.sh`, `.bash`, `.bats`, `.py`) at any
-# depth, cap 400. Nothing under a root-level `plans/` or `plugin-dev/`.
+# the path), cap 400. A script (`.sh`, `.bash`, `.bats`, `.py`), an awk,
+# TOML or JSON file (`.awk`, `.toml`, `.json`) or a `justfile`, at any depth,
+# cap 400, except under `tests/fixtures/`. Nothing under a root-level `plans/`
+# or `plugin-dev/`. Extensionless files, such as `.gitlore/bin/claude`
+# (gitlore-generated), are out of scope.
 #
 # Exit codes: 0 clean, 1 on any overage, 2 on a failure to run.
 
@@ -65,6 +68,12 @@ handle_file() {
     plans/* | plugin-dev/*) ;;
     skills/*/SKILL.md) check_cap "$file" 200 ;;
     *.sh | *.bash | *.bats | *.py) check_cap "$file" 400 ;;
+    *.awk | *.toml | justfile | */justfile | *.json)
+        case "$file" in
+        tests/fixtures/*) ;;
+        *) check_cap "$file" 400 ;;
+        esac
+        ;;
     *)
         if markdown_in_scope "$file"; then
             check_cap "$file" 400
