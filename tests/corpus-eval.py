@@ -23,8 +23,8 @@ Usage:
   # line per file, its verdicts blank-separated, so tr joins them):
   #   for f in DIR/survivors/*; do
   #     v=$(bash lib/matchers.sh <"$f" | tr '\n' ' ')
-  #     [ -n "$v" ] && printf '%s\t%s\n' "$(basename "$f")" "$v" >>DIR/verdicts.tsv
-  #   done
+  #     [ -n "$v" ] && printf '%s\t%s\n' "$(basename "$f")" "$v"
+  #   done >DIR/verdicts.tsv
   python3 tests/corpus-eval.py aggregate --outdir DIR
 """
 
@@ -45,11 +45,12 @@ MASKED = [
     ".git/config.lock", ".git/config.worktree",
 ]
 
-# Deliberately over-broad: strictly broader than any matcher in matchers.sh,
-# and than the candidate detectors' discriminators in
-# docs/references/detectors.md and readonly-path.md, so nothing a matcher
-# would catch is dropped before it sees it. The candidates' strings follow
-# the shipped ones.
+# Deliberately over-broad: broader than the matchers in matchers.sh and the
+# candidate detectors' discriminators in docs/references/detectors.md and
+# readonly-path.md, so a matcher's input is not dropped here. The exception is
+# phantom-chardev: "crw-" admits only the mode the /dev/null mask shows, not
+# every mode match_phantom_chardev accepts. The candidates' strings follow the
+# shipped ones.
 PREFILTER_SUBSTRINGS = [
     "File exists",  # git-lock, config-lock
     "could not lock config file",  # config-lock
@@ -109,6 +110,10 @@ def cmd_extract(args):
     outdir = Path(args.outdir)
     survdir = outdir / "survivors"
     survdir.mkdir(parents=True, exist_ok=True)
+    # left by an earlier run; a smaller corpus must not leave them behind
+    for stale in survdir.iterdir():
+        stale.unlink()
+    (outdir / "verdicts.tsv").unlink(missing_ok=True)
     manifest_path = outdir / "manifest.jsonl"
     denom_path = outdir / "denominators.json"
 
@@ -149,8 +154,8 @@ def cmd_extract(args):
                         if not isinstance(b, dict):
                             continue
                         if b.get("type") == "tool_use" and b.get("name") == "Bash":
-                            inp = b.get("input") or {}
-                            cmd = inp.get("command")
+                            inp = b.get("input")
+                            cmd = inp.get("command") if isinstance(inp, dict) else None
                             if not isinstance(cmd, str):
                                 continue
                             bash_uses += 1
@@ -212,18 +217,23 @@ def cmd_aggregate(args):
 
     verdicts = collections.defaultdict(list)  # verdict -> [file, ...]
     file_verdicts = collections.defaultdict(list)  # file -> [verdict, ...]
+    skipped = 0
     with open(verdicts_path, encoding="utf-8") as fh:
         for line in fh:
             line = line.rstrip("\n")
             if not line:
                 continue
             fname, vs = line.split("\t", 1)
+            if fname not in manifest:
+                skipped += 1
+                continue
             for v in vs.split():
                 verdicts[v].append(fname)
                 file_verdicts[fname].append(v)
 
     print(f"survivor files in manifest: {len(manifest)}")
     print(f"survivor files with a verdict line: {len(file_verdicts)}")
+    print(f"verdict lines skipped, no manifest entry: {skipped}")
     print()
 
     # A manifest written before the flag join has no "flag": read it as

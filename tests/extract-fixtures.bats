@@ -1,0 +1,62 @@
+#!/usr/bin/env bats
+# tests/extract-fixtures.py: the cutter, run from a copy in a scratch tests/
+# directory so OUT (next to the script) never lands in the repo's
+# tests/fixtures/. The corpus holds one call matching SPEC entry NAME.
+# The Python calls no stubbed tool, so there is no make_bsd_stubs case.
+
+ROOT="${BATS_TEST_DIRNAME}/.."
+NAME=fire-lock-commit-amend
+PROJECT=-Users-david-code-claude-plugin-dev
+
+bats_require_minimum_version 1.5.0
+
+load helpers/bsd-stubs
+load helpers/corpus
+
+setup() {
+  HOME="$BATS_TEST_TMPDIR/home"
+  SCRATCH="$BATS_TEST_TMPDIR/scratch"
+  CORPUS="$HOME/.claude/projects/$PROJECT/s.jsonl"
+  mkdir -p "$HOME/.claude/projects/$PROJECT" "$SCRATCH/tests"
+  cp "$ROOT/tests/extract-fixtures.py" "$SCRATCH/tests/"
+  export HOME
+}
+
+# the matching call of $NAME, dated inside its day
+matching_call() {
+  corpus_use m1 "2026-08-13T10:00:00Z" "git commit --amend --no-edit"
+  corpus_result m1 "2026-08-13T10:00:01Z" "$(lock_text)"
+}
+
+cut_fixture() {
+  python3 "$SCRATCH/tests/extract-fixtures.py" "$NAME"
+}
+
+# the cut file's bytes are the call's recorded output, verbatim
+assert_cut_verbatim() {
+  [ "$status" -eq 0 ]
+  lock_text >"$BATS_TEST_TMPDIR/want"
+  cmp "$SCRATCH/tests/fixtures/$NAME.txt" "$BATS_TEST_TMPDIR/want"
+}
+
+@test "a null timestamp reads as no day and the cut still lands" {
+  {
+    jq -nc '{timestamp: null, message: {content: [{type: "text", text: "x"}]}}'
+    matching_call
+  } >"$CORPUS"
+
+  run cut_fixture
+
+  assert_cut_verbatim
+}
+
+@test "a string tool_use input reads as no command and the cut still lands" {
+  {
+    corpus_use_raw_input u0 "2026-08-13T09:00:00Z" '"ls"'
+    matching_call
+  } >"$CORPUS"
+
+  run cut_fixture
+
+  assert_cut_verbatim
+}

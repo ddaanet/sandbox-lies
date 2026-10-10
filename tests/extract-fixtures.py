@@ -157,12 +157,13 @@ def iter_calls(project):
             content = msg.get("content")
             if not isinstance(content, list):
                 continue
-            day = e.get("timestamp", "")[:10]
+            day = (e.get("timestamp") or "")[:10]
             for b in content:
                 if not isinstance(b, dict):
                     continue
                 if b.get("type") == "tool_use" and b.get("name") == "Bash":
-                    c = (b.get("input") or {}).get("command")
+                    inp = b.get("input")
+                    c = inp.get("command") if isinstance(inp, dict) else None
                     if isinstance(c, str):
                         cmds[b.get("id")] = c
                 elif b.get("type") == "tool_result":
@@ -178,27 +179,23 @@ def iter_calls(project):
 
 
 def pick(project, day, cmd_sub, out_sub, negate_out, prefer, lo, hi):
-    projects = [project] if project else [
-        d.name for d in sorted(PROJECTS.iterdir()) if d.is_dir()
-    ]
     best = None
-    for proj in projects:
-        for d, cmd, out in iter_calls(proj):
-            if day and d != day:
-                continue
-            if cmd_sub not in cmd:
-                continue
-            if not lo <= len(out) <= hi:
-                continue
-            if out_sub is not None and out_sub not in out:
-                continue
-            if negate_out and any(x in out for x in negate_out):
-                continue
-            if best is None or (
-                len(out) < len(best[2]) if prefer == "short"
-                else len(out) > len(best[2])
-            ):
-                best = (d, cmd, out)
+    for d, cmd, out in iter_calls(project):
+        if day and d != day:
+            continue
+        if cmd_sub not in cmd:
+            continue
+        if not lo <= len(out) <= hi:
+            continue
+        if out_sub is not None and out_sub not in out:
+            continue
+        if negate_out and any(x in out for x in negate_out):
+            continue
+        if best is None or (
+            len(out) < len(best[2]) if prefer == "short"
+            else len(out) > len(best[2])
+        ):
+            best = (d, cmd, out)
     return best
 
 
@@ -226,7 +223,7 @@ def main():
         d, cmd, out = hit
         path = OUT / (name + ".txt")
         path.write_text(out, encoding="utf-8")
-        print(f"{name:<32} {len(out):>7}B  {(project or '*').lstrip('-')} {d}")
+        print(f"{name:<32} {len(out):>7}B  {project.lstrip('-')} {d}")
     if missing:
         print("\nNOT FOUND: " + ", ".join(missing), file=sys.stderr)
         return 1
