@@ -78,3 +78,13 @@ one_call() {
   [ "${#survivors[@]}" -eq 1 ]
   [ -e "$OUTDIR/survivors/000001.txt" ]
 }
+
+@test "extract skips scalar and array JSONL lines beside a survivor" {
+  printf '42\n[1]\n' >"$PROJ/s.jsonl"
+  one_call 1
+
+  run eval_py extract --outdir "$OUTDIR"
+
+  [ "$status" -eq 0 ]
+  [ -e "$OUTDIR/survivors/000001.txt" ]
+}

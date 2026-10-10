@@ -142,6 +142,8 @@ def cmd_extract(args):
                     except Exception:
                         bad += 1
                         continue
+                    if not isinstance(e, dict):
+                        continue
                     msg = e.get("message")
                     if not isinstance(msg, dict):
                         continue

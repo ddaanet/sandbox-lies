@@ -151,6 +151,8 @@ def iter_calls(project):
                 e = json.loads(line)
             except Exception:
                 continue
+            if not isinstance(e, dict):
+                continue
             msg = e.get("message")
             if not isinstance(msg, dict):
                 continue
@@ -172,7 +174,7 @@ def iter_calls(project):
                         continue
                     t = b.get("content")
                     if isinstance(t, list):
-                        t = "\n".join(x.get("text", "") for x in t
+                        t = "\n".join(x.get("text") or "" for x in t
                                       if isinstance(x, dict))
                     if isinstance(t, str):
                         yield day, cmd, t

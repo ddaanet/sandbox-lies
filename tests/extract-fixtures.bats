@@ -60,3 +60,29 @@ assert_cut_verbatim() {
 
   assert_cut_verbatim
 }
+
+@test "a scalar and an array JSONL line beside the call do not stop the cut" {
+  {
+    printf '42\n[1]\n'
+    matching_call
+  } >"$CORPUS"
+
+  run cut_fixture
+
+  assert_cut_verbatim
+}
+
+@test "a null text item in a list-form tool_result reads as an empty line" {
+  {
+    corpus_use m1 "2026-08-13T10:00:00Z" "git commit --amend --no-edit"
+    jq -nc --arg t "$(lock_text)" '{timestamp: "2026-08-13T10:00:01Z",
+      message: {content: [{type: "tool_result", tool_use_id: "m1",
+        content: [{type: "text", text: null}, {type: "text", text: $t}]}]}}'
+  } >"$CORPUS"
+
+  run cut_fixture
+
+  [ "$status" -eq 0 ]
+  printf '\n%s' "$(lock_text)" >"$BATS_TEST_TMPDIR/want"
+  cmp "$SCRATCH/tests/fixtures/$NAME.txt" "$BATS_TEST_TMPDIR/want"
+}
