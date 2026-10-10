@@ -163,3 +163,14 @@ path_line() {
   [ "$status" -eq 0 ]
   [ "${output%%$'\n'*}" = nopath ]
 }
+
+@test "probe_readonly_path under set -e prints nopath through BSD grep and sed" {
+  local bsd="$BATS_TEST_TMPDIR/bsdtools"
+  make_bsd_stubs "$bsd" grep sed
+
+  PATH="$bsd:$PATH" run bash -c 'set -e; source "$1"; printf "%s\n" "$2" | probe_readonly_path false "$3" x' _ \
+    "$ROOT/lib/probes.sh" "plain text, no refusal" "$BATS_TEST_TMPDIR"
+
+  [ "$status" -eq 0 ]
+  [ "${output%%$'\n'*}" = nopath ]
+}

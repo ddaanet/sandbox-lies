@@ -70,7 +70,13 @@ GREEN of a pair runs Haiku only where both items are Haiku rows.
       code review plus Phase 1 boundary check in one dispatch
       `item-1-2-code-review.md` (three survivors pinned; commit 1c5fd42).
       Phase 1 is done.
-- [ ] Items 2.1 + 3.1 (paired group): RED written and reported, test review next
+- [x] Items 2.1 + 3.1 (paired group): RED Sonnet `item-2-1-red.md`, test review
+      Sonnet `item-2-1-test-review.md` (helpers moved, cases deepened), GREEN
+      Haiku `item-2-1-green.md` (commit 1dedc30), code review Sonnet
+      `item-2-1-code-review.md` (8 mutations, 1 survivor), Haiku pin
+      `item-2-1-pin.md` (commit 6f687b3), Sonnet pin re-check
+      `item-2-1-pin-review.md` (one BSD-stubs case added)
+- [ ] Item 4.1 + 5.1 + 5.2: bash 3.2.0 rebuild first
 
 ## Resume
 
