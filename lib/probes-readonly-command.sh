@@ -25,11 +25,11 @@ set -u
 # 16384 characters, dropping the word cut there. That bound is NFR-3's.
 # Characters are read one at a time from a pipe because ${cmd:i:1} rescans
 # the string on every call (a 40 KB command took 20 s that way), and each
-# lands in a pending run of at most 256 characters that joins `word` when it
-# fills and before any read of `word`, so no copy grows with the word: 16384
-# characters took 1.2 s as one word and 1.1 s as 1600 words on bash
-# 5.2, 3.5 s and 2.1 s on 3.2.0 (31.7 s as one word before). Residuals:
-# $'...', $( ), backticks,
+# lands in a pending run of about 256 characters (257 after a kept backslash
+# pair) that joins `word` when it fills and before any read of `word`, so no
+# copy grows with the word: one 16384-character word took 1.2 s on bash 5.2
+# and 3.5 s on 3.2.0 (31.7 s before), and 1600 eight-character words
+# (14400 characters) 1.1 s and 2.1 s. Residuals: $'...', $( ), backticks,
 # subshells and braces are not parsed, so their contents read as words of
 # the enclosing command; any << ends the scan at its line, arithmetic's
 # included; a reader behind a cd, or a reader or git behind a variable

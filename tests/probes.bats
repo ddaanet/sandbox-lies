@@ -52,9 +52,9 @@ teardown() {
 }
 
 # The directory name holds a raw non-UTF-8 byte (octal 351). Run under
-# LC_ALL=C.UTF-8: under that locale GNU sed's "." does not match an invalid
-# byte, which is exactly why the extractor forces LC_ALL=C internally. The
-# path is asserted byte-exact via an exact-line path= match.
+# the UTF-8 locale utf8_locale finds: under it GNU sed's "." does not match an
+# invalid byte, which is exactly why the extractor forces LC_ALL=C internally.
+# The path is asserted byte-exact via an exact-line path= match.
 @test "non-UTF-8 byte in the path" {
   local repo cwd lock loc
   repo="$BATS_TEST_TMPDIR/r$(printf '\351')n/r"

@@ -164,6 +164,41 @@ oversized-file: x.sh: 401 lines > 400" ]
   [ "$output" = "oversized-file: lib/x.awk: 401 lines > 400" ]
 }
 
+@test "fixtures are out of the awk, TOML and JSON cap" {
+  local dir
+  dir=$(make_fixture_root fixtures)
+  mkdir -p "$dir/tests/fixtures" "$dir/lib"
+  # Over the cap, under tests/fixtures/: left unreported. The same 401 lines
+  # under lib/ pin the cap, and an arm that caps fixtures reports both
+  # fixture lines too.
+  seq 401 >"$dir/tests/fixtures/x.json"
+  seq 401 >"$dir/tests/fixtures/y.awk"
+  seq 401 >"$dir/lib/x.json"
+  git -C "$dir" add tests/fixtures/x.json tests/fixtures/y.awk lib/x.json
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 1 ]
+  [ "$output" = "oversized-file: lib/x.json: 401 lines > 400" ]
+}
+
+@test "justfile and TOML are capped at any depth" {
+  local dir
+  dir=$(make_fixture_root justfile-toml)
+  mkdir -p "$dir/sub"
+  # One per arm: a root justfile, a justfile under sub/ (`*/justfile`), and
+  # a TOML file. Dropping any one drops its line from the exact output.
+  seq 401 >"$dir/config.toml"
+  seq 401 >"$dir/justfile"
+  seq 401 >"$dir/sub/justfile"
+  git -C "$dir" add config.toml justfile sub/justfile
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 1 ]
+  [ "$output" = "oversized-file: config.toml: 401 lines > 400
+oversized-file: justfile: 401 lines > 400
+oversized-file: sub/justfile: 401 lines > 400" ]
+}
+
 @test "plans/ is out of scope" {
   local dir
   dir=$(make_fixture_root plans-scope)
