@@ -4,9 +4,7 @@
 hook's lock and `resume-lost` probe calls, the `tmpdir-unset`, `resume-lost` and
 `seccomp-init` verdicts, the `readonly-path` verdicts composed from their
 probe's facts, the `SessionStart` `jq` check, and the skill. Dogfooded
-2026-09-27 on CC 2.1.283, before the `resume-lost` probe. One requirement is
-`Partial`: FR-10, because the memory file is not retired and its zellij section
-has no detector.
+2026-09-27 on CC 2.1.283, before the `resume-lost` probe.
 
 Changelog: [changelog.md](changelog.md). This document is a hub; `references/`
 holds one node per mechanism — per detector in
@@ -19,8 +17,7 @@ this hub that a node does not carry.
 
 - **Focus:** publishing. Both public remotes exist; nothing is pushed yet.
 - **Next:** the gitlore push, then the repo push, then the release, each a
-  prerequisite of the next. `nopath` shapes worth a form: `tee:`, `sed`'s
-  temporary file, git's `could not write config file`.
+  prerequisite of the next.
 - **Do not re-litigate:** output annotation over command matching (D-1); hooks
   do not block or rewrite (D-2); exit status is not a gate (D-4); the skill
   lives here, not in `craft` (D-9); no verdict instructs a removal (D-7);
@@ -84,16 +81,17 @@ mid-run, `tests/hook-locks.bats` over the probe call. Done.
 tool could not see, the hook runs a discriminator outside the sandbox and the
 verdict names the outcome. A probe reads the result text on stdin, takes the
 flag (FR-5), the payload `cwd` and `tool_input.command` as its arguments, prints
-an outcome token on its first line and `key=value` lines after it; the verdict
-function reads both, and the flag. Four probes: lock existence and holder
-(`git-lock`, `config-lock`), path writability (`readonly-path`), which also
-reports the command facts and the partial-merge files its acts depend on (D-17),
-and transcript existence (`resume-lost`). Each probe is proved once against a
-live reproduction before it ships; the reproduction is recorded in `references/`
-(for `resume-lost`, CC's behaviour its probe reads, not a run of the probe on a
-live refusal). Where · pinned by: `lib/probes.sh`, `lib/probes-readonly*.sh` ·
-the `tests/probes*.bats` family over synthetic trees and the `tests/hook-*.bats`
-family over the hook's calls. Done.
+an outcome token on its first line and `key=value` lines after it (a `path=`
+value is printed in `printf %q` form); the verdict function reads both, and the
+flag. Four probes: lock existence and holder (`git-lock`, `config-lock`), path
+writability (`readonly-path`), which also reports the command facts and the
+partial-merge files its acts depend on (D-17), and transcript existence
+(`resume-lost`). Each probe is proved once against a live reproduction before it
+ships; the reproduction is recorded in `references/` (for `resume-lost`, CC's
+behaviour its probe reads, not a run of the probe on a live refusal). Where ·
+pinned by: `lib/probes.sh`, `lib/probes-readonly*.sh` · the `tests/probes*.bats`
+family over synthetic trees and the `tests/hook-*.bats` family over the hook's
+calls. Done.
 
 **FR-5 — Sandbox-state awareness.** The payload's
 `tool_input.dangerouslyDisableSandbox` (absent means false) decides wording: a
@@ -149,16 +147,13 @@ authoring moments. Where · pinned by: the skill file · `tests/docs.bats` runs
 
 **FR-10 — Memory retirement, per section.** The commit that lands a detector or
 a skill section deletes the memory section it translates from
-`memory/ddaanet/sandbox-effects.md` (D-11). The commit that empties the file
-deletes it, both index lines and rewrites its six inbound `[[sandbox-effects]]`
-links; the translation map in `references/detectors.md` is the audit that every
-paragraph landed. One residue survives as prose: the `!`-expansion
-phantom-listing rule, folded into the existing phantom-dotfile bullet of
-`memory/ddaanet/shared-claude.md`. Where · pinned by: the tier's index · from
-the file's deletion, `tests/docs.bats` fails if a live pointer (`hooks/`,
-`lib/`, `skills/`, `tests/` outside fixtures, `CLAUDE.md`, `README.md`) names
-the retired path. Partial (every section retired but zellij, whose detector
-stays a candidate; the deletion and that case: Item 8.2).
+`memory/ddaanet/sandbox-effects.md` (D-11). Every section the plugin carries is
+retired. The file keeps what it does not: the phantom-dotfile leak, and the
+zellij section, whose detector stays a candidate under D-15. One residue
+survives as prose: the `!`-expansion phantom-listing rule, folded into the
+existing phantom-dotfile bullet of `memory/ddaanet/shared-claude.md`. Where ·
+pinned by: the tier's index, and the translation map in
+`references/detectors.md` that audits every paragraph. Done.
 
 **FR-11 — Self-quiet.** No live file in this repository fires a detector when
 read back. Source files build each diagnostic literal from fragments so the
