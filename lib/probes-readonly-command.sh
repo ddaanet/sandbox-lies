@@ -22,48 +22,53 @@ set -u
 # removed as the shell removes them; a # opening a word runs to the line's
 # end. Sets _readonly_tokens_cut=1 when the scan stops early: at the end of
 # a line holding an unquoted << (a heredoc's body is not commands), or at
-# 16384 characters, dropping the word cut there. That bound is NFR-3's: the
-# loop costs tens of microseconds a character, and characters are read one
-# at a time from a pipe because ${cmd:i:1} rescans the string on every call
-# (a 40 KB command took 20 s that way). Residuals: $'...', $( ), backticks,
+# 16384 characters, dropping the word cut there. That bound is NFR-3's.
+# Characters are read one at a time from a pipe because ${cmd:i:1} rescans
+# the string on every call (a 40 KB command took 20 s that way), and each
+# lands in a pending run of at most 256 characters that joins `word` when it
+# fills and before any read of `word`, so no copy grows with the word: 16384
+# characters took 1.2 s as one word and 1.1 s as 1600 words on bash
+# 5.2, 3.5 s and 2.1 s on 3.2.0 (31.7 s as one word before). Residuals:
+# $'...', $( ), backticks,
 # subshells and braces are not parsed, so their contents read as words of
 # the enclosing command; any << ends the scan at its line, arithmetic's
 # included; a reader behind a cd, or a reader or git behind a variable
 # assignment or another prefix word, is not recognised (readonly-path.md).
 _readonly_tokenize() {
-    local ch word='' invalue=0 quote='' esc=0 lts=0 heredoc=0 sep
+    local ch word='' run='' invalue=0 quote='' esc=0 lts=0 heredoc=0 sep
     local nl=$'\n' tab=$'\t' max=16384
     _readonly_tokens=()
     _readonly_tokens_cut=0
     [ "${#1}" -le "$max" ] || _readonly_tokens_cut=1
     while IFS= read -r -d '' -n 1 ch; do
+        [ "${#run}" -lt 256 ] || { word="$word$run"; run=''; }
         # esc 1: after an unquoted backslash; 2: after one inside "...",
         # which only escapes " \ $ ` and newline.
         if [ "$esc" -eq 1 ]; then
             esc=0
-            [ "$ch" = "$nl" ] || word="$word$ch" invalue=1
+            [ "$ch" = "$nl" ] || run="$run$ch" invalue=1
             continue
         fi
         if [ "$esc" -eq 2 ]; then
             esc=0
             case "$ch" in
-                '"' | \\ | '$' | '`') word="$word$ch" ;;
+                '"' | \\ | '$' | '`') run="$run$ch" ;;
                 "$nl") ;;
-                *) word="$word\\$ch" ;;
+                *) run="$run\\$ch" ;;
             esac
             continue
         fi
         # quote is ' or " inside quotes, # inside a comment.
         case "$quote" in
             "'")
-                if [ "$ch" = "'" ]; then quote=''; else word="$word$ch"; fi
+                if [ "$ch" = "'" ]; then quote=''; else run="$run$ch"; fi
                 continue
                 ;;
             '"')
                 case "$ch" in
                     '"') quote='' ;;
                     \\) esc=2 ;;
-                    *) word="$word$ch" ;;
+                    *) run="$run$ch" ;;
                 esac
                 continue
                 ;;
@@ -84,24 +89,27 @@ _readonly_tokenize() {
             "'" | '"') quote="$ch" invalue=1 ;;
             \\) esc=1 ;;
             '#')
+                word="$word$run" run=''
                 if [ -z "$word" ] && [ "$invalue" -eq 0 ]; then
                     quote='#'
                 else
-                    word="$word$ch"
+                    run="$run$ch"
                 fi
                 ;;
             ' ' | "$tab") sep=word ;;
             "$nl") sep=line ;;
             '|' | ';') sep=segment ;;
             '&')
+                word="$word$run" run=''
                 case "$word" in
-                    *'>' | *'<') word="$word$ch" ;;
+                    *'>' | *'<') run="$run$ch" ;;
                     *) sep=segment ;;
                 esac
                 ;;
-            *) word="$word$ch" invalue=1 ;;
+            *) run="$run$ch" invalue=1 ;;
         esac
         [ -n "$sep" ] || continue
+        word="$word$run" run=''
         if [ -n "$word" ] || [ "$invalue" -eq 1 ]; then
             _readonly_tokens+=("w$word")
         fi
@@ -114,6 +122,7 @@ _readonly_tokenize() {
         fi
     done < <(printf '%s' "${1:0:$max}")
     [ "$_readonly_tokens_cut" -eq 0 ] || return 0
+    word="$word$run"
     if [ -n "$word" ] || [ "$invalue" -eq 1 ]; then
         _readonly_tokens+=("w$word")
     fi
