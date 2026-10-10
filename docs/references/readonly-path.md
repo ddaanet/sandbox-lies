@@ -25,7 +25,8 @@ Expected residual: a path not writable outside the sandbox either.
 
 **Flag policy.** Silent when the flag is true.
 
-**Probe.** Extract the path from the matching line, printed as `path=`;
+**Probe.** Extract the path from the matching line, printed as `path=` in
+`printf %q` form (pinned to the `C` locale, so a non-ASCII byte is octal);
 `test -w` on it, or on its parent when it does not exist. The path is the first
 single-quoted segment, straight or curly as a UTF-8 locale prints it, except in
 `mv`'s inter-device form, whose path after `to` names the target. Elsewhere a
@@ -36,19 +37,35 @@ git's `error: could not lock config file <path>:` and
 `fatal: cannot mkdir <path>:`. Any other unquoted shape is `nopath`. An unquoted
 path runs to the line's last colon and space, since the kernel message after it
 holds none, so a path holding blanks, `: ` or its form's own words is read
-whole. A relative path joins onto the payload `cwd`. Residuals: a quoted path
-holding its own closing quote, which the tool prints escaped, is cut at that
-quote or yields `nopath`; a curly-quoted or unquoted path holding two straight
-quotes is read as what lies between them. Git names the path in its
-partial-checkout errors from the worktree's top-level, so from a subdirectory or
-under `git -C` the path is wrong, and one whose parent is missing reads
-`readonly`, which carries no merge clause.
+whole. A relative path joins onto the payload `cwd`, except for git's
+partial-checkout refusals, which name the path from the worktree's top-level:
+when the matching line alone is one, the path joins onto the worktree top, the
+nearest ancestor of `cwd` holding a `.git` entry, a file (linked worktree) or a
+directory. With no such ancestor it joins onto `cwd`; another partial-checkout
+line elsewhere in the text moves nothing. Residuals: a quoted path holding its
+own closing quote, which the tool prints escaped, is cut at that quote or yields
+`nopath`; a curly-quoted or unquoted path holding two straight quotes is read as
+what lies between them; under `git -C` a relative path names the `-C`
+directory's tree, not the `cwd`'s, so it is wrong, and one whose parent is
+missing reads `readonly`, which carries no merge clause.
+
+Five `nopath` shapes stay unextracted, from the 195 hits of the 2026-09-27
+dogfood, 11 of them: `tee`'s refusal of a file under `/tmp`; `sed`'s temporary
+file in a relative directory; git's refusal to write `.git/config`, which is
+busy rather than read-only; a removal warning on a dotfile in the home
+directory; and `cp` with an empty operand, which names no path at all. In every
+recorded case a path would not change the act: each extractable path is writable
+outside the sandbox, so `writable` would give the same re-run `nopath` gives,
+and none names `.claude/settings.json`. A removal refused on a leaked phantom
+mask gets that re-run too, and the leak makes it futile, since the mask outlives
+its command and a restart clears it. A detector for that symptom would need a
+corpus replay under D-15.
 
 | outcome | condition |
 |---|---|
 | `writable` | writable outside the sandbox |
 | `readonly` | not writable outside either |
-| `nopath` | no path extracted, or the resolved path holds a newline |
+| `nopath` | no path extracted |
 
 The probe also takes the payload's `tool_input.command` as its third argument
 and, under `writable` and `nopath`, prints the facts the verdict's acts depend
@@ -153,6 +170,13 @@ tracked file on `unable to unlink old` first; HEAD stayed put. Cut as
   before changing its permissions. · `read-only — real`
 - `nopath` — The sandbox's write allowlist most likely refused this write. Then
   the tail below. · `read-only — probably the sandbox, path not checked`
+
+`<path>` is the decoded path, shown raw: a blank or a UTF-8 byte reads as the
+path holds it. When it holds a control byte (`\001` to `\037`, `\177`) the wire
+form is shown instead, since a raw newline would split the verdict's paragraph
+from its human line. A `path=` value that is neither the backslash form nor a
+well-formed `$'…'` form reads as no path: the verdict says "The path". The
+decoder never evaluates the value.
 
 The tail is one act, the first of these whose fact the probe printed:
 
