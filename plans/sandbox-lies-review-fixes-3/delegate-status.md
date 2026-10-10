@@ -76,7 +76,13 @@ GREEN of a pair runs Haiku only where both items are Haiku rows.
       `item-2-1-code-review.md` (8 mutations, 1 survivor), Haiku pin
       `item-2-1-pin.md` (commit 6f687b3), Sonnet pin re-check
       `item-2-1-pin-review.md` (one BSD-stubs case added)
-- [ ] Item 4.1 + 5.1 + 5.2: bash 3.2.0 rebuild first
+- [x] bash 3.2.0 rebuilt (`item-0-bash32-rebuild.md`); Item 4.1 Sonnet
+      `item-4-1.md` (3.2.0: 31.7 s to 3.5 s; commit 13610c0); Items 5.1, 5.2
+      Haiku `item-5-1.md`, `item-5-2.md` (commits 3826e88, 2a8e750); Sonnet
+      review of all three `item-4-1-review.md` (2 equivalent mutants, 1 real
+      survivor), Haiku pin `item-5-2-pin.md` (commit 2dba8d4), Sonnet re-check
+      `item-5-2-pin-review.md`
+- [ ] Items 6.1 + 6.2: RED next
 
 ## Resume
 

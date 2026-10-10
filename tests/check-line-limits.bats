@@ -168,17 +168,17 @@ oversized-file: x.sh: 401 lines > 400" ]
   local dir
   dir=$(make_fixture_root fixtures)
   mkdir -p "$dir/tests/fixtures" "$dir/lib"
-  # Over the cap, under tests/fixtures/: left unreported. The same 401 lines
-  # under lib/ pin the cap, and an arm that caps fixtures reports both
-  # fixture lines too.
+  # Only tests/fixtures/ is excluded: lib/ and tests/ itself are capped.
   seq 401 >"$dir/tests/fixtures/x.json"
   seq 401 >"$dir/tests/fixtures/y.awk"
   seq 401 >"$dir/lib/x.json"
-  git -C "$dir" add tests/fixtures/x.json tests/fixtures/y.awk lib/x.json
+  seq 401 >"$dir/tests/o.json"
+  git -C "$dir" add tests/fixtures/x.json tests/fixtures/y.awk lib/x.json tests/o.json
 
   run --separate-stderr "$SCRIPT" "$dir"
   [ "$status" -eq 1 ]
-  [ "$output" = "oversized-file: lib/x.json: 401 lines > 400" ]
+  [ "$output" = "oversized-file: lib/x.json: 401 lines > 400
+oversized-file: tests/o.json: 401 lines > 400" ]
 }
 
 @test "justfile and TOML are capped at any depth" {
