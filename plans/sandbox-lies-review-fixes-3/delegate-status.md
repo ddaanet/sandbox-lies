@@ -82,7 +82,12 @@ GREEN of a pair runs Haiku only where both items are Haiku rows.
       review of all three `item-4-1-review.md` (2 equivalent mutants, 1 real
       survivor), Haiku pin `item-5-2-pin.md` (commit 2dba8d4), Sonnet re-check
       `item-5-2-pin-review.md`
-- [ ] Items 6.1 + 6.2: RED next
+- [x] Items 6.1 + 6.2: RED Sonnet `item-6-1-red.md`, test review Sonnet
+      `item-6-1-test-review.md`, GREEN Haiku `item-6-1-green.md` (commit
+      5b9ef00), code review Sonnet `item-6-1-code-review.md` (3 survivors, all
+      in guards the reviewer added), Haiku pin `item-6-1-pin.md` (commit
+      c2e7a81), Sonnet re-check `item-6-1-pin-review.md`
+- [ ] Items 7.1 to 7.7: docs dispatch (Sonnet) plus review next
 
 ## Resume
 
