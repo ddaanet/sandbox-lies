@@ -80,11 +80,10 @@ match; none exists in the corpus.
 
 **Probe.** None.
 
-**Verdict.** The character-device entries in this listing are sandbox masks over
-dotfiles in the project root, not files in the repository. Leave them out of
-every add, delete and report. With no sandboxed command running in the
-background, `ls -a` and `git status` run unsandboxed show the real tree. ·
-`phantom dotfiles — sandbox masks in listing`
+**Verdict.** The character-device entries in this listing are sandbox masks, not
+files in the repository. Leave them out of every add, delete and report. With no
+sandboxed command running in the background, `ls -a` and `git status` run
+unsandboxed show the real tree. · `phantom dotfiles — sandbox masks in listing`
 
 **Flag policy.** Fires either way with the same verdict: masks have been seen
 from unsandboxed readers while another session's sandbox was live, and the

@@ -52,7 +52,7 @@ load helpers/verdicts
   # sentence transcribed literally.
   local chardev_para untracked_para addition line1 line2
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  chardev_para='The character-device entries in this listing are sandbox masks over dotfiles in the project root, not files in the repository. Leave them out of every add, delete and report. With no sandboxed command running in the background, `ls -a` and `git status` run unsandboxed show the real tree.'
+  chardev_para='The character-device entries in this listing are sandbox masks, not files in the repository. Leave them out of every add, delete and report. With no sandboxed command running in the background, `ls -a` and `git status` run unsandboxed show the real tree.'
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   addition='A cleanliness check that reads these `??` lines as dirty is reading the sandbox, not the tree.'
 
@@ -73,6 +73,21 @@ load helpers/verdicts
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   [ "$line1" = '`git add` aborted on a sandbox mask, not a file. Stage explicit paths, or re-run the same command unsandboxed.' ]
   [ "$line2" = 'git add — refused a sandbox mask' ]
+}
+
+# No location is named, so the sentence holds under any cwd (design section
+# C). Pinned apart from the whole-paragraph transcription above, which also
+# reds on the untracked paragraph, so this opening sentence reds on its own.
+@test "phantom-untracked opens without naming a location" {
+  local line1 opening
+  opening='The dotfile entries in this listing are sandbox masks, not files in the repository.'
+
+  line1=$(verdict_text phantom_untracked - | sed -n '1p')
+  [ "${line1:0:${#opening}}" = "$opening" ]
+  [ "${line1:${#opening}:1}" = ' ' ]
+  case "$line1" in
+    *'project root'*) return 1 ;;
+  esac
 }
 
 @test "candidate verdict text matches detectors.md" {

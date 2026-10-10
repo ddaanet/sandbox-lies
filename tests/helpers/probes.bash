@@ -37,6 +37,31 @@ erofs_message() {
   printf '%s' "$msg"
 }
 
+# git's partial-checkout lines under a read-only mount, in the shapes git's
+# own format strings give them (git 2.47), built from two fragments around
+# erofs_message as above: the unlink form single-quotes the path, the create
+# form does not, so the first reads writable and the second nopath. The third
+# (verified live, git 2.47.3) is a missing directory, its path single-quoted.
+# Shared by tests/probes-readonly-facts.bats and
+# tests/probes-readonly-resolve.bats.
+partial_checkout_unlink_error() {
+  local msg='error: unable to unlink '
+  msg="${msg}old '$1': $(erofs_message)"
+  printf '%s\n' "$msg"
+}
+
+partial_checkout_create_error() {
+  local msg='error: unable to create '
+  msg="${msg}file $1: $(erofs_message)"
+  printf '%s\n' "$msg"
+}
+
+partial_checkout_mkdir_error() {
+  local msg='fatal: cannot create '
+  msg="${msg}directory at '$1': $(erofs_message)"
+  printf '%s\n' "$msg"
+}
+
 # readonly_path_text <fixture> <replacement> — the cut fire-readonly-path-*
 # fixture (tests/fixtures/<fixture>.txt) with its first single-quoted path
 # replaced by <replacement>, built at run time as git_lock_error is, so this

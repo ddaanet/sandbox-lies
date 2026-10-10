@@ -6,10 +6,9 @@
 # at the line cap, so this is a new file; it reuses that file's fixtures and
 # helpers rather than duplicating them.
 #
-# The partial-checkout error lines are built from two fragments each around
-# erofs_message (partial_checkout_unlink_error, partial_checkout_create_error),
-# as helpers/probes.bash's git_lock_error is, so no source line here holds
-# git's diagnostic whole (self-quiet, FR-11).
+# The partial-checkout error lines come from helpers/probes.bash's
+# partial_checkout_*_error, built from two fragments each around erofs_message,
+# so no source line here holds git's diagnostic whole (self-quiet, FR-11).
 
 ROOT="${BATS_TEST_DIRNAME}/.."
 
@@ -21,30 +20,6 @@ load helpers/probes
 
 setup() {
   source "$ROOT/lib/probes.sh"
-}
-
-# git's partial-checkout lines under a read-only mount, in the shapes git's
-# own format strings give them (git 2.47): the unlink form single-quotes the
-# path, the create form does not, so the first reads writable and the second
-# nopath.
-partial_checkout_unlink_error() {
-  local msg='error: unable to unlink '
-  msg="${msg}old '$1': $(erofs_message)"
-  printf '%s\n' "$msg"
-}
-
-partial_checkout_create_error() {
-  local msg='error: unable to create '
-  msg="${msg}file $1: $(erofs_message)"
-  printf '%s\n' "$msg"
-}
-
-# git's third partial-checkout line (verified live, git 2.47.3): a missing
-# directory under a read-only mount, its path single-quoted.
-partial_checkout_mkdir_error() {
-  local msg='fatal: cannot create '
-  msg="${msg}directory at '$1': $(erofs_message)"
-  printf '%s\n' "$msg"
 }
 
 @test "readfile reports a command-output path from a single reader" {

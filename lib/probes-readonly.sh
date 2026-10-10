@@ -43,14 +43,21 @@ unset _probes_lib_dir
 # the candidate's flag policy (docs/references/readonly-path.md), decided
 # before the probe runs, not inside it.
 probe_readonly_path() {
-    local cwd="${2-}" command="${3-}" text path target outcome
+    local cwd="${2-}" command="${3-}" text line base path target outcome
     text=$(cat)
-    # One pipeline ending in sed, which exits 0: grep's 1 on a text with no
-    # matching line never becomes the assignment's status, so a caller
-    # running under set -e still gets nopath.
-    path=$(printf '%s\n' "$text" | _readonly_path_line \
-        | _probe_readonly_path_from_line)
-    path=$(_probe_readonly_resolve "$path" "$cwd")
+    # grep's 1 on a text with no matching line is caught on its own
+    # assignment, and the path pipeline ends in sed, which exits 0, so a
+    # caller running under set -e still gets nopath.
+    line=$(printf '%s\n' "$text" | _readonly_path_line) || line=
+    path=$(printf '%s\n' "$line" | _probe_readonly_path_from_line)
+    # A partial-checkout refusal names its path relative to the worktree top;
+    # the matching line alone decides, so another such line in the text does
+    # not move a cp refusal's join (design section B).
+    base="$cwd"
+    if _readonly_partial_checkout_text "$line"; then
+        base=$(_readonly_git_dir "$cwd") || base="$cwd"
+    fi
+    path=$(_probe_readonly_resolve "$path" "$base")
     if [ -z "$path" ]; then
         printf '%s\n' nopath
         _readonly_print_facts "$text" "$command" "" "$cwd"
@@ -97,9 +104,10 @@ _probe_path_line() {
 # _probe_readonly_resolve <path> <cwd> — joins a relative <path> onto <cwd>
 # (or the probe's own working directory when <cwd> is missing or empty, as
 # _probe_resolve_path falls back for the lock probes); an absolute or empty
-# <path> is unchanged. Never walks up to a .git directory: readonly-path's
-# producers (cp, mv, touch, bash, Python) resolve a relative path against
-# their own process cwd, not against git's own convention for a lock path.
+# <path> is unchanged. It does not walk to a .git entry itself: the caller
+# passes the worktree top for a partial-checkout path, and cwd for every
+# other producer (cp, mv, touch, bash, Python), which resolve against their
+# own process cwd.
 _probe_readonly_resolve() {
     local path="$1" cwd="${2:-$PWD}"
     case "$path" in
