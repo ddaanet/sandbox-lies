@@ -23,6 +23,17 @@ Review range for the deliverable review is `2309ae6..HEAD` (outline Provenance).
 - Phase boundary: the outline asks for a Phase 1 boundary review (Sonnet
   corrector); later phases are covered by the final review.
 
+- **Model rule restated by my human partner on 2026-10-11; it supersedes the
+  table below and the "both items are Haiku rows" clause of the regrouping
+  wherever they differ.** The runner is Sonnet. The runner dispatches Sonnet
+  for prose and for tests: every RED, every test review, every code review and
+  the Phase 7 docs. It dispatches Haiku for tdd coding loops and for mutation
+  killing: every GREEN of a tdd item (Phases 2, 3 and 6), and the loop that
+  pins a mutation a code review found surviving. A Sonnet reviewer re-checks
+  each Haiku pin, so the reviewer stays above the implementer. Phases 4 and 5
+  are general items the restated rule does not name: Item 4.1 stays Sonnet
+  (judgment), Items 5.1 and 5.2 stay Haiku. A stuck Haiku still moves up.
+
 | Item | Implementer model | Reason |
 | --- | --- | --- |
 | 0 bash 3.2.0 build | Sonnet | network and build debugging |
@@ -106,8 +117,14 @@ dispatch a replacement. A background wait is
 `/tmp/claude/wait-report.sh <report-name>` (recreate if `/tmp` was cleared: poll
 for the report file, then print it).
 
-Carry list: the `memory/ddaanet/sandbox-effects.md` opening-paragraph reword is a
-step for my human partner (the file keeps its leak section); `docs/design.md` Item
-7.1 FR-10 rewrite; nothing under `memory/` is edited by this build. The
+State on 2026-10-11, before the build resumed: `/tmp` was cleared, so
+`/tmp/claude/bash32/bash` and `/tmp/claude/wait-report.sh` are both gone. Rebuild
+the binary before Item 4.1 (recipe in `evidence.md`; the source comes from
+`ftp.gnu.org`, which the rebuilding Bash call lists in `allowed_domains`).
+
+Carry list: the `memory/ddaanet/sandbox-effects.md` opening-paragraph reword is
+done (the file keeps its leak and zellij sections), so the Item 7.1 FR-10
+rewrite of `docs/design.md` can rely on it; nothing under `memory/` is edited by
+this build. The
 deliverable review follows the build: `/deliverable-review
 plans/sandbox-lies-review-fixes-3`, range `2309ae6..HEAD`.
