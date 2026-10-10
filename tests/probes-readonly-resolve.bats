@@ -153,3 +153,13 @@ path_line() {
   [ "$(path_line)" = "path=$plain/sub/d/f" ]
   [ "${output%%$'\n'*}" = writable ]
 }
+
+# Under errexit a text with no matching line must still reach nopath: grep's
+# status 1 is caught on the line's own assignment, so the probe does not abort.
+@test "probe_readonly_path under set -e prints nopath and exits 0 when no line matches" {
+  run bash -c 'set -e; source "$1"; printf "%s\n" "$2" | probe_readonly_path false "$3" x' _ \
+    "$ROOT/lib/probes.sh" "plain text, no refusal" "$BATS_TEST_TMPDIR"
+
+  [ "$status" -eq 0 ]
+  [ "${output%%$'\n'*}" = nopath ]
+}
