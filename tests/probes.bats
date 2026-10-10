@@ -56,19 +56,20 @@ teardown() {
 # byte, which is exactly why the extractor forces LC_ALL=C internally. The
 # path is asserted byte-exact via an exact-line path= match.
 @test "non-UTF-8 byte in the path" {
-  local repo cwd lock
+  local repo cwd lock loc
   repo="$BATS_TEST_TMPDIR/r$(printf '\351')n/r"
   cwd="$BATS_TEST_TMPDIR/elsewhere"
   mkdir -p "$repo/.git" "$cwd"
   lock="$repo/.git/index.lock"
+  loc=$(utf8_locale)
 
-  # Precondition: under C.UTF-8 a locale-aware sed cannot match the path
-  # whole. Without the locale installed, sed falls back to byte-wise C and
+  # Precondition: under that UTF-8 locale a locale-aware sed cannot match the
+  # path whole. Without the locale installed, sed falls back to byte-wise C and
   # the path= assertion passes whatever the extractor does, so this fails
   # loudly instead (a skip would read as a pass in run-bats.sh's count).
-  [ -z "$(printf '%s\n' "$lock" | LC_ALL=C.UTF-8 sed -n 's/^.*$/x/p')" ]
+  [ -z "$(printf '%s\n' "$lock" | LC_ALL="$loc" sed -n 's/^.*$/x/p')" ]
 
-  LC_ALL=C.UTF-8 run_probe probe_git_lock false "$cwd" "$(git_lock_error "$lock")"
+  LC_ALL="$loc" run_probe probe_git_lock false "$cwd" "$(git_lock_error "$lock")"
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
@@ -353,7 +354,7 @@ teardown() {
   lock="$repo/.git/index.lock"
   printf '1234567' >"$lock"
   touch -m -t 200001010000 "$lock"
-  real_mtime=$(stat -c %Y "$lock")
+  real_mtime=$(index_mtime "$lock")
   make_bsd_stubs "$stubdir" stat wc
 
   PATH="$stubdir:$PATH" run_probe probe_git_lock false "$cwd" "$(git_lock_error "$lock")"
