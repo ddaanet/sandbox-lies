@@ -53,15 +53,17 @@ assert_cut_verbatim() {
   [ ! -e "$SCRATCH/tests/fixtures/$NAME.txt" ]
 }
 
-@test "a string tool_use input reads as no command and the cut still lands" {
+@test "a string tool_use input reads as no command, so its matching call is not taken" {
   {
-    corpus_use_raw_input u0 "2026-08-13T09:00:00Z" '"ls"'
-    matching_call
+    corpus_use_raw_input m1 "2026-08-13T10:00:00Z" '"git commit --amend --no-edit"'
+    corpus_result m1 "2026-08-13T10:00:01Z" "$(lock_text)"
   } >"$CORPUS"
 
   run cut_fixture
 
-  assert_cut_verbatim
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"NOT FOUND: $NAME"* ]]
+  [ ! -e "$SCRATCH/tests/fixtures/$NAME.txt" ]
 }
 
 @test "a scalar and an array JSONL line beside the call do not stop the cut" {
