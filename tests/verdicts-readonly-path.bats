@@ -363,9 +363,10 @@ CASES
   local bash32=${BASH32:-/tmp/claude/bash32/bash} loc fn out
   [ -x "$bash32" ] || skip "no bash 3.2.0 build at $bash32"
   loc=$(utf8_locale)
-  # _verdict_has_control and the $'...' arm of _verdict_path_read each hold a
-  # `local LC_ALL=C`; the wire form $'a' reaches both, so a fix to one site
-  # leaves the leak of the other and this case stays red.
+  # _verdict_has_control and the decoder (_verdict_unescape) each set LC_ALL=C
+  # and must put it back. The three calls reach them: x and /x/y reach
+  # _verdict_has_control, $'a' reaches the decoder, so a fix to one site leaves
+  # the leak of the other and this case stays red.
   for fn in "_verdict_has_control x" "_verdict_path_read /x/y" "_verdict_path_read \$'a'"; do
     # An em dash counts 1 in a UTF-8 locale and 3 bytes in C: the length
     # after the call must equal the length before it. The call is its own
