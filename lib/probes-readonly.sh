@@ -51,8 +51,8 @@ probe_readonly_path() {
     path=$(printf '%s\n' "$line" | _probe_readonly_path_from_line)
     # A partial-checkout refusal names its path relative to the worktree top;
     # the matching line alone decides, so another such line in the text does
-    # not move a cp refusal's join (design section B). The walk starts at the
-    # probe's working directory for an empty cwd, as the unwalked join does.
+    # not move a cp refusal's join. The walk starts at the probe's
+    # working directory for an empty cwd, as the unwalked join does.
     # $(...) strips every trailing newline, so a top whose name ends in one
     # lost it. The walk's own newline and a trailing x are stripped by hand
     # instead: the output ends in "\nx", and removing those two characters

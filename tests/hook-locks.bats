@@ -385,7 +385,11 @@ run_hook() {
   [ "$(cat "$recorded")" = "$text" ]
 }
 
-# The real probe ends every held/orphan/unknown answer with a path= line, and
-# the path comes from the error text, so it may hold spaces, digits and the
-# characters a sed replacement or an eval would act on. The stubs carry one.
+# The real probe ends every held/orphan/unknown answer with a path= line in
+# printf %q form, and the path comes from the error text, so it may hold
+# spaces, digits and the characters a sed replacement or an eval would act on.
+# The stubs carry one. The value is raw, where the probe would print it in %q
+# form with a backslash before the blank, the ampersand and the backslash: the
+# held, orphan and unknown verdicts ignore path=, so only the line's presence
+# and its hostile characters matter here.
 LOCK_PATH_LINE='path=/tmp/lock 99/a&b\1/.git/index.lock'

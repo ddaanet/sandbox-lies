@@ -13,8 +13,8 @@
 # the path), cap 400. A script (`.sh`, `.bash`, `.bats`, `.py`) at any depth,
 # cap 400. An awk, TOML or JSON file (`.awk`, `.toml`, `.json`) or a
 # `justfile`, at any depth, cap 400, except under `tests/fixtures/`. Nothing
-# under a root-level `plans/` or `plugin-dev/`. Extensionless files, such as
-# `.gitlore/bin/claude` (gitlore-generated), are out of scope.
+# under a root-level `plans/` or `plugin-dev/`. Any other extensionless file,
+# such as `.gitlore/bin/claude` (gitlore-generated), is out of scope.
 #
 # Exit codes: 0 clean, 1 on any overage, 2 on a failure to run.
 

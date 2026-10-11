@@ -75,8 +75,7 @@ load helpers/verdicts
   [ "$line2" = 'git add — refused a sandbox mask' ]
 }
 
-# No location is named, so the sentence holds under any cwd (design section
-# C). Pinned apart from the whole-paragraph transcription above, which also
+# No location is named, so the sentence holds under any cwd. Pinned apart from the whole-paragraph transcription above, which also
 # reds on the untracked paragraph, so this opening sentence reds on its own.
 @test "phantom-untracked opens without naming a location" {
   local line1 opening

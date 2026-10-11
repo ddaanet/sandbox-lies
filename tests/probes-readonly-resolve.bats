@@ -1,8 +1,8 @@
 #!/usr/bin/env bats
-# lib/probes-readonly.sh's probe_readonly_path: where a relative path joins
-# (design section B). A path named by git's own partial-checkout refusal is
-# relative to the worktree top, not to the cwd the command ran in; every other
-# producer (cp, mv, touch, bash) resolves against its own process cwd. The
+# lib/probes-readonly.sh's probe_readonly_path: where a relative path joins.
+# A path named by git's own partial-checkout refusal is relative to the
+# worktree top, not to the cwd the command ran in; every other producer (cp,
+# mv, touch, bash) resolves against its own process cwd. The
 # facts the probe prints after path= are pinned in
 # tests/probes-readonly-facts.bats, the plain join in
 # tests/probes-readonly.bats.

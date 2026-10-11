@@ -1,7 +1,9 @@
 #!/usr/bin/env bats
 # Item 5.5 slice 1's code review, Major 1: hook-level pins for a lock probe
-# that prints its outcome alone, with no path= line (a resolved lock path
-# holding a newline leaves path= out). A mask or gone output is then the
+# that prints its outcome alone, with no path= line. The real probe prints none
+# when it extracted no path: probe_config_lock finds no config-lock line in
+# the text, and an empty path prints no path= line. (A path holding a newline
+# still prints, as one encoded line.) A mask or gone output is then the
 # outcome alone, with no newline, so annotate.sh takes its no-newline branch and
 # the verdict reads one empty stdin line; held keeps its pid= line. Split from
 # tests/hook-locks.bats, which sat at 399 of 400 lines.

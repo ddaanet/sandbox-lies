@@ -38,9 +38,10 @@ precommit:
     report rumdl rumdl fmt --check -q --no-cache
     report 'line limits' scripts/check-line-limits.sh
     report links scripts/check-links.sh
-    # No suite runs the two Python tools, so a syntax error would pass. A
-    # compile() over each source catches it and, unlike py_compile, writes no
-    # bytecode.
+    # tests/corpus-eval.bats and tests/extract-fixtures.bats run the two Python
+    # tools, but a syntax error would surface there as scattered case
+    # failures. A compile() over each source names it first and, unlike
+    # py_compile, writes no bytecode.
     report 'python compile' python3 -c \
         'import sys; [compile(open(f, encoding="utf-8").read(), f, "exec") for f in sys.argv[1:]]' \
         tests/extract-fixtures.py tests/corpus-eval.py

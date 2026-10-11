@@ -146,8 +146,10 @@ _verdict_lock_present() {
 # is neither form, which reads as no path.
 _verdict_path_read() {
   local wire="$1" body tail
-  # The pattern sits in a variable: a quoted \' in a substitution has meant
-  # different things across bash versions.
+  # The regex sits in a variable, used unquoted on the right of =~: bash
+  # versions differ in how a quoted string there is read, and the unquoted
+  # variable is read as a regex on all of them. It admits the whole $'...'
+  # form: no bare quote, and a backslash taking any one character.
   local re="^\\\$'([^'\\\\]|\\\\.)*'\$"
   _verdict_path_raw='' _verdict_path_shown=''
   case "$wire" in
@@ -223,6 +225,8 @@ _verdict_unescape() {
       esc=\\${part:0:1}
       rest=${part:1}
       case $esc in
+        # \" and \e are accepted though %q never writes them (it writes \E
+        # and a bare "): both are valid in bash's $'...' grammar.
         \\\'|\\\") esc=${esc:1} ;;
         \\[abEefnrtv]) printf -v esc %b "$esc" ;;
         *) _verdict_path_raw=''; rc=1; break ;;
@@ -256,7 +260,9 @@ _verdict_has_control() {
 # missing, empty or malformed. The decoded path (_verdict_path_read) is joined
 # by plain expansion — never eval; `%b` decodes an argument, never a format —
 # so blanks, `&`, `%`, `\1` or a leading `-` pass through byte-exact; a
-# backtick in it closes the code span early, bytes intact. nopath has no
+# backtick in it closes the code span early, bytes intact. The exception is a
+# path holding a control byte: the line shows the probe's wire form, not the
+# decoded bytes (_verdict_path_read). nopath has no
 # path= line under the contract and opens with its own sentence.
 #
 # writable and nopath then carry the tail readonly-path.md's readonly-path
