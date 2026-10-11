@@ -81,11 +81,12 @@ teardown() {
 # assert_unescaped_dir (helpers/probes.bash) guards the setup of the suites
 # that spell a path= line with an interpolated $BATS_TEST_TMPDIR. Each name
 # below is built at run time under the tmpdir and holds one kind of byte %q
-# escapes: a blank, a quote, a UTF-8 byte pair, a control byte. A name %q
+# escapes: a blank, quotes, a backslash, a dollar, a UTF-8 byte pair, a tab, a
+# newline. A name %q
 # leaves alone passes, so the helper is not a constant failure.
 @test "assert_unescaped_dir fails for a directory name holding a byte %q escapes" {
   local name
-  for name in "a b" "it's" "caf"$'\303\251' "tab"$'\t'"x"; do
+  for name in "a b" "it's" "caf"$'\303\251' "tab"$'\t'"x" "a\\b" "a\$b" $'a\nb' "a\"b"; do
     run --separate-stderr assert_unescaped_dir "$BATS_TEST_TMPDIR/$name"
     [ "$status" -eq 1 ] || { printf 'name %q passed\n' "$name" >&2; return 1; }
     [[ $stderr == *"holds a byte printf %q escapes"* ]]
