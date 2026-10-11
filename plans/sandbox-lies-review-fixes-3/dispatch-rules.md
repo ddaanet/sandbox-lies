@@ -101,3 +101,27 @@ or `blocked: <reason>`.
   test-review and GREEN reports. A slice group is all of one Item's slices run
   together (recorded in `delegate-status.md`).
 - **`docs/design.md`** sits at 399 of 400 lines: no edit may grow it.
+
+## Added for the fix pass over the deliverable review
+
+- **Tree state:** clean apart from the untracked `inbox/`. The clause above
+  saying `.claude/handoff-todo.md` is modified is stale; the explicit-pathspec
+  rule stands.
+- **Stale `memory` pointer:** after a pathspec commit the gitlore hook adds
+  `memory` to, `git status --short` can show `MM memory` with a clean
+  submodule. `git add memory` repairs it. Check `git status --short` after
+  every commit.
+- **`tests/check-line-limits.bats`** sits at exactly its 400-line cap. The
+  split of finding 12 lands before any new case for M3. The new file loads
+  `helpers/bsd-stubs` and keeps one case re-run with `make_bsd_stubs` on
+  `PATH` (the script calls `wc`). Neither half ends near the cap, and no
+  comment or docstring is shortened to make a file fit.
+- **`docs/design.md`** is at 394 of 400 lines; this supersedes the 399 above.
+- **bash 3.2.0:** bats does not parse under `/tmp/claude/bash32/bash`, so no
+  suite runs on it. A 3.2.0 check is a hand-run script, run under both
+  `LC_ALL=C` and `LC_ALL=C.UTF-8`, its command and timings recorded in the
+  report. Finding 5's 31.8 s was the `C.UTF-8` run.
+- **Timing tests** assert a ratio (time at N against time at 4N characters,
+  the bound between the linear 4 and the quadratic 16) or a bound with at
+  least a tenfold margin on bash 5.2, never a bound close to the expected
+  value: the box has 2 GB of RAM and other sessions run on it.

@@ -154,3 +154,15 @@ rewrite of `docs/design.md` can rely on it; nothing under `memory/` is edited by
 this build. The
 deliverable review follows the build: `/deliverable-review
 plans/sandbox-lies-review-fixes-3`, range `2309ae6..HEAD`.
+
+## Fix pass
+
+Orchestrated per `reports/deliverable-review.md`. Reports `reports/fix-<id>-<role>.md`.
+
+- [ ] M1
+- [ ] Finding 12
+- [ ] M3
+- [ ] M2
+- [ ] Finding 5 (RED, test review, GREEN, code review)
+- [ ] Finding 6 (RED, test review, GREEN, code review)
+- [ ] Stage 2: 1.1/3, gate-fix a b f r v, 2.1/1, 6.1/2+6.1/3, 6.2/1+6.2/2
