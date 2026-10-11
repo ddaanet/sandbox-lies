@@ -309,9 +309,9 @@ into smaller calls. Escape the sandbox only after both. ·
 
 ## Translation map
 
-Where each section of `memory/ddaanet/sandbox-effects.md` lands. Every paragraph
-must map before the file is deleted (FR-10); the audit that confirms it is Item
-8.2 of the build runbook.
+Where each section of `memory/ddaanet/sandbox-effects.md` lands. Every section
+the plugin carries maps to a detector or the skill (FR-10); the file stays for
+the two that map nowhere.
 
 | memory section | lands in |
 |---|---|
@@ -332,7 +332,8 @@ must map before the file is deleted (FR-10); the audit that confirms it is Item
 | `excludedCommands` whole-call semantics | skill, corrected: an entry frees only a call whose every command it covers |
 | `ps` cannot see background tasks | skill |
 | `--resume` transcript never persisted | `resume-lost`; eval-harness consequence → skill |
-| zellij socket | `zellij-socket` |
+| zellij socket | stays in memory: `zellij-socket` is a candidate under D-15 |
+| phantom dotfiles that outlive their command (the leak) | stays in memory: no detector |
 | sandboxed `claude -p` drops `SessionStart` | skill |
 | sandbox setup fails | `seccomp-init` |
 | `/tmp` reads full | dropped — not a sandbox effect (design, rejected alternatives) |
