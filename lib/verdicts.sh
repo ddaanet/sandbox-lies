@@ -144,10 +144,10 @@ _verdict_lock_present() {
 # paragraph from its human line. Returns 1 with both empty for a value that
 # is neither form, which reads as no path.
 _verdict_path_read() {
-  local wire="$1" body lit esc
+  local wire="$1" body esc
   # The pattern sits in a variable: a quoted \' in a substitution has meant
   # different things across bash versions.
-  local re="^\\\$'([^'\\\\]|\\\\.)*'\$" oct='^\\([0-7]{3})'
+  local re="^\\\$'([^'\\\\]|\\\\.)*'\$" oct='^[0-7]{3}'
   _verdict_path_raw='' _verdict_path_shown=''
   case "$wire" in
     /*)
@@ -162,26 +162,43 @@ _verdict_path_read() {
       body=${body%\'}
       # One escape at a time: %b reads \0 plus up to three digits, so the
       # \0NN %q writes for a control byte would take a following digit with
-      # it. A \NNN is read as \0NNN, three digits and no more.
-      while [ -n "$body" ]; do
-        lit=${body%%\\*}
-        _verdict_path_raw=$_verdict_path_raw$lit
-        body=${body#"$lit"}
-        [ -n "$body" ] || break
-        if [[ $body =~ $oct ]]; then
-          printf -v esc %b "\\0${BASH_REMATCH[1]}"
-          body=${body:4}
+      # it. A \NNN is read as \0NNN, three digits and no more. The body is
+      # split once on its backslashes, each later field being the text after
+      # one, so the work is linear in the escapes: re-slicing the remaining
+      # body per escape was quadratic, and 30 s on 3873 bytes of CJK under
+      # bash 3.2.0 in a UTF-8 locale. LC_ALL=C makes the split and every
+      # index count bytes, which is all the wire form holds. The x sentinel
+      # keeps read from dropping a trailing empty field.
+      # shellcheck disable=SC2141 # the separator is the backslash itself
+      local LC_ALL=C IFS=\\ parts n i part rest
+      read -r -a parts < <(printf '%s\n' "${body}x")
+      n=${#parts[@]}
+      _verdict_path_raw=${parts[0]}
+      i=1
+      while [ "$i" -lt "$n" ]; do
+        part=${parts[i]}
+        i=$((i + 1))
+        if [ -z "$part" ]; then
+          # an empty field is a \\ pair: the next field is plain text
+          _verdict_path_raw=$_verdict_path_raw\\${parts[i]}
+          i=$((i + 1))
+          continue
+        fi
+        if [[ $part =~ $oct ]]; then
+          printf -v esc %b "\\0${part:0:3}"
+          rest=${part:3}
         else
-          esc=${body:0:2}
-          body=${body:2}
+          esc=\\${part:0:1}
+          rest=${part:1}
           case $esc in
             \\\'|\\\") esc=${esc:1} ;;
-            \\[abEefnrtv\\]) printf -v esc %b "$esc" ;;
+            \\[abEefnrtv]) printf -v esc %b "$esc" ;;
             *) _verdict_path_raw=''; return 1 ;;
           esac
         fi
-        _verdict_path_raw=$_verdict_path_raw$esc
+        _verdict_path_raw=$_verdict_path_raw$esc$rest
       done
+      _verdict_path_raw=${_verdict_path_raw%x}
       ;;
     *) return 1 ;;
   esac

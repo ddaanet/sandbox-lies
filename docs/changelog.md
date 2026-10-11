@@ -354,3 +354,10 @@ Item 8.2 remainder: `memory/ddaanet/sandbox-effects.md` stays, as the home of
 the zellij section, whose detector cannot ship under D-15 with 0 corpus hits,
 and of the phantom-dotfile leak. FR-10 now says so and is Done, and the
 translation map no longer promises a deletion.
+
+## 2026-10-11 — linear path decode
+
+The `$'...'` decode in `_verdict_path_read` was quadratic in the escapes: a
+3873-byte CJK path took 31.9 s under bash 3.2.0 in a UTF-8 locale, past the
+hook's 10 s. It now splits the body once on its backslashes, under `LC_ALL=C`,
+and takes 0.4 s there (0.3 s on bash 5.2); the output is unchanged.

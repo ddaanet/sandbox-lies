@@ -10,6 +10,7 @@ bats_require_minimum_version 1.5.0
 
 load helpers/bsd-stubs
 load helpers/verdicts
+load helpers/locale
 
 # path_verdict <outcome> <wire> — verdict_readonly_path's two-line text over a
 # probe stdin holding the one path=<wire> line.
@@ -229,4 +230,51 @@ stubbed_verdict() {
     out=$(exec 2>&1; . "$VERDICTS"; _verdict_path_read "$wire"; printf 'rc=%s raw=%s shown=%s' "$?" "$_verdict_path_raw" "$_verdict_path_shown")
     [ "$out" = 'rc=1 raw= shown=' ] || { printf 'wire %s gave: %s\n' "$wire" "$out" >&2; return 1; }
   done
+}
+
+# decode_seconds <locale> <wire> — wall seconds a fresh bash takes to source
+# lib/verdicts.sh and run _verdict_path_read on <wire>: the least of three
+# runs, so a loaded box (other sessions share it) inflates neither side of
+# the ratio. python3's perf_counter is the clock: bash 3.2 has no
+# EPOCHREALTIME and BSD date no %N.
+decode_seconds() {
+  # shellcheck disable=SC2016 # the Python source holds $1/$2 for bash -c
+  python3 -I -c '
+import os, subprocess, sys, time
+env = dict(os.environ, LC_ALL=sys.argv[1])
+best = None
+for _ in range(3):
+    t0 = time.perf_counter()
+    subprocess.run(["bash", "-c", ". \"$1\"; _verdict_path_read \"$2\"", "_", sys.argv[3], sys.argv[2]], env=env, check=True)
+    dt = time.perf_counter() - t0
+    best = dt if best is None else min(best, dt)
+print("%.4f" % best)
+' "$1" "$2" "$VERDICTS"
+}
+
+# N is 300 CJK characters (900 octal escapes on the wire), 4N is 1200.
+@test "_verdict_path_read time grows no faster than linearly in the escape count" {
+  local loc wire_n wire_4n t_n t_4n ratio p_n p_4n
+  loc=$(utf8_locale)
+  p_n=/x/$(LC_ALL=C python3 -I -c 'import sys; sys.stdout.buffer.write("\u4e00\u4e2d\u6587".encode() * 100)')
+  p_4n=/x/$(LC_ALL=C python3 -I -c 'import sys; sys.stdout.buffer.write("\u4e00\u4e2d\u6587".encode() * 400)')
+  # shellcheck disable=SC1091 # the production encoder, resolved at run time
+  wire_n=$(. "$ROOT/lib/probes-readonly.sh"; _probe_path_line "$p_n"); wire_n=${wire_n#path=}
+  # shellcheck disable=SC1091 # as above
+  wire_4n=$(. "$ROOT/lib/probes-readonly.sh"; _probe_path_line "$p_4n"); wire_4n=${wire_4n#path=}
+
+  # The decoded value is the original at both sizes, under the locale the
+  # timings use, so a decoder that returned nothing quickly cannot pass on
+  # speed.
+  # shellcheck disable=SC1090
+  [ "$(LC_ALL=$loc; . "$VERDICTS"; _verdict_path_read "$wire_n"; [ "$_verdict_path_raw" = "$p_n" ] && echo same)" = same ]
+  # shellcheck disable=SC1090
+  [ "$(LC_ALL=$loc; . "$VERDICTS"; _verdict_path_read "$wire_4n"; [ "$_verdict_path_raw" = "$p_4n" ] && echo same)" = same ]
+
+  t_n=$(decode_seconds "$loc" "$wire_n")
+  t_4n=$(decode_seconds "$loc" "$wire_4n")
+  # Linear is 4, quadratic 16. Process start-up only pulls the ratio down.
+  ratio=$(python3 -I -c 'import sys; print("%.2f" % (float(sys.argv[2]) / float(sys.argv[1])))' "$t_n" "$t_4n")
+  printf 't(N)=%s s t(4N)=%s s ratio=%s\n' "$t_n" "$t_4n" "$ratio" >&2
+  python3 -I -c 'import sys; sys.exit(0 if float(sys.argv[1]) < 9 else 1)' "$ratio"
 }
