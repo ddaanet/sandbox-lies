@@ -102,3 +102,19 @@ one_call() {
   [ "$status" -eq 0 ]
   [ -e "$OUTDIR/survivors/000001.txt" ]
 }
+
+@test "extract reads a list, number or null tool_use input as no command" {
+  {
+    corpus_use_raw_input u2 "2026-09-01T00:00:00Z" '["ls"]'
+    corpus_use_raw_input u3 "2026-09-01T00:00:00Z" '42'
+    corpus_use_raw_input u4 "2026-09-01T00:00:00Z" 'null'
+  } >"$PROJ/s.jsonl"
+  one_call 1
+
+  run eval_py extract --outdir "$OUTDIR"
+
+  [ "$status" -eq 0 ]
+  local survivors=("$OUTDIR"/survivors/*)
+  [ "${#survivors[@]}" -eq 1 ]
+  [ -e "$OUTDIR/survivors/000001.txt" ]
+}
