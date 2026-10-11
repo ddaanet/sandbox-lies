@@ -28,6 +28,21 @@ config_lock_error() {
   printf '%s\n' "$text"
 }
 
+# assert_unescaped_dir <dir> — fails, naming <dir>, unless `printf %q` under
+# LC_ALL=C leaves it unchanged. The probes print a path= value in %q form
+# (lib/probes.sh), and the suites that spell that line with an interpolated
+# $BATS_TEST_TMPDIR write only the escapes for the names they add, so a
+# tmpdir holding a byte %q escapes (a blank, a quote, a non-ASCII byte) would
+# make every such expectation differ for a reason that is not the probe's.
+# Called from the setup of tests/probes.bats, tests/probes-config.bats and
+# tests/probes-readonly.bats, where it fails loudly instead.
+assert_unescaped_dir() {
+  local dir="$1"
+  [ "$(LC_ALL=C printf %q "$dir")" = "$dir" ] && return 0
+  printf 'tmpdir %q holds a byte printf %%q escapes: the path= expectations spell %s unescaped\n' "$dir" "\$BATS_TEST_TMPDIR" >&2
+  return 1
+}
+
 # erofs_message — the kernel's read-only-filesystem message, built from two
 # fragments (self-quiet, FR-11) as git_lock_error builds git's follow-on
 # above, so no probes-readonly test source line reads the phrase whole.

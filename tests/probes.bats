@@ -14,6 +14,7 @@ load helpers/locale
 load helpers/probes
 
 setup() {
+  assert_unescaped_dir "$BATS_TEST_TMPDIR"
   source "$ROOT/lib/probes.sh"
   _probe_holder_pid=
 }
@@ -77,14 +78,31 @@ teardown() {
     "path=\$'$BATS_TEST_TMPDIR/r\\351n/r/.git/index.lock'"
 }
 
+# assert_unescaped_dir (helpers/probes.bash) guards the setup of the suites
+# that spell a path= line with an interpolated $BATS_TEST_TMPDIR. Each name
+# below is built at run time under the tmpdir and holds one kind of byte %q
+# escapes: a blank, a quote, a UTF-8 byte pair, a control byte. A name %q
+# leaves alone passes, so the helper is not a constant failure.
+@test "assert_unescaped_dir fails for a directory name holding a byte %q escapes" {
+  local name
+  for name in "a b" "it's" "caf"$'\303\251' "tab"$'\t'"x"; do
+    run --separate-stderr assert_unescaped_dir "$BATS_TEST_TMPDIR/$name"
+    [ "$status" -eq 1 ] || { printf 'name %q passed\n' "$name" >&2; return 1; }
+    [[ $stderr == *"holds a byte printf %q escapes"* ]]
+  done
+
+  run --separate-stderr assert_unescaped_dir "$BATS_TEST_TMPDIR/plain-dir_1.d"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+}
+
 # The cwd's name holds a blank, so the resolved lock path is printed in
-# printf %q form: the blank escaped by a backslash. The precondition keeps
-# the expected line honest: were BATS_TEST_TMPDIR itself to hold a byte %q
-# escapes, the literal below would differ from the encoder's output for a
-# reason other than the blank.
+# printf %q form: the blank escaped by a backslash. The setup's
+# assert_unescaped_dir keeps the expected line honest: were BATS_TEST_TMPDIR
+# itself to hold a byte %q escapes, the literal below would differ from the
+# encoder's output for a reason other than the blank.
 @test "a relative lock path under a cwd holding a blank prints path= in %q form" {
   local cwd="$BATS_TEST_TMPDIR/r b"
-  [ "$(LC_ALL=C printf %q "$BATS_TEST_TMPDIR")" = "$BATS_TEST_TMPDIR" ]
   mkdir -p "$cwd/.git"
 
   run_probe probe_git_lock false "$cwd" "$(git_lock_error .git/index.lock)"
@@ -114,7 +132,6 @@ teardown() {
 # the printed form would depend on the hook's locale.
 @test "a lock path holding e-acute prints the octal form under a UTF-8 locale" {
   local loc cwd="$BATS_TEST_TMPDIR/caf"$'\303\251'
-  [ "$(LC_ALL=C printf %q "$BATS_TEST_TMPDIR")" = "$BATS_TEST_TMPDIR" ]
   loc=$(utf8_locale)
   mkdir -p "$cwd/.git"
 

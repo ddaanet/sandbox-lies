@@ -18,6 +18,7 @@ load helpers/git-env
 load helpers/probes
 
 setup() {
+  assert_unescaped_dir "$BATS_TEST_TMPDIR"
   source "$ROOT/lib/probes.sh"
   RO_DIR=
 }

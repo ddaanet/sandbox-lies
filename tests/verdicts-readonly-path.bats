@@ -5,6 +5,12 @@
 # wire values below are the probe's own forms (or forged ones, said so),
 # spelled with \$ and \\ in double quotes so the file holds them literally.
 # New file: tests/verdicts-readonly.bats sits near the 400-line cap.
+# No BSD-stub case: lib/verdicts.sh forks no tool (the decoder is bash
+# builtins and parameter expansion, its $(...) subshells run only functions of
+# the library), so no sed, grep, mktemp, stat or wc differs under BSD there and
+# a stubs-first re-run could not fail for a BSD reason. The suite still loads
+# helpers/bsd-stubs per the repo rule, and the tests' own `sed` is a pipeline
+# stage outside the code under test.
 
 bats_require_minimum_version 1.5.0
 
@@ -171,29 +177,6 @@ path_verdict() {
     [ "$line1" = "\`$real\` is writable outside the sandbox, whose allowlist refused it.$(readonly_path_tail)" ] \
       || { printf 'wire %s gave: %s\n' "$wire" "$line1" >&2; return 1; }
   done
-}
-
-# stubbed_verdict <outcome> <wire> — path_verdict with the stubs made by the
-# case first on PATH.
-stubbed_verdict() {
-  local PATH="$BATS_TEST_TMPDIR/bsd:$PATH"
-  path_verdict "$@"
-}
-
-@test "readonly-path decodes the same with the BSD stubs first on PATH" {
-  local wire plain stubbed eacute=$'\303\251'
-  make_bsd_stubs "$BATS_TEST_TMPDIR/bsd" grep sed stat wc
-  for wire in '/x/a\ b\&c/f' "\$'/x/caf\\303\\251\\'s/f'" "\$'/x/a\\nb/f'" "\$'a'b"; do
-    plain=$(path_verdict writable "$wire")
-    [ "$(printf '%s\n' "$plain" | sed -n '$=')" = 2 ]
-    stubbed=$(stubbed_verdict writable "$wire")
-    [ "$stubbed" = "$plain" ] || { printf 'wire %s differs\n' "$wire" >&2; return 1; }
-  done
-  # The stubbed run decodes: the equality above holds for an unchanged reader.
-  stubbed=$(stubbed_verdict writable "\$'/x/caf\\303\\251\\'s/f'" | sed -n '1p')
-  [ "$stubbed" = "\`/x/caf${eacute}'s/f\` is writable outside the sandbox, whose allowlist refused it.$(readonly_path_tail)" ]
-  stubbed=$(stubbed_verdict writable '/x/a\ b\&c/f' | sed -n '1p')
-  [ "$stubbed" = "\`/x/a b&c/f\` is writable outside the sandbox, whose allowlist refused it.$(readonly_path_tail)" ]
 }
 
 @test "_verdict_path_read keeps the octal digit that follows a control-byte escape" {

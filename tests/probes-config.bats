@@ -12,6 +12,7 @@ load helpers/bsd-stubs
 load helpers/probes
 
 setup() {
+  assert_unescaped_dir "$BATS_TEST_TMPDIR"
   source "$ROOT/lib/probes.sh"
 }
 
@@ -109,9 +110,6 @@ config_lock_own_error_case() {
 
   [ "$status" -eq 0 ]
   [ "$output" = mask ]
-  [ "${output%%$'\n'*}" != orphan ]
-  [ "${output%%$'\n'*}" != held ]
-  [ "$(printf '%s\n' "$output" | grep -cxF "path=$index")" -eq 0 ]
 }
 
 # match_config_lock fires only on the error at line start, so the probe reads
@@ -151,18 +149,12 @@ config_lock_own_error_case() {
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
   [ "$output" = mask ]
-  [ "${output%%$'\n'*}" != held ]
-  [ "${output%%$'\n'*}" != orphan ]
-  [ "$(printf '%s\n' "$output" | grep -c '^pid=')" -eq 0 ]
 
   run_probe probe_git_lock true "$dir" "$(printf 'quiet preamble text\n')"
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
   [ "$output" = gone ]
-  [ "${output%%$'\n'*}" != held ]
-  [ "${output%%$'\n'*}" != orphan ]
-  [ "$(printf '%s\n' "$output" | grep -c '^pid=')" -eq 0 ]
 }
 
 # Git prints the config-lock path relative to the main worktree's top-level
