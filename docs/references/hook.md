@@ -102,7 +102,7 @@ the `cwd`, and with no `cwd` from the probe's working directory, never `/`.
 Phantom masks sit under the sandboxed call's working directory: the session's
 project root, or a subdirectory a persisted `cd` left the Bash tool in (seen on
 CC 2.1.281). The `phantom-*` detectors read text and run no probe; their verdict
-names the project root, the usual case.
+names no location, so it holds under any working directory.
 
 **Failures arrive on `PostToolUseFailure` (D-13).** In the CC 2.1.280 bundle the
 Bash tool raises on a non-zero exit, and the tool-failure path dispatches
