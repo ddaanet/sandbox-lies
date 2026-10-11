@@ -370,3 +370,14 @@ quadratic: 66.7 s and 38.5 s under bash 3.2.0 in a UTF-8 locale, past the hook's
 10 s. The word's emptiness and last character are now tracked apart from it, so
 those words take 3.7 s and 4.6 s, like a plain one (3.7 s), and the tokens are
 unchanged.
+
+## 2026-10-11 — review fixes: locale leak, errexit, undecodable wire values
+
+`verdict_config_lock` called `_verdict_path_read` bare, so a caller under
+`set -e` got status 1 and no text for a `mask` with no decodable `path=` line;
+it now prints the paragraph. `_verdict_has_control` and the `$'...'` escape loop
+(now `_verdict_unescape`) restore the caller's `LC_ALL` on every return, since
+bash 3.2.0 does not undo a `local LC_ALL=C` and left the calling shell in the C
+locale. `_verdict_path_read` now reads `$''`, a relative `$'...'` value and a
+`/` value ending in a lone backslash as no path, as the encoder never writes
+them, so the paragraph no longer opens with an empty code span.

@@ -256,3 +256,24 @@ load helpers/verdicts
     printf '%s' "$text" | grep -qF 'update-config'
   done
 }
+
+# A caller under errexit: the hook sets none, but the verdict is a library
+# function and must not exit 1 for a mask whose probe line holds no decodable
+# path (the encoder writes none for an empty path). The paragraph and the
+# human line are what the same call prints without errexit.
+@test "verdict_config_lock mask under set -e prints its paragraph without a decodable path" {
+  local stdin out
+  for stdin in '' 'path=' "path=relative/x" "path=\$'a'b" 'other=1'; do
+    # shellcheck disable=SC2016 # the script is for the child shell
+    out=$(printf '%s\n' "$stdin" | bash -c 'set -e; . "$1"; verdict_config_lock mask; echo "reached rc=$?"' _ "$VERDICTS") || true
+    # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+    printf '%s\n' "$out" | grep -qF 'The `config.lock` behind this error is a sandbox artefact' \
+      || { printf 'stdin [%s] gave: [%s]\n' "$stdin" "$out" >&2; return 1; }
+    printf '%s\n' "$out" | grep -qF 'reached rc=0' \
+      || { printf 'stdin [%s] gave: [%s]\n' "$stdin" "$out" >&2; return 1; }
+  done
+  # The neighbour: a decodable settings lock path still selects its act.
+  # shellcheck disable=SC2016
+  out=$(printf '%s\n' 'path=/r/.claude/settings.json.lock' | bash -c 'set -e; . "$1"; verdict_config_lock mask; echo "reached rc=$?"' _ "$VERDICTS")
+  printf '%s\n' "$out" | grep -qF 'update-config' && printf '%s\n' "$out" | grep -qF 'reached rc=0'
+}

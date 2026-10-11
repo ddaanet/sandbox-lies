@@ -79,7 +79,8 @@ verdict_config_lock() {
           path=*) wire=${line#path=} ;;
         esac
       done
-      _verdict_path_read "$wire"
+      # no decodable path leaves _verdict_path_raw empty: the paragraph still prints
+      _verdict_path_read "$wire" || :
       case "$_verdict_path_raw" in
         */.claude/settings.json.lock)
           # shellcheck disable=SC2016 # backticks are literal prose, not expansion
@@ -144,13 +145,17 @@ _verdict_lock_present() {
 # paragraph from its human line. Returns 1 with both empty for a value that
 # is neither form, which reads as no path.
 _verdict_path_read() {
-  local wire="$1" body esc
+  local wire="$1" body tail
   # The pattern sits in a variable: a quoted \' in a substitution has meant
   # different things across bash versions.
-  local re="^\\\$'([^'\\\\]|\\\\.)*'\$" oct='^[0-7]{3}'
+  local re="^\\\$'([^'\\\\]|\\\\.)*'\$"
   _verdict_path_raw='' _verdict_path_shown=''
   case "$wire" in
     /*)
+      # an odd run of trailing backslashes is a lone escape, which the read
+      # below would drop, returning the path short
+      tail=${wire##*[!\\]}
+      [ $((${#tail} % 2)) -eq 0 ] || return 1
       # read without -r drops each escaping backslash; the process
       # substitution keeps the value off disk and out of eval.
       # shellcheck disable=SC2162 # -r would keep the backslashes
@@ -160,47 +165,12 @@ _verdict_path_read() {
       [[ $wire =~ $re ]] || return 1
       body=${wire#\$\'}
       body=${body%\'}
-      # One escape at a time: %b reads \0 plus up to three digits, so the
-      # \0NN %q writes for a control byte would take a following digit with
-      # it. A \NNN is read as \0NNN, three digits and no more. The body is
-      # split once on its backslashes, each later field being the text after
-      # one, so the work is linear in the escapes: re-slicing the remaining
-      # body per escape was quadratic, and 30 s on 3873 bytes of CJK under
-      # bash 3.2.0 in a UTF-8 locale. LC_ALL=C makes the split and every
-      # index count bytes, which is all the wire form holds. The x sentinel
-      # keeps read from dropping a trailing empty field; -d '' lets a body
-      # holding a newline through whole, and its end-of-input status is not
-      # a failure.
-      # shellcheck disable=SC2141 # the separator is the backslash itself
-      local LC_ALL=C IFS=\\ parts n i part rest
-      read -r -d '' -a parts < <(printf '%sx' "$body") || :
-      n=${#parts[@]}
-      _verdict_path_raw=${parts[0]}
-      i=1
-      while [ "$i" -lt "$n" ]; do
-        part=${parts[i]}
-        i=$((i + 1))
-        if [ -z "$part" ]; then
-          # an empty field is a \\ pair: the next field is plain text
-          _verdict_path_raw=$_verdict_path_raw\\${parts[i]}
-          i=$((i + 1))
-          continue
-        fi
-        if [[ $part =~ $oct ]]; then
-          printf -v esc %b "\\0${part:0:3}"
-          rest=${part:3}
-        else
-          esc=\\${part:0:1}
-          rest=${part:1}
-          case $esc in
-            \\\'|\\\") esc=${esc:1} ;;
-            \\[abEefnrtv]) printf -v esc %b "$esc" ;;
-            *) _verdict_path_raw=''; return 1 ;;
-          esac
-        fi
-        _verdict_path_raw=$_verdict_path_raw$esc$rest
-      done
-      _verdict_path_raw=${_verdict_path_raw%x}
+      _verdict_unescape "$body" || return 1
+      # a relative value, and the empty $'' one, read as no path
+      case $_verdict_path_raw in
+        /*) ;;
+        *) _verdict_path_raw=''; return 1 ;;
+      esac
       ;;
     *) return 1 ;;
   esac
@@ -210,15 +180,75 @@ _verdict_path_read() {
   fi
 }
 
+# `_verdict_unescape <body>` — the escape loop of _verdict_path_read's $'...'
+# arm, decoding into _verdict_path_raw; returns 1 with it empty on an escape
+# printf %q never writes. LC_ALL=C makes the split and every index count
+# bytes, which is all the wire form holds. The caller's locale is put back on
+# every return: a `local LC_ALL=C` is not undone on return under bash 3.2.0,
+# which leaves the calling process in the C locale.
+#
+# One escape at a time: %b reads \0 plus up to three digits, so the \0NN %q
+# writes for a control byte would take a following digit with it. A \NNN is
+# read as \0NNN, three digits and no more. The body is split once on its
+# backslashes, each later field being the text after one, so the work is
+# linear in the escapes: re-slicing the remaining body per escape was
+# quadratic, and 30 s on 3873 bytes of CJK under bash 3.2.0 in a UTF-8 locale.
+# The x sentinel keeps read from dropping a trailing empty field; -d '' lets a
+# body holding a newline through whole, and its end-of-input status is not a
+# failure.
+_verdict_unescape() {
+  local body="$1" saved=${LC_ALL-} had=${LC_ALL+x} rc=0 oct='^[0-7]{3}'
+  local esc parts n i part rest
+  # shellcheck disable=SC2141 # the separator is the backslash itself
+  local IFS=\\
+  LC_ALL=C
+  _verdict_path_raw=''
+  read -r -d '' -a parts < <(printf '%sx' "$body") || :
+  n=${#parts[@]}
+  _verdict_path_raw=${parts[0]}
+  i=1
+  while [ "$i" -lt "$n" ]; do
+    part=${parts[i]}
+    i=$((i + 1))
+    if [ -z "$part" ]; then
+      # an empty field is a \\ pair: the next field is plain text
+      _verdict_path_raw=$_verdict_path_raw\\${parts[i]}
+      i=$((i + 1))
+      continue
+    fi
+    if [[ $part =~ $oct ]]; then
+      printf -v esc %b "\\0${part:0:3}"
+      rest=${part:3}
+    else
+      esc=\\${part:0:1}
+      rest=${part:1}
+      case $esc in
+        \\\'|\\\") esc=${esc:1} ;;
+        \\[abEefnrtv]) printf -v esc %b "$esc" ;;
+        *) _verdict_path_raw=''; rc=1; break ;;
+      esac
+    fi
+    _verdict_path_raw=$_verdict_path_raw$esc$rest
+  done
+  if [ "$rc" -eq 0 ]; then
+    _verdict_path_raw=${_verdict_path_raw%x}
+  fi
+  if [ -n "$had" ]; then LC_ALL=$saved; else unset LC_ALL; fi
+  return "$rc"
+}
+
 # `_verdict_has_control <text>` — succeeds when text holds a byte in
 # \001-\037 or \177. LC_ALL=C keeps [:cntrl:] to those bytes: a UTF-8 locale
-# would add the C1 range, which is valid text in a path.
+# would add the C1 range, which is valid text in a path. The caller's locale
+# is put back on return (see _verdict_unescape).
 _verdict_has_control() {
-  local LC_ALL=C
+  local saved=${LC_ALL-} had=${LC_ALL+x} rc=1
+  LC_ALL=C
   case "$1" in
-    *[[:cntrl:]]*) return 0 ;;
+    *[[:cntrl:]]*) rc=0 ;;
   esac
-  return 1
+  if [ -n "$had" ]; then LC_ALL=$saved; else unset LC_ALL; fi
+  return "$rc"
 }
 
 # `verdict_readonly_path <outcome>` — writable and readonly open with the

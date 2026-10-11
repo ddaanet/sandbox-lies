@@ -152,8 +152,8 @@ path_verdict() {
   done
   # Well-formed, with an escaped quote ahead of the substitution: decoded and
   # shown, never run.
-  line1=$(path_verdict writable "\$'a\\'\$(touch $sentinel)'" | sed -n '1p')
-  [ "$line1" = "\`a'\$(touch $sentinel)\` is writable outside the sandbox, whose allowlist refused it.$(readonly_path_tail)" ]
+  line1=$(path_verdict writable "\$'/a\\'\$(touch $sentinel)'" | sed -n '1p')
+  [ "$line1" = "\`/a'\$(touch $sentinel)\` is writable outside the sandbox, whose allowlist refused it.$(readonly_path_tail)" ]
   [ ! -e "$sentinel" ]
 }
 
@@ -306,5 +306,72 @@ print("%.4f" % best)
     # shellcheck disable=SC1090 # $VERDICTS is lib/verdicts.sh, resolved above
     out=$(exec 2>&1; . "$VERDICTS"; _verdict_path_read "$wire"; printf 'rc=%s raw=%s' "$?" "$_verdict_path_raw")
     [ "$out" = "rc=0 raw=$real" ] || { printf 'letter \\%s: wire %s gave: %s\n' "$letter" "$wire" "$out" >&2; return 1; }
+  done
+}
+
+# $'' decodes to empty with status 0 on the unchanged code, and the two other
+# values below are accepted: the probe's %q never writes any of them. Each is
+# its own case so a mutation of one arm shows red on that value alone.
+@test "_verdict_path_read reads \$'' as no path" {
+  local out
+  # shellcheck disable=SC1090,SC2154 # $VERDICTS is lib/verdicts.sh, resolved
+  # above; the reader sets the two outputs
+  out=$(. "$VERDICTS"; rc=0; _verdict_path_read "\$''" || rc=$?
+    printf 'rc=%s raw=[%s] shown=[%s]' "$rc" "$_verdict_path_raw" "$_verdict_path_shown")
+  [ "$out" = 'rc=1 raw=[] shown=[]' ]
+}
+
+@test "_verdict_path_read reads a relative \$'...' value as no path" {
+  local out
+  # shellcheck disable=SC1090,SC2154 # as above
+  out=$(. "$VERDICTS"; rc=0; _verdict_path_read "\$'rel/x'" || rc=$?
+    printf 'rc=%s raw=[%s] shown=[%s]' "$rc" "$_verdict_path_raw" "$_verdict_path_shown")
+  [ "$out" = 'rc=1 raw=[] shown=[]' ]
+}
+
+@test "_verdict_path_read reads a / value ending in a lone backslash as no path" {
+  local out
+  # shellcheck disable=SC1090,SC2154,SC1003 # as above; the backslash is the value
+  out=$(. "$VERDICTS"; rc=0; _verdict_path_read '/x\' || rc=$?
+    printf 'rc=%s raw=[%s] shown=[%s]' "$rc" "$_verdict_path_raw" "$_verdict_path_shown")
+  [ "$out" = 'rc=1 raw=[] shown=[]' ]
+}
+
+# The legitimate neighbours of the three cases above, so a fix that rejects too
+# much turns red: an absolute $'...' value, a / value ending in an escaped
+# backslash (read without -r leaves one), and the $'...' form of that path.
+@test "_verdict_path_read still reads an absolute \$'...' value and a / value ending in an escaped backslash" {
+  local out wire raw
+  while IFS='|' read -r wire raw; do
+    # shellcheck disable=SC1090,SC2154 # as above
+    out=$(. "$VERDICTS"; rc=0; _verdict_path_read "$wire" || rc=$?
+      printf 'rc=%s raw=[%s]' "$rc" "$_verdict_path_raw")
+    [ "$out" = "rc=0 raw=[$raw]" ] || { printf 'wire %s gave: %s\n' "$wire" "$out" >&2; return 1; }
+  done <<'CASES'
+$'/x'|/x
+/x\\|/x\
+$'/x\\'|/x\
+CASES
+}
+
+# bats does not parse under bash 3.2.0, so this case runs the 3.2.0 build as a
+# subprocess. On 3.2.0 `local LC_ALL=C` is not undone on return, so the
+# calling shell is left in the C locale; bash 5.2 restores it, so no 5.2 run
+# can fail for this. Skipped where the build is absent (rebuild recipe:
+# plans/sandbox-lies-review-fixes-3/evidence.md).
+@test "the readers leave the caller's locale as it was, on bash 3.2.0" {
+  local bash32=${BASH32:-/tmp/claude/bash32/bash} loc fn out
+  [ -x "$bash32" ] || skip "no bash 3.2.0 build at $bash32"
+  loc=$(utf8_locale)
+  # _verdict_has_control and the $'...' arm of _verdict_path_read each hold a
+  # `local LC_ALL=C`; the wire form $'a' reaches both, so a fix to one site
+  # leaves the leak of the other and this case stays red.
+  for fn in "_verdict_has_control x" "_verdict_path_read /x/y" "_verdict_path_read \$'a'"; do
+    # An em dash counts 1 in a UTF-8 locale and 3 bytes in C: the length
+    # after the call must equal the length before it. The call is its own
+    # two arguments, so the wire form $'a' reaches the reader unexpanded.
+    # shellcheck disable=SC2016 # the script is for the child shell
+    out=$(LC_ALL="$loc" "$bash32" -c '. "$1"; x="—"; before=${#x}; "$2" "$3"; printf "%s %s" "$before" "${#x}"' _ "$VERDICTS" "${fn%% *}" "${fn#* }")
+    [ "$out" = '1 1' ] || { printf '%s left the length %s (before after)\n' "$fn" "$out" >&2; return 1; }
   done
 }
