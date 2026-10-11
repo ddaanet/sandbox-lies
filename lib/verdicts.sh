@@ -187,8 +187,8 @@ _verdict_has_control() {
 # missing, empty or malformed. The decoded path (_verdict_path_read) is joined
 # by plain expansion — never eval; `%b` decodes an argument, never a format —
 # so blanks, `&`, `%`, `\1` or a leading `-` pass through byte-exact; a
-# backtick in it closes the code span early, bytes intact. nopath has no path= line under the contract
-# and opens with its own sentence.
+# backtick in it closes the code span early, bytes intact. nopath has no
+# path= line under the contract and opens with its own sentence.
 #
 # writable and nopath then carry the tail readonly-path.md's readonly-path
 # Verdicts compose from the probe's other stdin facts (readfile=, merge=1,
