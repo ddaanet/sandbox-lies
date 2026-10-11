@@ -222,10 +222,11 @@ stubbed_verdict() {
   [ "$out" = 'rc=0 raw=/x/a"b' ]
   # Forged escapes the grammar admits: the decoded prefix must not survive,
   # and %b must not see \x or \c (it complains about the first and stops at
-  # the second).
+  # the second). Stderr joins stdout inside the substitution, so a diagnostic
+  # fails the comparison.
   for wire in "\$'/x/ok\\x41'" "\$'/x/ok\\cA'" "\$'/x/ok\\12'" "\$'/x/ok\\q'"; do
     # shellcheck disable=SC1090
-    out=$(. "$VERDICTS"; _verdict_path_read "$wire"; printf 'rc=%s raw=%s shown=%s' "$?" "$_verdict_path_raw" "$_verdict_path_shown") 2>&1
+    out=$(exec 2>&1; . "$VERDICTS"; _verdict_path_read "$wire"; printf 'rc=%s raw=%s shown=%s' "$?" "$_verdict_path_raw" "$_verdict_path_shown")
     [ "$out" = 'rc=1 raw= shown=' ] || { printf 'wire %s gave: %s\n' "$wire" "$out" >&2; return 1; }
   done
 }
