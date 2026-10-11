@@ -39,15 +39,18 @@ assert_cut_verbatim() {
   cmp "$SCRATCH/tests/fixtures/$NAME.txt" "$BATS_TEST_TMPDIR/want"
 }
 
-@test "a null timestamp reads as no day and the cut still lands" {
+@test "a null timestamp reads as no day, so a dated entry does not take its call" {
   {
-    jq -nc '{timestamp: null, message: {content: [{type: "text", text: "x"}]}}'
-    matching_call
+    corpus_use m1 "2026-08-13T10:00:00Z" "git commit --amend --no-edit"
+    jq -nc --arg t "$(lock_text)" '{timestamp: null,
+      message: {content: [{type: "tool_result", tool_use_id: "m1", content: $t}]}}'
   } >"$CORPUS"
 
   run cut_fixture
 
-  assert_cut_verbatim
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"NOT FOUND: $NAME"* ]]
+  [ ! -e "$SCRATCH/tests/fixtures/$NAME.txt" ]
 }
 
 @test "a string tool_use input reads as no command and the cut still lands" {
