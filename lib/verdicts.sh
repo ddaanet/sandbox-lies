@@ -168,10 +168,12 @@ _verdict_path_read() {
       # body per escape was quadratic, and 30 s on 3873 bytes of CJK under
       # bash 3.2.0 in a UTF-8 locale. LC_ALL=C makes the split and every
       # index count bytes, which is all the wire form holds. The x sentinel
-      # keeps read from dropping a trailing empty field.
+      # keeps read from dropping a trailing empty field; -d '' lets a body
+      # holding a newline through whole, and its end-of-input status is not
+      # a failure.
       # shellcheck disable=SC2141 # the separator is the backslash itself
       local LC_ALL=C IFS=\\ parts n i part rest
-      read -r -a parts < <(printf '%s\n' "${body}x")
+      read -r -d '' -a parts < <(printf '%sx' "$body") || :
       n=${#parts[@]}
       _verdict_path_raw=${parts[0]}
       i=1

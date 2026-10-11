@@ -278,3 +278,14 @@ print("%.4f" % best)
   printf 't(N)=%s s t(4N)=%s s ratio=%s\n' "$t_n" "$t_4n" "$ratio" >&2
   python3 -I -c 'import sys; sys.exit(0 if float(sys.argv[1]) < 9 else 1)' "$ratio"
 }
+
+@test "_verdict_path_read keeps a literal newline inside the quoted body" {
+  local wire out
+  # %q writes \n as an escape, so a literal newline is a forged wire, which
+  # the grammar still admits. Stderr joins stdout: a set -u abort on an empty
+  # field list would show here as a diagnostic and a missing rc line.
+  wire="\$'/x/a"$'\n'"b\\\\c'"
+  # shellcheck disable=SC1090 # $VERDICTS is lib/verdicts.sh, resolved above
+  out=$(exec 2>&1; . "$VERDICTS"; _verdict_path_read "$wire"; printf 'rc=%s raw=%s' "$?" "$_verdict_path_raw")
+  [ "$out" = "rc=0 raw=/x/a"$'\n'"b\\c" ] || { printf 'gave: %s\n' "$out" >&2; return 1; }
+}
