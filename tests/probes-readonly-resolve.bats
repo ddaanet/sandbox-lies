@@ -85,6 +85,29 @@ path_line() {
   [ "${output%%$'\n'*}" = writable ]
 }
 
+# The cwd is the linked worktree's own top, so its .git entry is the first one
+# the walk meets. Walking from the cwd's parent would meet the main checkout's
+# .git instead and name main/d/f; the top's own d/f is the answer.
+@test "partial-checkout path joins onto a linked worktree's top when the cwd is that top" {
+  local main="$BATS_TEST_TMPDIR/main" wt text
+  wt="$main/wt"
+  git init -q -b main "$main"
+  git -C "$main" commit -q --allow-empty -m init
+  git -C "$main" worktree add -q "$wt" -b wtbranch
+  [ -f "$wt/.git" ]
+  mkdir -p "$wt/d" "$main/d"
+  : >"$wt/d/f"
+  : >"$main/d/f"
+
+  text=$(partial_checkout_unlink_error d/f)
+  run_probe_command probe_readonly_path false "$wt" 'just sync' "$text"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "$(path_line)" = "path=$wt/d/f" ]
+  [ "${output%%$'\n'*}" = writable ]
+}
+
 @test "partial-checkout path resolves through BSD grep and sed" {
   local repo="$BATS_TEST_TMPDIR/repo" text bsd="$BATS_TEST_TMPDIR/bsdtools"
   mkdir -p "$repo/.git" "$repo/sub" "$repo/d"
