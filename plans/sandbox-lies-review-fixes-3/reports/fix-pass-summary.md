@@ -53,3 +53,16 @@ limits, links, python compile, tests (426 bats passed, 0 failed).
 
 Minor findings outside the pins stay open (4, 7 to 11, 13 to 25, 29, 30), as scoped.
 Apple bash 3.2.57 and macOS remain unverified.
+
+Finding 7 (a `local LC_ALL=C` not undone on return under bash 3.2.0) now has
+two sites: fix 5 added one in `_verdict_path_read`, beside the one in
+`_verdict_has_control`. No behaviour changes, since the second function ran
+on every successful decode already.
+
+## Checked by the main session at HEAD
+
+`just precommit` exit 0 (426 bats). Hand run on bash 3.2.0 and 5.2.37 under
+`C` and `C.UTF-8`: a 3873-byte CJK path decodes to the original in under 1 s,
+and a 6001-character letter-then-`#` word tokenizes in 1 s. Timing tests over
+four runs: dense-over-plain ratio 0.89 to 1.24 against the bound 1.9; the
+decoder's 4N-over-N ratio 3.40 to 4.49 against the bound 9.
