@@ -159,10 +159,12 @@ plans/sandbox-lies-review-fixes-3`, range `2309ae6..HEAD`.
 
 Orchestrated per `reports/deliverable-review.md`. Reports `reports/fix-<id>-<role>.md`.
 
-- [ ] M1
-- [ ] Finding 12
-- [ ] M3
-- [ ] M2
-- [ ] Finding 5 (RED, test review, GREEN, code review)
-- [ ] Finding 6 (RED, test review, GREEN, code review)
-- [ ] Stage 2: 1.1/3, gate-fix a b f r v, 2.1/1, 6.1/2+6.1/3, 6.2/1+6.2/2
+- [x] M1
+- [x] Finding 12
+- [x] M3
+- [x] M2
+- [x] Finding 5 (RED, test review, GREEN, code review)
+- [x] Finding 6 (RED, test review, GREEN, code review)
+- [x] Stage 2: 1.1/3, gate-fix a b f r v, 2.1/1, 6.1/2+6.1/3, 6.2/1+6.2/2
+
+Fix pass complete; see `reports/fix-pass-summary.md`.
