@@ -65,6 +65,20 @@ one_call() {
   [[ "$output" == *"-> 000001.txt"* ]]
 }
 
+@test "aggregate counts skipped verdict lines by line, not by verdict" {
+  one_call 1
+  run eval_py extract --outdir "$OUTDIR"
+  [ "$status" -eq 0 ]
+  # the first unmatched line holds three verdicts and the second holds none:
+  # two lines, three verdicts, so the skipped count is 2 only if it counts lines
+  printf '000001.txt\tro\n999998.txt\tro rw ff\n999999.txt\t\n' >"$OUTDIR/verdicts.tsv"
+
+  run eval_py aggregate --outdir "$OUTDIR"
+
+  [ "$status" -eq 0 ]
+  grep -Fxq "verdict lines skipped, no manifest entry: 2" <<<"$output"
+}
+
 @test "extract reads a string tool_use input as no command" {
   {
     corpus_use_raw_input u0 "2026-09-01T00:00:00Z" '"ls"'
