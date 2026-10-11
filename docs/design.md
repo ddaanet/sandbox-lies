@@ -4,7 +4,9 @@
 hook's lock and `resume-lost` probe calls, the `tmpdir-unset`, `resume-lost` and
 `seccomp-init` verdicts, the `readonly-path` verdicts composed from their
 probe's facts, the `SessionStart` `jq` check, and the skill. Dogfooded
-2026-09-27 on CC 2.1.283, before the `resume-lost` probe.
+2026-09-27 on CC 2.1.283, before the `resume-lost` probe, the `printf %q`
+`path=` form with its decoder, and the worktree-top join; no later dogfood run
+is recorded.
 
 Changelog: [changelog.md](changelog.md). This document is a hub; `references/`
 holds one node per mechanism — per detector in
@@ -116,8 +118,8 @@ pinned by: `lib/verdicts.sh` · `tests/verdicts.bats` asserts length with no
 probe lines on stdin and runs `detect` over every verdict text expecting
 silence; `tests/verdicts-locks.bats` asserts the D-17 flag wording for the lock
 verdicts, `tests/verdicts-readonly.bats` each `readonly-path` composition and
-its length; `tests/hook-cap.bats` asserts the 2 KB cap with stub paragraphs.
-Done.
+its length, `tests/verdicts-readonly-path.bats` the `path=` decode and display
+rule; `tests/hook-cap.bats` asserts the 2 KB cap with stub paragraphs. Done.
 
 **FR-7 — Detector catalogue.** Ten detectors, in
 [references/detectors.md](references/detectors.md): five measured and shipped
@@ -153,7 +155,8 @@ zellij section, whose detector stays a candidate under D-15. One residue
 survives as prose: the `!`-expansion phantom-listing rule, folded into the
 existing phantom-dotfile bullet of `memory/ddaanet/shared-claude.md`. Where ·
 pinned by: the tier's index, and the translation map in
-`references/detectors.md` that audits every paragraph. Done.
+`references/detectors.md` that audits every paragraph. Done (prose): no test or
+gate re-checks it.
 
 **FR-11 — Self-quiet.** No live file in this repository fires a detector when
 read back. Source files build each diagnostic literal from fragments so the
@@ -203,10 +206,11 @@ probe, `tests/probes-edges.bats` those two probes, `tests/check-jq.bats` the
 and `tests/probes-resume-tree.bats` its other half (no transcript opened). Done
 (read scope: `resume-lost`'s pinned, the rest review, not gated).
 
-**NFR-5 — Size and links.** Every document and script is at most 400 lines (a
-`SKILL.md` at most 200), and every inline relative link resolves (reference
-style unchecked). Where · pinned by: `scripts/check-line-limits.sh`,
-`scripts/check-links.sh` · both run in `just precommit`. Done.
+**NFR-5 — Size and links.** Every document, script, awk, TOML or JSON file and
+`justfile` is at most 400 lines (a `SKILL.md` at most 200), and every inline
+relative link resolves (reference style unchecked). Where · pinned by:
+`scripts/check-line-limits.sh`, `scripts/check-links.sh` · both run in
+`just precommit`. Done.
 
 ## Architecture
 

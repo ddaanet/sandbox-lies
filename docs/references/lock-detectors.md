@@ -139,7 +139,10 @@ sandboxed write fails on a bind-mount, not on a file.
 leak clause, which concerns `index.lock` only. In `mask`, when the probe's
 `path=` is a `.claude/settings.json.lock`, the act "Write
 `.claude/settings.json` through the `update-config` skill" takes the place of
-*Re-run*, under either flag.
+*Re-run*, under either flag. The suffix test runs on the decoded value of
+`path=`, not on the wire form (both forms are defined in
+[readonly-path.md](readonly-path.md), Probe); a value that decodes to no path
+keeps *Re-run*.
 
 - `mask` — The `config.lock` behind this error is a sandbox artefact and the
   repository is healthy. *Re-run*. ·

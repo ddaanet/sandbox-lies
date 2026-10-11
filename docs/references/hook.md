@@ -102,7 +102,10 @@ the `cwd`, and with no `cwd` from the probe's working directory, never `/`.
 Phantom masks sit under the sandboxed call's working directory: the session's
 project root, or a subdirectory a persisted `cd` left the Bash tool in (seen on
 CC 2.1.281). The `phantom-*` detectors read text and run no probe; their verdict
-names no location, so it holds under any working directory.
+names no location, so it holds under any working directory. The `readonly-path`
+probe resolves a relative path the same way, except that git's partial-checkout
+refusals join onto the worktree top; that walk is in
+[readonly-path.md](readonly-path.md), Probe.
 
 **Failures arrive on `PostToolUseFailure` (D-13).** In the CC 2.1.280 bundle the
 Bash tool raises on a non-zero exit, and the tool-failure path dispatches
