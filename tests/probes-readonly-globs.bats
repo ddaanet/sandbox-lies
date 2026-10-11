@@ -183,3 +183,28 @@ probe_for() {
   [ "${output%%$'\n'*}" = writable ]
   [ "$(grep '^readfile=' <<<"$output")" = readfile=x.err ]
 }
+
+# _readonly_tokenize joins its pending run into the word when the run reaches
+# 256 characters, at the top of the read loop. A 600-character unquoted word
+# crosses that flush twice; its content is the consecutive five-digit numbers
+# 00001 to 00120, so a run dropped, repeated or reordered at a flush changes
+# the exact word, not just its length.
+@test "an unquoted word past the 256-character flush keeps its content" {
+  local word='' i
+  for i in $(seq 1 120); do
+    word="$word$(printf '%05d' "$i")"
+  done
+  [ "${#word}" -eq 600 ]
+
+  _readonly_tokenize "cat $word x.log"
+
+  # shellcheck disable=SC2154 # _readonly_tokenize sets both, sourced in setup
+  local tokens=("${_readonly_tokens[@]}") cut=$_readonly_tokens_cut
+
+  [ "${#tokens[@]}" -eq 3 ]
+  [ "${tokens[0]}" = wcat ]
+  [ "${#tokens[1]}" -eq 601 ]
+  [ "${tokens[1]}" = "w$word" ]
+  [ "${tokens[2]}" = wx.log ]
+  [ "$cut" -eq 0 ]
+}
