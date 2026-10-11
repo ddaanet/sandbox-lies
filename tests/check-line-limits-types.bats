@@ -134,6 +134,28 @@ oversized-file: sub/justfile: 401 lines > 400" ]
   [ -z "$stderr" ]
 }
 
+@test "plans/ and plugin-dev/ are out of the awk, TOML, JSON and justfile cap" {
+  local dir top name failed=""
+  for top in plans plugin-dev; do
+    for name in x.awk x.toml x.json justfile sub/justfile; do
+      dir=$(make_fixture_root "excl-${top}-${name//\//-}")
+      mkdir -p "$dir/$top/sub"
+      # One type per root, so the failure names it. Over the cap, under a
+      # root-level exclusion: an exclusion narrowed to the script types
+      # leaves this file reported.
+      seq 401 >"$dir/$top/$name"
+      git -C "$dir" add "$top/$name"
+
+      run --separate-stderr "$SCRIPT" "$dir"
+      if [ "$status" -ne 0 ] || [ -n "$output" ] || [ -n "$stderr" ]; then
+        failed="$failed $top/$name"
+      fi
+    done
+  done
+  # Every type is run before the verdict, so the message names all it caps.
+  [ -z "$failed" ] || { echo "capped despite exclusion:$failed" >&2; return 1; }
+}
+
 @test "oversized script survives BSD mktemp" {
   local dir bsd
   dir=$(make_fixture_root bsd-mktemp-script)
