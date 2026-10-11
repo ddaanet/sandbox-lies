@@ -361,3 +361,11 @@ The `$'...'` decode in `_verdict_path_read` was quadratic in the escapes: a
 3873-byte CJK path took 31.9 s under bash 3.2.0 in a UTF-8 locale, past the
 hook's 10 s. It now splits the body once on its backslashes, under `LC_ALL=C`,
 and takes 0.4 s there (0.3 s on bash 5.2); the output is unchanged.
+
+## 2026-10-11 — tokenizer no longer copies the run on # and >&
+
+`_readonly_tokenize` joined its pending run into the word on every unquoted `#`
+and every `&`, so a 16384-character word of `#` or `>&` was quadratic: 66.7 s
+under bash 3.2.0 in a UTF-8 locale, past the hook's 10 s. The word's emptiness
+and last character are now tracked apart from it, so the same word takes 3.7 s,
+like a plain one, and the tokens are unchanged.

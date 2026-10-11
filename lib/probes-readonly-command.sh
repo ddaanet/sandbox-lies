@@ -26,22 +26,30 @@ set -u
 # Characters are read one at a time from a pipe because ${cmd:i:1} rescans
 # the string on every call (a 40 KB command took 20 s that way), and each
 # lands in a pending run of about 256 characters (257 after a kept backslash
-# pair) that joins `word` when it fills and before any read of `word`, so no
-# copy grows with the word: one 16384-character word took 1.2 s on bash 5.2
-# and 3.5 s on 3.2.0 (31.7 s before), and 1600 eight-character words
-# (14400 characters) 1.1 s and 2.1 s. Residuals: $'...', $( ), backticks,
+# pair) that joins `word` only when it fills or the word ends. A # or & never
+# joins it: `invalue` stands for word's emptiness and `wlast` for its
+# last character. The one copy that grows with the word is that 256-character
+# join (at most 64 per word, under the 16384 cap), so a # or > & dense word costs
+# what a plain one does: 16384 characters of either took 1.3 s on bash 5.2 and
+# 3.7 s on 3.2.0 in C.UTF-8, 4.6 s of >& (a letter then #: 5.5 s and 66.7 s
+# before).
+# Residuals: $'...', $( ), backticks,
 # subshells and braces are not parsed, so their contents read as words of
 # the enclosing command; any << ends the scan at its line, arithmetic's
 # included; a reader behind a cd, or a reader or git behind a variable
 # assignment or another prefix word, is not recognised (readonly-path.md).
 _readonly_tokenize() {
     local ch word='' run='' invalue=0 quote='' esc=0 lts=0 heredoc=0 sep
+    local wlast='' last
     local nl=$'\n' tab=$'\t' max=16384
     _readonly_tokens=()
     _readonly_tokens_cut=0
     [ "${#1}" -le "$max" ] || _readonly_tokens_cut=1
     while IFS= read -r -d '' -n 1 ch; do
-        [ "${#run}" -lt 256 ] || { word="$word$run"; run=''; }
+        if [ "${#run}" -ge 256 ]; then
+            wlast="${run: -1}"
+            word="$word$run" run=''
+        fi
         # esc 1: after an unquoted backslash; 2: after one inside "...",
         # which only escapes " \ $ ` and newline.
         if [ "$esc" -eq 1 ]; then
@@ -89,8 +97,9 @@ _readonly_tokenize() {
             "'" | '"') quote="$ch" invalue=1 ;;
             \\) esc=1 ;;
             '#')
-                word="$word$run" run=''
-                if [ -z "$word" ] && [ "$invalue" -eq 0 ]; then
+                # invalue 0 means nothing has joined the word or the run:
+                # every character they hold set invalue.
+                if [ "$invalue" -eq 0 ]; then
                     quote='#'
                 else
                     run="$run$ch"
@@ -100,9 +109,10 @@ _readonly_tokenize() {
             "$nl") sep=line ;;
             '|' | ';') sep=segment ;;
             '&')
-                word="$word$run" run=''
-                case "$word" in
-                    *'>' | *'<') run="$run$ch" ;;
+                last="${run: -1}"
+                [ -n "$run" ] || last="$wlast"
+                case "$last" in
+                    '>' | '<') run="$run$ch" ;;
                     *) sep=segment ;;
                 esac
                 ;;
@@ -113,7 +123,7 @@ _readonly_tokenize() {
         if [ -n "$word" ] || [ "$invalue" -eq 1 ]; then
             _readonly_tokens+=("w$word")
         fi
-        word='' invalue=0
+        word='' invalue=0 wlast=''
         [ "$sep" != word ] || continue
         _readonly_tokens+=('|')
         if [ "$sep" = line ] && [ "$heredoc" -eq 1 ]; then
