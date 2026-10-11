@@ -309,3 +309,46 @@ directory cannot be listed) reads `unknown` rather than `lost`, a caller's
 `noglob` no longer turns every id missing, the refusal line shape is held once
 and shared with the matcher, the transcript is pinned as never opened, and the
 `readfile=` skip covers a brace expansion.
+
+## 2026-10-11 — review fixes 3: `path=` in `printf %q` form
+
+Every `path=` value the probes print is now `printf %q` of the resolved path,
+pinned to the `C` locale so a non-ASCII byte is octal under any session locale.
+Only a newline in the payload `cwd` had triggered the old guards, which dropped
+the line (lock probes) or degraded the outcome to `nopath` (`readonly-path`);
+both are gone, and such a path gets its real outcome with one `$'…'` line. The
+verdict decodes the value without eval: the backslash form through `read`
+without `-r`, the `$'…'` form through a grammar check and `printf %b` on an
+argument, never a format; any other value reads as no path. The decoded path is
+shown raw unless it holds a control byte, then the wire form. The `readfile=`,
+`match=` and `target=` newline skips stay, since each loses one optional fact
+and not the path. A partial-checkout refusal's relative path now joins onto the
+worktree top, the nearest ancestor holding a `.git` entry, when the matching
+line alone is git's refusal; it had joined onto the `cwd` and could read
+`readonly`, which says unsandboxing will not help. `git -C` remains a residual.
+The phantom verdicts no longer name the project root, which a persisted `cd`
+made false. The `readonly-path` command scan's tokenizer appends to a bounded
+pending run instead of copying the growing word: one 16384-character word took
+31.7 s on bash 3.2.0 against the hook's 10 s timeout, and now takes 3.5 s.
+
+Test side: `utf8_locale` moved into `tests/helpers/locale.bash` and
+`probes.bats` uses it and `index_mtime` where it had a literal locale and GNU
+`stat`; written portable by construction, unverified on a Mac. The line cap now
+covers `*.awk`, `*.toml`, `justfile` and `*.json` at any depth outside `plans/`,
+`plugin-dev/` and `tests/fixtures/`. The Python tools gained suites,
+`tests/corpus-eval.bats` and `tests/extract-fixtures.bats`, and fixes:
+`corpus-eval.py` empties `survivors/` and removes `verdicts.tsv` before
+extracting, skips and counts a verdict line with no manifest entry, and reads a
+non-dict `input` as no command; `extract-fixtures.py` reads a `null` timestamp
+as no day and a non-dict `input` as no command. The review added three guards,
+each pinned by a case: a non-dict JSONL line in both tools, and a `null` text
+item in a list-form tool result.
+
+Closed, not built. The five `nopath` shapes (`tee`, `sed`'s temporary file,
+git's busy `.git/config`, a dotfile removal, `cp` with an empty operand): a path
+would not change the act in any recorded case, since each extractable one is
+writable outside the sandbox and `writable` gives the re-run `nopath` gives. The
+Item 8.2 remainder: `memory/ddaanet/sandbox-effects.md` stays, as the home of
+the zellij section, whose detector cannot ship under D-15 with 0 corpus hits,
+and of the phantom-dotfile leak. FR-10 now says so and is Done, and the
+translation map no longer promises a deletion.
