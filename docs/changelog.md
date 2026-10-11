@@ -381,3 +381,14 @@ bash 3.2.0 does not undo a `local LC_ALL=C` and left the calling shell in the C
 locale. `_verdict_path_read` now reads `$''`, a relative `$'...'` value and a
 `/` value ending in a lone backslash as no path, as the encoder never writes
 them, so the paragraph no longer opens with an empty code span.
+
+## 2026-10-11 — partial-checkout gate anchored, trailing newline and empty cwd
+
+The join onto the worktree top in `probe_readonly_path` now fires only when the
+matching line opens with git's own message (`error: unable to unlink old`,
+`error: unable to create file` or `fatal: cannot create directory at`), not on
+any line holding the phrase, so a cp refusal naming such a path joins onto its
+cwd. The top's name keeps a trailing newline the `$(...)` walk used to strip,
+and an empty cwd starts the walk at the probe's working directory rather than
+joining onto it unwalked. `partial=1` still reads the phrase anywhere in the
+text.

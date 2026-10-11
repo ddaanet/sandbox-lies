@@ -197,3 +197,132 @@ path_line() {
   [ "$status" -eq 0 ]
   [ "${output%%$'\n'*}" = nopath ]
 }
+
+# phrase_path <n> — a relative path whose name holds the n-th of git's three
+# partial-checkout phrases, built from fragments (self-quiet, FR-11).
+phrase_path() {
+  local phrase
+  case "$1" in
+    1) phrase='unable to unlink'; phrase="$phrase old" ;;
+    2) phrase='unable to create'; phrase="$phrase file" ;;
+    3) phrase='cannot create'; phrase="$phrase directory at" ;;
+  esac
+  printf '%s\n' "$phrase/x"
+}
+
+# A cp refusal is not git's: its line opens with the tool name, so a phrase
+# inside the quoted path does not make it a partial-checkout line. The cwd sub
+# holds the named directory, the worktree top does not: a join onto the top
+# names a path whose parent is missing and reads readonly; the cwd join reads
+# writable. Nothing but the join's base moves that outcome and the path line.
+# Each of the three phrases is tried, so a gate anchored on one prefix only
+# still fails on the others.
+@test "a cp refusal whose path holds a partial-checkout phrase still joins onto the cwd" {
+  local repo="$BATS_TEST_TMPDIR/repo" text rel expected n
+  for n in 1 2 3; do
+    rm -rf "$repo"
+    rel=$(phrase_path "$n")
+    mkdir -p "$repo/.git" "$repo/sub/${rel%/*}"
+    : >"$repo/sub/$rel"
+    text=$(readonly_path_text fire-readonly-path-cp-tmp "'$rel'")
+    LC_ALL=C printf -v expected 'path=%q' "$repo/sub/$rel"
+
+    run_probe_command probe_readonly_path false "$repo/sub" "cp x '$rel'" "$text"
+
+    [ "$status" -eq 0 ]
+    [ -z "$stderr" ]
+    [ "$(path_line)" = "$expected" ]
+    [ "${output%%$'\n'*}" = writable ]
+  done
+}
+
+# The neighbour: git's own line, same phrase at its prefix, still joins onto
+# the worktree top (the cwd holds no d/f).
+@test "git's own partial-checkout line still joins onto the top beside a phrase-in-path cp case" {
+  local repo="$BATS_TEST_TMPDIR/repo" text
+  mkdir -p "$repo/.git" "$repo/sub" "$repo/d"
+  : >"$repo/d/f"
+  text=$(partial_checkout_unlink_error d/f)
+
+  run_probe_command probe_readonly_path false "$repo/sub" 'just sync' "$text"
+
+  [ "$(path_line)" = "path=$repo/d/f" ]
+  [ "${output%%$'\n'*}" = writable ]
+}
+
+# The top's name ends in a newline: a command substitution around the walk
+# strips it, so the join names a sibling directory that does not exist (read
+# as readonly). The real top holds d/f, so only the lost newline moves the
+# outcome and the path line.
+@test "a worktree top whose name ends in a newline keeps it in the joined path" {
+  local top="$BATS_TEST_TMPDIR/top"$'\n' text expected
+  mkdir -p "$top/.git" "$top/sub" "$top/d"
+  : >"$top/d/f"
+  text=$(partial_checkout_unlink_error d/f)
+  LC_ALL=C printf -v expected 'path=%q' "$top/d/f"
+
+  run_probe_command probe_readonly_path false "$top/sub" 'just sync' "$text"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "$(path_line)" = "$expected" ]
+  [ "${output%%$'\n'*}" = writable ]
+}
+
+# An empty cwd stands for the probe's own working directory, as
+# _probe_readonly_resolve documents (outline section B has no empty-cwd rule of
+# its own, so the walk applies from that directory like any other cwd); the worktree top is then the nearest .git
+# above that directory. Joining onto the bare working directory names sub/d/f,
+# which exists too, so the path line tells the joins apart.
+@test "an empty cwd walks from the probe's working directory to the worktree top" {
+  local repo="$BATS_TEST_TMPDIR/repo" text
+  mkdir -p "$repo/.git" "$repo/sub/d" "$repo/d"
+  : >"$repo/sub/d/f"
+  : >"$repo/d/f"
+  text=$(partial_checkout_unlink_error d/f)
+
+  cd "$repo/sub"
+  run_probe_command probe_readonly_path false "" 'just sync' "$text"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "$(path_line)" = "path=$repo/d/f" ]
+  [ "${output%%$'\n'*}" = writable ]
+}
+
+# Outline section B: a relative path joins onto `cwd` unless the line is git's
+# partial-checkout text, and "with no .git ancestor it joins onto cwd as today".
+# An empty cwd stands for $PWD (_probe_readonly_resolve), so a cp refusal from
+# an empty cwd joins onto $PWD itself, not onto the worktree top above it.
+@test "an empty cwd leaves a cp refusal joined onto the probe's working directory" {
+  local repo="$BATS_TEST_TMPDIR/repo" text
+  mkdir -p "$repo/.git" "$repo/sub/d" "$repo/d"
+  : >"$repo/sub/d/f"
+  : >"$repo/d/f"
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'d/f'")
+
+  cd "$repo/sub"
+  run_probe_command probe_readonly_path false "" 'cp x d/f' "$text"
+
+  [ "$status" -eq 0 ]
+  [ "$(path_line)" = "path=$repo/sub/d/f" ]
+  [ "${output%%$'\n'*}" = writable ]
+}
+
+# The outline's fallback for no .git ancestor holds for an empty cwd too: the
+# join lands on the probe's working directory.
+@test "an empty cwd with no .git above the working directory joins onto it" {
+  local plain="$BATS_TEST_TMPDIR/plain" text
+  mkdir -p "$plain/sub/d" "$plain/d"
+  : >"$plain/sub/d/f"
+  : >"$plain/d/f"
+  assert_no_git_above "$plain/sub"
+  text=$(partial_checkout_unlink_error d/f)
+
+  cd "$plain/sub"
+  run_probe_command probe_readonly_path false "" 'just sync' "$text"
+
+  [ "$status" -eq 0 ]
+  [ "$(path_line)" = "path=$plain/sub/d/f" ]
+  [ "${output%%$'\n'*}" = writable ]
+}

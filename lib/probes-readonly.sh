@@ -42,7 +42,7 @@ unset _probes_lib_dir
 # all is the candidate's flag policy (docs/references/readonly-path.md),
 # decided before the probe runs, not inside it.
 probe_readonly_path() {
-    local cwd="${2-}" command="${3-}" text line base path target outcome
+    local cwd="${2-}" command="${3-}" text line base start top path target outcome
     text=$(cat)
     # grep's 1 on a text with no matching line is caught on its own
     # assignment, and the path pipeline ends in sed, which exits 0, so a
@@ -51,10 +51,17 @@ probe_readonly_path() {
     path=$(printf '%s\n' "$line" | _probe_readonly_path_from_line)
     # A partial-checkout refusal names its path relative to the worktree top;
     # the matching line alone decides, so another such line in the text does
-    # not move a cp refusal's join (design section B).
+    # not move a cp refusal's join (design section B). The walk starts at the
+    # probe's working directory for an empty cwd, as the unwalked join does.
+    # $(...) strips every trailing newline, so a top whose name ends in one
+    # lost it. The walk's own newline and a trailing x are stripped by hand
+    # instead: the output ends in "\nx", and removing those two characters
+    # leaves the name exactly as the walk printed it.
     base="$cwd"
-    if _readonly_partial_checkout_text "$line"; then
-        base=$(_readonly_git_dir "$cwd") || base="$cwd"
+    if _probe_partial_checkout_line "$line"; then
+        start="$cwd"
+        [ -n "$start" ] || start="$PWD"
+        top=$(_readonly_git_dir "$start" && printf x) && base="${top%?x}"
     fi
     path=$(_probe_readonly_resolve "$path" "$base")
     if [ -z "$path" ]; then
@@ -98,6 +105,32 @@ _probe_path_line() {
         LC_ALL=C printf -v quoted %q "$1"
         printf 'path=%s\n' "$quoted"
     fi
+}
+
+# _probe_partial_checkout_line <line> — true when <line> opens with one of git's
+# three partial-checkout messages, each with its own prefix ("error: " for the
+# two unable-to lines, "fatal: " for the directory one). Anchored, so a cp or
+# mv refusal naming a path that holds one of the phrases does not qualify. The
+# phrases are built from fragments, as _readonly_partial_checkout_text builds
+# them, so this file holds none whole.
+_probe_partial_checkout_line() {
+    local line="$1" needle
+    needle='error: unable to unlink'
+    needle="$needle old"
+    case "$line" in
+        "$needle"*) return 0 ;;
+    esac
+    needle='error: unable to create'
+    needle="$needle file"
+    case "$line" in
+        "$needle"*) return 0 ;;
+    esac
+    needle='fatal: cannot create'
+    needle="$needle directory at"
+    case "$line" in
+        "$needle"*) return 0 ;;
+    esac
+    return 1
 }
 
 # _probe_readonly_resolve <path> <cwd> — joins a relative <path> onto <cwd>
