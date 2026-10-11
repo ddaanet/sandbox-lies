@@ -29,30 +29,31 @@ Expected residual: a path not writable outside the sandbox either.
 `printf %q` form (pinned to the `C` locale, so a non-ASCII byte is octal);
 `test -w` on it, or on its parent when it does not exist. The printed value is
 the wire form, and it takes one of two shapes. The backslash form puts a
-backslash before each blank or shell-special byte (`/tmp/a\ b`). The `$'…'` form
-wraps the whole path in `$'` and `'` and spells each control or non-ASCII byte
-as an escape (`\n`, `\001`, `\303`); it is printed when the path holds such a
-byte. The path is the first single-quoted segment, straight or curly as a UTF-8
-locale prints it, except in `mv`'s inter-device form, whose path after `to`
-names the target. Elsewhere a `to` changes nothing: `mv`'s other two-path
-messages give the first quoted path, the source. Unquoted, it is read in four
-fixed forms only, each right after the tool's own prefix: bash's
-`line N: <path>:`, dash's `N: cannot create <path>:`, git's
-`error: could not lock config file <path>:` and `fatal: cannot mkdir <path>:`.
-Any other unquoted shape is `nopath`. An unquoted path runs to the line's last
-colon and space, since the kernel message after it holds none, so a path holding
-blanks, `: ` or its form's own words is read whole. A relative path joins onto
-the payload `cwd`, except for git's partial-checkout refusals, which name the
-path from the worktree's top-level. Only when the matching line itself is a
-partial-checkout refusal, the path joins onto the worktree top: the nearest
-ancestor of `cwd`, itself included, holding a `.git` entry, a file (linked
-worktree) or a directory. With no such ancestor it joins onto `cwd`; another
-partial-checkout line elsewhere in the text moves nothing. Residuals: a quoted
-path holding its own closing quote, which the tool prints escaped, is cut at
-that quote or yields `nopath`; a curly-quoted or unquoted path holding two
-straight quotes is read as what lies between them; under `git -C` a relative
-path names the `-C` directory's tree, not the `cwd`'s, so it is wrong, and one
-whose parent is missing reads `readonly`, which carries no merge clause.
+backslash before each blank or shell-special byte (`/tmp/a\ b`), and none before
+a plain path. The `$'…'` form wraps the whole path in `$'` and `'` and spells
+each control or non-ASCII byte as an escape (`\n`, `\001`, `\303`); it is
+printed when the path holds such a byte. The path is the first single-quoted
+segment, straight or curly as a UTF-8 locale prints it, except in `mv`'s
+inter-device form, whose path after `to` names the target. Elsewhere a `to`
+changes nothing: `mv`'s other two-path messages give the first quoted path, the
+source. Unquoted, it is read in four fixed forms only, each right after the
+tool's own prefix: bash's `line N: <path>:`, dash's `N: cannot create <path>:`,
+git's `error: could not lock config file <path>:` and
+`fatal: cannot mkdir <path>:`. Any other unquoted shape is `nopath`. An unquoted
+path runs to the line's last colon and space, since the kernel message after it
+holds none, so a path holding blanks, `: ` or its form's own words is read
+whole. A relative path joins onto the payload `cwd`, except for git's
+partial-checkout refusals, which name the path from the worktree's top-level.
+Only when the matching line itself is a partial-checkout refusal, the path joins
+onto the worktree top: the nearest ancestor of `cwd`, itself included, holding a
+`.git` entry, a file (linked worktree) or a directory. With no such ancestor it
+joins onto `cwd`; another partial-checkout line elsewhere in the text moves
+nothing. Residuals: a quoted path holding its own closing quote, which the tool
+prints escaped, is cut at that quote or yields `nopath`; a curly-quoted or
+unquoted path holding two straight quotes is read as what lies between them;
+under `git -C` a relative path names the `-C` directory's tree, not the `cwd`'s,
+so it is wrong, and one whose parent is missing reads `readonly`, which carries
+no merge clause.
 
 Five `nopath` shapes stay unextracted; together they are 11 of the 195 hits of
 the 2026-09-27 dogfood: `tee`'s refusal of a file under `/tmp`; `sed`'s
