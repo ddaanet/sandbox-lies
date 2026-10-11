@@ -262,8 +262,8 @@ _verdict_has_control() {
 # so blanks, `&`, `%`, `\1` or a leading `-` pass through byte-exact; a
 # backtick in it closes the code span early, bytes intact. The exception is a
 # path holding a control byte: the line shows the probe's wire form, not the
-# decoded bytes (_verdict_path_read). nopath has no
-# path= line under the contract and opens with its own sentence.
+# decoded bytes (_verdict_path_read). nopath has no path= line under the
+# contract and opens with its own sentence.
 #
 # writable and nopath then carry the tail readonly-path.md's readonly-path
 # Verdicts compose from the probe's other stdin facts (readfile=, merge=1,
