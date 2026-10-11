@@ -27,17 +27,18 @@ set -u
 # the string on every call (a 40 KB command took 20 s that way), and each
 # lands in a pending run of about 256 characters (257 after a kept backslash
 # pair) that joins `word` only when it fills or the word ends. A # or & never
-# joins it: `invalue` stands for word's emptiness and `wlast` for its
-# last character. The one copy that grows with the word is that 256-character
-# join (at most 64 per word, under the 16384 cap), so a # or > & dense word costs
-# what a plain one does: 16384 characters of either took 1.3 s on bash 5.2 and
-# 3.7 s on 3.2.0 in C.UTF-8, 4.6 s of >& (a letter then #: 5.5 s and 66.7 s
-# before).
-# Residuals: $'...', $( ), backticks,
-# subshells and braces are not parsed, so their contents read as words of
-# the enclosing command; any << ends the scan at its line, arithmetic's
-# included; a reader behind a cd, or a reader or git behind a variable
-# assignment or another prefix word, is not recognised (readonly-path.md).
+# joins it: `invalue` stands for word's emptiness (0 means word and run are
+# both empty) and `wlast` for the last character of what has joined, read only
+# while the run is empty. The one copy that grows with the word is the
+# 256-character join (at most 64 per word, under the 16384 cap), so a word
+# dense in # or >& costs what a plain one does: 16384 characters of a letter
+# then # took 1.3 s on bash 5.2 and 3.7 s on 3.2.0 in C.UTF-8 (5.5 s and 66.7 s
+# before), and of >& 1.7 s and 4.6 s (3.9 s and 38.5 s before).
+# Residuals: $'...', $( ), backticks, subshells and braces are not parsed, so
+# their contents read as words of the enclosing command; any << ends the scan
+# at its line, arithmetic's included; a reader behind a cd, or a reader or git
+# behind a variable assignment or another prefix word, is not recognised
+# (readonly-path.md).
 _readonly_tokenize() {
     local ch word='' run='' invalue=0 quote='' esc=0 lts=0 heredoc=0 sep
     local wlast='' last
