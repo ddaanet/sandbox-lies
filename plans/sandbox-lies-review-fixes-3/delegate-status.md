@@ -87,9 +87,18 @@ GREEN of a pair runs Haiku only where both items are Haiku rows.
       5b9ef00), code review Sonnet `item-6-1-code-review.md` (3 survivors, all
       in guards the reviewer added), Haiku pin `item-6-1-pin.md` (commit
       c2e7a81), Sonnet re-check `item-6-1-pin-review.md`
-- [ ] Items 7.1 to 7.7: docs dispatch (Sonnet) plus review next
+- [x] Items 7.1 to 7.7: docs dispatch and review done (`item-7-docs.md`,
+      `item-7-docs-review.md`)
+- [x] Review gate (`review-code.md`, `review-design.md`,
+      `review-code-decoder.md`), triage, tdd audit (`tdd-audit.md`), run
+      summary (`run-summary.md`). Build complete; the deliverable review is next
+      and is not part of this run.
 
 ## Resume
+
+**The build is complete (see `reports/run-summary.md`); nothing below is
+pending except the deliverable review, which is not part of the build.** The
+text that follows is the historical state at the earlier pause.
 
 Stopped at my human partner's request ("enough for now"). Last commit:
 `1c5fd42` (Item 1.2 code-review fixes and Phase 1 boundary review). Done:
