@@ -184,10 +184,10 @@ _verdict_has_control() {
 
 # `verdict_readonly_path <outcome>` — writable and readonly open with the
 # probe's path= stdin line in backticks, or with "The path" when that line is
-# missing or empty, which the probe contract rules out. The path is joined by
-# plain expansion — never a printf format, sed or eval — so blanks, `&`, `%`,
-# `\1` or a leading `-` pass through byte-exact; a backtick in it closes the
-# code span early, bytes intact. nopath has no path= line under the contract
+# missing, empty or malformed. The decoded path (_verdict_path_read) is joined
+# by plain expansion — never eval; `%b` decodes an argument, never a format —
+# so blanks, `&`, `%`, `\1` or a leading `-` pass through byte-exact; a
+# backtick in it closes the code span early, bytes intact. nopath has no path= line under the contract
 # and opens with its own sentence.
 #
 # writable and nopath then carry the tail readonly-path.md's readonly-path

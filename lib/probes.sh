@@ -9,8 +9,9 @@
 # - probe_readonly_path (lib/probes-readonly.sh): path= (none on nopath),
 #   then on writable and nopath readfile=, merge=, partial=, target=, match=;
 # - probe_resume_lost: none. Its outcome is lost, found or unknown.
-# path= is left out when the resolved path holds a newline, which would split
-# the line and forge key lines.
+# path= is in printf %q form (_probe_path_line, lib/probes-readonly.sh), so no
+# byte of the path splits the line or forges a key line; an empty path prints
+# no path= line.
 #
 # set -u as in lib/matchers.sh and lib/verdicts.sh. hooks/annotate.sh sets it
 # before sourcing those; bats does not, so setting it here keeps an unset
@@ -107,8 +108,8 @@ probe_config_lock() {
 # holder, size and mtime, then the outcome and its key=value lines. Shared by
 # probe_git_lock and probe_config_lock, which differ only in how <path> is
 # extracted from their own error shape. A <path> holding a newline (a relative
-# path joined onto a newline-bearing cwd) decides the outcome as any other,
-# but its path= line is left out: printed, it would split and forge key lines.
+# path joined onto a newline-bearing cwd) decides the outcome as any other and
+# prints as one $'...' path= line.
 _probe_lock_at() {
     local flag="$1" path="$2" pids holder_status=0 holder_pid mtime bytes=''
     local now age outcome

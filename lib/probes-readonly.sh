@@ -3,7 +3,8 @@
 # readonly-path candidate (docs/design.md FR-4): reads the Bash tool result text
 # on stdin, takes the sandbox flag as $1, the payload cwd as $2 and
 # tool_input.command as $3, and prints an outcome token on its first line, then
-# a path= line under writable and readonly only (nopath prints none), then —
+# a path= line (printf %q form) under writable and readonly only (nopath
+# prints none), then —
 # under writable and nopath only — the
 # readfile=/merge=1/partial=1/target=/match= facts readonly-path.md's
 # readonly-path Probe facts table describes; exit 0. Split out of lib/probes.sh
@@ -35,8 +36,8 @@ unset _probes_lib_dir
 
 # probe_readonly_path <flag> <cwd> <command> — A-3 contract for
 # readonly-path: line 1 `writable`, `readonly` or `nopath` (no path
-# extracted, or the resolved path holds a newline, which is never
-# printed), then `path=` under `writable` and `readonly` only, then —
+# extracted), then `path=` in printf %q form under `writable` and
+# `readonly` only, then —
 # under `writable` and `nopath` only — the facts _readonly_print_facts
 # derives from the result text and <command>. <flag> is part of the
 # interface but unread here: whether the hook calls this probe at all is
