@@ -123,9 +123,10 @@ one_call() {
   one_call 1
   run eval_py extract --outdir "$OUTDIR"
   [ "$status" -eq 0 ]
-  # a hand-edited TSV: one good line and one line with no tab. The matched
-  # file's 1 and the one malformed line are told apart by the exact line
-  printf '000001.txt\tro\nnotabhere\n' >"$OUTDIR/verdicts.tsv"
+  # a hand-edited TSV: one good line and one line with no tab that names the
+  # same manifest file. Only the missing tab can make the second one skipped,
+  # and the exact line tells it from the good line, which is not counted
+  printf '000001.txt\tro\n000001.txt\n' >"$OUTDIR/verdicts.tsv"
 
   run -0 --separate-stderr eval_py aggregate --outdir "$OUTDIR"
 
