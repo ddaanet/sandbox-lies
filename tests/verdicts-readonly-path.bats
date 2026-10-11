@@ -194,3 +194,38 @@ stubbed_verdict() {
   stubbed=$(stubbed_verdict writable '/x/a\ b\&c/f' | sed -n '1p')
   [ "$stubbed" = "\`/x/a b&c/f\` is writable outside the sandbox, whose allowlist refused it.$(readonly_path_tail)" ]
 }
+
+@test "_verdict_path_read keeps the octal digit that follows a control-byte escape" {
+  local real wire result eacute=$'\303\251'
+  # %q writes \001-\037 as \0NN, and printf %b reads \0 plus up to three more
+  # digits: a digit after the escape (here 6 after \004, which %b reads as
+  # \0046, a literal &) must stay a separate character. The last path holds a
+  # literal backslash and 0046, next to a UTF-8 byte so %q uses the $'...'
+  # form.
+  for real in "/x/a"$'\004'"6/f" "/x/a"$'\001'"7/f" "/x/a"$'\037'"0/f" \
+    "/x/caf${eacute}1/f" "/x/caf${eacute}\\0046/f"; do
+    wire=$(LC_ALL=C printf '%q' "$real")
+    [ "${wire#\$\'}" != "$wire" ]
+    # shellcheck disable=SC1090 # $VERDICTS is lib/verdicts.sh, resolved above
+    result=$(. "$VERDICTS"; _verdict_path_read "$wire"; printf '%s' "$_verdict_path_raw")
+    [ "$result" = "$real" ] || { printf 'wire %s decoded to %s\n' "$wire" "$result" >&2; return 1; }
+  done
+  # The paragraph shows the wire form for the control byte, not a wrong path.
+  wire=$(LC_ALL=C printf '%q' "/x/a"$'\004'"6/f")
+  [ "$(path_verdict writable "$wire" | sed -n '1p')" = "\`$wire\` is writable outside the sandbox, whose allowlist refused it.$(readonly_path_tail)" ]
+}
+
+@test "_verdict_path_read decodes \\\" and reads an escape %q never writes as no path, silently" {
+  local wire out
+  # shellcheck disable=SC1090 # $VERDICTS is lib/verdicts.sh, resolved above
+  out=$(. "$VERDICTS"; _verdict_path_read "\$'/x/a\\\"b'"; printf 'rc=%s raw=%s' "$?" "$_verdict_path_raw")
+  [ "$out" = 'rc=0 raw=/x/a"b' ]
+  # Forged escapes the grammar admits: the decoded prefix must not survive,
+  # and %b must not see \x or \c (it complains about the first and stops at
+  # the second).
+  for wire in "\$'/x/ok\\x41'" "\$'/x/ok\\cA'" "\$'/x/ok\\12'" "\$'/x/ok\\q'"; do
+    # shellcheck disable=SC1090
+    out=$(. "$VERDICTS"; _verdict_path_read "$wire"; printf 'rc=%s raw=%s shown=%s' "$?" "$_verdict_path_raw" "$_verdict_path_shown") 2>&1
+    [ "$out" = 'rc=1 raw= shown=' ] || { printf 'wire %s gave: %s\n' "$wire" "$out" >&2; return 1; }
+  done
+}

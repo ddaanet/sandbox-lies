@@ -319,17 +319,19 @@ the line (lock probes) or degraded the outcome to `nopath` (`readonly-path`);
 both are gone, and such a path gets its real outcome with one `$'…'` line. The
 verdict decodes the value without eval: the backslash form through `read`
 without `-r`, the `$'…'` form through a grammar check and `printf %b` on an
-argument, never a format; any other value reads as no path. The decoded path is
-shown raw unless it holds a control byte, then the wire form. The `readfile=`,
-`match=` and `target=` newline skips stay, since each loses one optional fact
-and not the path. A partial-checkout refusal's relative path now joins onto the
-worktree top, the nearest ancestor holding a `.git` entry, when the matching
-line alone is git's refusal; it had joined onto the `cwd` and could read
-`readonly`, which says unsandboxing will not help. `git -C` remains a residual.
-The phantom verdicts no longer name the project root, which a persisted `cd`
-made false. The `readonly-path` command scan's tokenizer appends to a bounded
-pending run instead of copying the growing word: one 16384-character word took
-31.7 s on bash 3.2.0 against the hook's 10 s timeout, and now takes 3.5 s.
+argument, never a format, one escape at a time so a digit after a control byte's
+octal escape stays a digit; any other value reads as no path. The decoded path
+is shown raw unless it holds a control byte, then the wire form. The
+`readfile=`, `match=` and `target=` newline skips stay, since each loses one
+optional fact and not the path. A partial-checkout refusal's relative path now
+joins onto the worktree top, the nearest ancestor holding a `.git` entry, when
+the matching line alone is git's refusal; it had joined onto the `cwd` and could
+read `readonly`, which says unsandboxing will not help. `git -C` remains a
+residual. The phantom verdicts no longer name the project root, which a
+persisted `cd` made false. The `readonly-path` command scan's tokenizer appends
+to a bounded pending run instead of copying the growing word: one
+16384-character word took 31.7 s on bash 3.2.0 against the hook's 10 s timeout,
+and now takes 3.5 s.
 
 Test side: `utf8_locale` moved into `tests/helpers/locale.bash` and
 `probes.bats` uses it and `index_mtime` where it had a literal locale and GNU

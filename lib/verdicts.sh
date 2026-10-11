@@ -144,10 +144,10 @@ _verdict_lock_present() {
 # paragraph from its human line. Returns 1 with both empty for a value that
 # is neither form, which reads as no path.
 _verdict_path_read() {
-  local wire="$1" body
-  # The pattern and replacement sit in variables: a quoted \' in the
-  # substitution has meant different things across bash versions.
-  local bq="\\'" q="'" re="^\\\$'([^'\\\\]|\\\\.)*'\$"
+  local wire="$1" body lit esc
+  # The pattern sits in a variable: a quoted \' in a substitution has meant
+  # different things across bash versions.
+  local re="^\\\$'([^'\\\\]|\\\\.)*'\$" oct='^\\([0-7]{3})'
   _verdict_path_raw='' _verdict_path_shown=''
   case "$wire" in
     /*)
@@ -160,8 +160,28 @@ _verdict_path_read() {
       [[ $wire =~ $re ]] || return 1
       body=${wire#\$\'}
       body=${body%\'}
-      body=${body//"$bq"/"$q"}
-      printf -v _verdict_path_raw %b "$body"
+      # One escape at a time: %b reads \0 plus up to three digits, so the
+      # \0NN %q writes for a control byte would take a following digit with
+      # it. A \NNN is read as \0NNN, three digits and no more.
+      while [ -n "$body" ]; do
+        lit=${body%%\\*}
+        _verdict_path_raw=$_verdict_path_raw$lit
+        body=${body#"$lit"}
+        [ -n "$body" ] || break
+        if [[ $body =~ $oct ]]; then
+          printf -v esc %b "\\0${BASH_REMATCH[1]}"
+          body=${body:4}
+        else
+          esc=${body:0:2}
+          body=${body:2}
+          case $esc in
+            \\\'|\\\") esc=${esc:1} ;;
+            \\[abEefnrtv\\]) printf -v esc %b "$esc" ;;
+            *) _verdict_path_raw=''; return 1 ;;
+          esac
+        fi
+        _verdict_path_raw=$_verdict_path_raw$esc
+      done
       ;;
     *) return 1 ;;
   esac
