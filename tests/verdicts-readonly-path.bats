@@ -289,3 +289,22 @@ print("%.4f" % best)
   out=$(exec 2>&1; . "$VERDICTS"; _verdict_path_read "$wire"; printf 'rc=%s raw=%s' "$?" "$_verdict_path_raw")
   [ "$out" = "rc=0 raw=/x/a"$'\n'"b\\c" ] || { printf 'gave: %s\n' "$out" >&2; return 1; }
 }
+
+@test "_verdict_path_read decodes the letter escapes %q writes for control bytes a b f r v" {
+  local letter ctl real wire out
+  # %q writes bytes 007, 010, 014, 015 and 013 as \a \b \f \r \v. Each path is
+  # built, encoded and decoded through the production pair, so the letter in
+  # the wire is the one the probe writes; a failure names the letter.
+  for letter in a b f r v; do
+    case $letter in
+      a) ctl=$'\a' ;; b) ctl=$'\b' ;; f) ctl=$'\f' ;; r) ctl=$'\r' ;; v) ctl=$'\v' ;;
+    esac
+    real="/x/a${ctl}z/f"
+    # shellcheck disable=SC1091 # the production encoder, resolved at run time
+    wire=$(. "$ROOT/lib/probes-readonly.sh"; _probe_path_line "$real"); wire=${wire#path=}
+    [[ $wire == *"\\$letter"* ]] || { printf 'wire %s has no \\%s escape\n' "$wire" "$letter" >&2; return 1; }
+    # shellcheck disable=SC1090 # $VERDICTS is lib/verdicts.sh, resolved above
+    out=$(exec 2>&1; . "$VERDICTS"; _verdict_path_read "$wire"; printf 'rc=%s raw=%s' "$?" "$_verdict_path_raw")
+    [ "$out" = "rc=0 raw=$real" ] || { printf 'letter \\%s: wire %s gave: %s\n' "$letter" "$wire" "$out" >&2; return 1; }
+  done
+}
