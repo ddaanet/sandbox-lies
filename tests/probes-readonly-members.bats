@@ -170,6 +170,30 @@ setup() {
   [ "$output" = "$expected" ]
 }
 
+# A refused path under a read-only directory whose name holds a newline: the
+# outcome is readonly and path= is still one $'...' line, with the newline
+# written \n, since the probe prints path= under readonly too. The directory is
+# chmod 555 so -w is false for the suite's uid; a root run would read it
+# writable, so the case skips there. The mode is restored straight after the
+# probe, so bats can remove the tree whatever the assertions do. Under a
+# mutant that drops path= when readonly holds a newline, the output assertion
+# fails on the outcome line alone.
+@test "a resolved refused path holding a newline under a read-only directory gives readonly and one encoded path= line" {
+  local bad="$BATS_TEST_TMPDIR/r"$'\n'"readfile=x" text expected
+  [ "$(id -u)" -ne 0 ] || skip "running as root: chmod 555 does not block writes"
+  mkdir "$bad"
+  chmod 555 "$bad"
+  text=$(readonly_path_text fire-readonly-path-cp-tmp "'a'")
+  expected=$(printf '%s\n' readonly \
+    "path=\$'$BATS_TEST_TMPDIR/r\\nreadfile=x/a'")
+
+  run_probe_command probe_readonly_path false "$bad" 'cat build.out' "$text"
+  chmod 755 "$bad"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "$output" = "$expected" ]
+}
+
 # --- readfile names --------------------------------------------------------
 
 # *.out and *.err are command-output names beside *.log and *.output.
