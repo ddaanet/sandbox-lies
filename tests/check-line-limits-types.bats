@@ -134,7 +134,6 @@ oversized-file: sub/justfile: 401 lines > 400" ]
   [ -z "$stderr" ]
 }
 
-
 @test "oversized script survives BSD mktemp" {
   local dir bsd
   dir=$(make_fixture_root bsd-mktemp-script)
