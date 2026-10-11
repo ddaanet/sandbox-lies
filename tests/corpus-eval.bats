@@ -118,3 +118,57 @@ one_call() {
   [ "${#survivors[@]}" -eq 1 ]
   [ -e "$OUTDIR/survivors/000001.txt" ]
 }
+
+@test "aggregate counts a verdict line with no tab as skipped, without a traceback" {
+  one_call 1
+  run eval_py extract --outdir "$OUTDIR"
+  [ "$status" -eq 0 ]
+  # a hand-edited TSV: one good line and one line with no tab. The matched
+  # file's 1 and the one malformed line are told apart by the exact line
+  printf '000001.txt\tro\nnotabhere\n' >"$OUTDIR/verdicts.tsv"
+
+  run -0 --separate-stderr eval_py aggregate --outdir "$OUTDIR"
+
+  # shellcheck disable=SC2154 # set by bats' run --separate-stderr
+  [[ "$stderr" != *Traceback* ]]
+  grep -Fxq "verdict lines skipped, no manifest entry: 1" <<<"$output"
+  [[ "$output" == *"-> 000001.txt"* ]]
+}
+
+@test "extract skips a Bash tool_use whose id is a list" {
+  jq -nc '{timestamp: "2026-09-01T00:00:00Z", message: {content: [{type: "tool_use",
+    name: "Bash", id: ["u0"], input: {command: "ls"}}]}}' >"$PROJ/s.jsonl"
+  one_call 1
+
+  run -0 --separate-stderr eval_py extract --outdir "$OUTDIR"
+
+  # shellcheck disable=SC2154 # set by bats' run --separate-stderr
+  [[ "$stderr" != *Traceback* ]]
+  [ -e "$OUTDIR/survivors/000001.txt" ]
+}
+
+@test "extract skips a tool_result whose tool_use_id is a list" {
+  jq -nc --arg t "$(readonly_text)" '{timestamp: "2026-09-01T00:00:00Z",
+    message: {content: [{type: "tool_result", tool_use_id: ["u0"], content: $t}]}}' \
+    >"$PROJ/s.jsonl"
+  one_call 1
+
+  run -0 --separate-stderr eval_py extract --outdir "$OUTDIR"
+
+  # shellcheck disable=SC2154 # set by bats' run --separate-stderr
+  [[ "$stderr" != *Traceback* ]]
+  [ -e "$OUTDIR/survivors/000001.txt" ]
+}
+
+@test "extract leaves a subdirectory in survivors and still drops the stale files" {
+  one_call 1
+  mkdir -p "$OUTDIR/survivors/sub"
+  printf 'stale\n' >"$OUTDIR/survivors/000009.txt"
+
+  run -0 --separate-stderr eval_py extract --outdir "$OUTDIR"
+
+  # shellcheck disable=SC2154 # set by bats' run --separate-stderr
+  [[ "$stderr" != *Traceback* ]]
+  [ -e "$OUTDIR/survivors/000001.txt" ]
+  [ ! -e "$OUTDIR/survivors/000009.txt" ]
+}

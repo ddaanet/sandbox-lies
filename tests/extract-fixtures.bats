@@ -91,3 +91,61 @@ assert_cut_verbatim() {
   printf '\n%s' "$(lock_text)" >"$BATS_TEST_TMPDIR/want"
   cmp "$SCRATCH/tests/fixtures/$NAME.txt" "$BATS_TEST_TMPDIR/want"
 }
+
+@test "a Bash tool_use whose id is a list does not stop the cut" {
+  {
+    jq -nc '{timestamp: "2026-08-13T10:00:00Z", message: {content: [{type: "tool_use",
+      name: "Bash", id: ["m0"], input: {command: "ls"}}]}}'
+    matching_call
+  } >"$CORPUS"
+
+  run --separate-stderr cut_fixture
+
+  # shellcheck disable=SC2154 # set by bats' run --separate-stderr
+  [[ "$stderr" != *Traceback* ]]
+  assert_cut_verbatim
+}
+
+@test "a tool_result whose tool_use_id is a list does not stop the cut" {
+  {
+    jq -nc --arg t "$(lock_text)" '{timestamp: "2026-08-13T10:00:00Z",
+      message: {content: [{type: "tool_result", tool_use_id: ["m0"], content: $t}]}}'
+    matching_call
+  } >"$CORPUS"
+
+  run --separate-stderr cut_fixture
+
+  # shellcheck disable=SC2154 # set by bats' run --separate-stderr
+  [[ "$stderr" != *Traceback* ]]
+  assert_cut_verbatim
+}
+
+@test "an integer timestamp beside the call does not stop the cut" {
+  {
+    jq -nc '{timestamp: 5, message: {content: [{type: "tool_use", name: "Bash",
+      id: "m0", input: {command: "ls"}}]}}'
+    matching_call
+  } >"$CORPUS"
+
+  run --separate-stderr cut_fixture
+
+  # shellcheck disable=SC2154 # set by bats' run --separate-stderr
+  [[ "$stderr" != *Traceback* ]]
+  assert_cut_verbatim
+}
+
+@test "an integer text item in a list-form tool_result does not stop the cut" {
+  {
+    corpus_use m1 "2026-08-13T10:00:00Z" "git commit --amend --no-edit"
+    jq -nc --arg t "$(lock_text)" '{timestamp: "2026-08-13T10:00:01Z",
+      message: {content: [{type: "tool_result", tool_use_id: "m1",
+        content: [{type: "text", text: 5}, {type: "text", text: $t}]}]}}'
+  } >"$CORPUS"
+
+  run --separate-stderr cut_fixture
+
+  # shellcheck disable=SC2154 # set by bats' run --separate-stderr
+  [[ "$stderr" != *Traceback* ]]
+  [ "$status" -eq 0 ]
+  grep -Fq "$(lock_text)" "$SCRATCH/tests/fixtures/$NAME.txt"
+}

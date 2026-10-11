@@ -112,7 +112,8 @@ def cmd_extract(args):
     survdir.mkdir(parents=True, exist_ok=True)
     # left by an earlier run; a smaller corpus must not leave them behind
     for stale in survdir.iterdir():
-        stale.unlink()
+        if not stale.is_dir():
+            stale.unlink()
     (outdir / "verdicts.tsv").unlink(missing_ok=True)
     manifest_path = outdir / "manifest.jsonl"
     denom_path = outdir / "denominators.json"
@@ -158,15 +159,16 @@ def cmd_extract(args):
                         if b.get("type") == "tool_use" and b.get("name") == "Bash":
                             inp = b.get("input")
                             cmd = inp.get("command") if isinstance(inp, dict) else None
-                            if not isinstance(cmd, str):
+                            use_id = b.get("id")
+                            if not isinstance(cmd, str) or not isinstance(use_id, str):
                                 continue
                             bash_uses += 1
-                            bash_cmds[b.get("id")] = cmd
-                            bash_flags[b.get("id")] = (
+                            bash_cmds[use_id] = cmd
+                            bash_flags[use_id] = (
                                 inp.get("dangerouslyDisableSandbox") is True)
                         elif b.get("type") == "tool_result":
                             tid = b.get("tool_use_id")
-                            if tid not in bash_cmds:
+                            if not isinstance(tid, str) or tid not in bash_cmds:
                                 continue
                             bash_results += 1
                             text = result_text(e, b)
@@ -225,8 +227,8 @@ def cmd_aggregate(args):
             line = line.rstrip("\n")
             if not line:
                 continue
-            fname, vs = line.split("\t", 1)
-            if fname not in manifest:
+            fname, sep, vs = line.partition("\t")
+            if not sep or fname not in manifest:
                 skipped += 1
                 continue
             for v in vs.split():

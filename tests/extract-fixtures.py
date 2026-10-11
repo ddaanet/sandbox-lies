@@ -159,23 +159,26 @@ def iter_calls(project):
             content = msg.get("content")
             if not isinstance(content, list):
                 continue
-            day = (e.get("timestamp") or "")[:10]
+            ts = e.get("timestamp")
+            day = ts[:10] if isinstance(ts, str) else ""
             for b in content:
                 if not isinstance(b, dict):
                     continue
                 if b.get("type") == "tool_use" and b.get("name") == "Bash":
                     inp = b.get("input")
                     c = inp.get("command") if isinstance(inp, dict) else None
-                    if isinstance(c, str):
+                    if isinstance(c, str) and isinstance(b.get("id"), str):
                         cmds[b.get("id")] = c
                 elif b.get("type") == "tool_result":
-                    cmd = cmds.get(b.get("tool_use_id"))
+                    tid = b.get("tool_use_id")
+                    cmd = cmds.get(tid) if isinstance(tid, str) else None
                     if cmd is None:
                         continue
                     t = b.get("content")
                     if isinstance(t, list):
-                        t = "\n".join(x.get("text") or "" for x in t
-                                      if isinstance(x, dict))
+                        t = "\n".join(
+                            x.get("text") if isinstance(x.get("text"), str) else ""
+                            for x in t if isinstance(x, dict))
                     if isinstance(t, str):
                         yield day, cmd, t
 

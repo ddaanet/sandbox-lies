@@ -392,3 +392,9 @@ cwd. The top's name keeps a trailing newline the `$(...)` walk used to strip,
 and an empty cwd starts the walk at the probe's working directory rather than
 joining onto it unwalked. `partial=1` still reads the phrase anywhere in the
 text.
+
+## 2026-10-11 — corpus tools skip odd lines instead of tracing back
+
+Both tools skip a record they cannot key (non-string `id`, `tool_use_id`,
+`timestamp` or `text`); `extract` keeps a `survivors/` subdirectory, and
+`aggregate` counts a tab-less verdict line as skipped, not a `ValueError`.
