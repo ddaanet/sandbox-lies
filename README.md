@@ -19,15 +19,18 @@ through with no output.
 
 ## Install
 
+```
+/plugin marketplace add ddaanet/claude-plugins
+/plugin install sandbox-lies@ddaanet
+```
+
+Or load it from a plain clone, which leaves out the `memory` submodule the
+plugin does not need:
+
 ```sh
 git clone https://github.com/ddaanet/sandbox-lies.git
 claude --plugin-dir "$PWD/sandbox-lies"
 ```
-
-Load it with `--plugin-dir` for now, from a plain clone: the plugin does not
-need the `memory` submodule. A marketplace install clones submodules too, and
-that submodule's url is a local placeholder such a clone cannot resolve, so the
-install aborts until the url is fixed.
 
 The hook needs `jq` on `PATH`: without it, it stays silent and every Bash result
 goes unannotated. A `SessionStart` check then says so at each session start, to

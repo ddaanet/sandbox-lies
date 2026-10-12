@@ -123,8 +123,8 @@ shape the fixtures were cut from.
 with the release toolkit, syncs the plugin into `dist/plugin/` at launch (and on
 `just dogfood`) and chains to the next `claude` on `PATH` with that copy as its
 plugin dir; `.envrc` adds `plugin-dev/bin` last so it sits ahead of the gitlore
-launcher. The marketplace route clones with submodules and aborts on the memory
-submodule's relative url, and the flag typed by hand is forgotten. Loading the
-working tree itself, as the earlier `.bin/claude` shim did with `--plugin-dir`,
-left agent edits in the checkout without a permission verdict and ran
-half-edited hook scripts.
+launcher. When D-16 was taken the marketplace route cloned with submodules and
+aborted on the memory submodule's then-relative url, and the flag typed by hand
+is forgotten. Loading the working tree itself, as the earlier `.bin/claude` shim
+did with `--plugin-dir`, left agent edits in the checkout without a permission
+verdict and ran half-edited hook scripts.
