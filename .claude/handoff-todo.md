@@ -1,11 +1,9 @@
 ## Open decisions
 
-- FR-10 in `docs/design.md` now reads `Done (prose)`, the legend's status for a requirement no test or gate re-checks. That reverses the `Done` the outline asked for and was an agent default, never confirmed. Keep it, or put `Done` back.
-- The `partial=1` gate in `lib/probes-readonly-facts.sh` matches git's phrases anywhere in the text, so a `cp` refusal whose quoted path holds one prints wrong `merge=1`/`partial=1` facts (never a wrong `readonly`/`writable` outcome). Anchor it per line and amend the whole-text contract in `docs/references/readonly-path.md`, or leave it. Recommendation given: anchor, as a separate change after the release.
-- `inbox/brief-excluded-commands-every-segment.md` is untracked and unread by this work: decide whether it is taken up, and whether it blocks the release.
+- FR-10 in `docs/design.md` reads `Done (prose)`, the legend's status for a requirement no test or gate re-checks. That reverses the `Done` the outline asked for and was an agent default, never confirmed. Keep it, or put `Done` back. Default: keep.
+- The `partial=1` gate in `lib/probes-readonly-facts.sh` matches git's phrases anywhere in the text, so a `cp` refusal whose quoted path holds one prints wrong `merge=1`/`partial=1` facts (never a wrong `readonly`/`writable` outcome). Anchor it per line and amend the whole-text contract in `docs/references/readonly-path.md`, or leave it. Recommendation given: anchor.
+- `inbox/brief-excluded-commands-every-segment.md` (untracked): its finding 1 is stale, the skill already teaches the every-segment rule. Finding 2 proposes a note in `docs/design.md` on the interplay with `prohibitions` 0.3.0, whose `PreToolUse` hook denies most calls that produced phantom output. Take it up (needs the design.md split first), or decline; then track the brief under `plans/` or delete it. `prohibitions` is tentatively retired (my human partner, 2026-10-12), which argues for declining. Default: decline the note, ask before deleting.
 
 ## Remaining
 
-- Run `/gitlore:push`.
-- Run `/ddaa:preflight` and resolve what it reports.
-- Push the repo to `origin`, then cut the release.
+- Marketplace install, CC 2.1.296. `ddaanet-memory` is public since 2026-10-12 and both submodule urls are https in `.gitmodules` and `memory/.gitmodules` (uncommitted; local `.git/config` urls untouched, so pushes still use SSH). A credential-less `git clone --recurse-submodules` with SSH rewritten to https, which is what those urls amount to, now passes. After the commit and both pushes, re-run a keyless `claude plugin install sandbox-lies@ddaanet` in a scratch `CLAUDE_CONFIG_DIR` with a stub `ssh` that exits 255 first on `PATH` (a scratch `HOME` is not enough, `ssh` reads the passwd home). Expected remaining failure: the `github`-source entry clones the plugin repo over SSH and the install step did not fall back to https in that probe, though my human partner expects it to work without a key. If it still fails, the `ddaanet/claude-plugins` entry needs an https `url` source (another repo); if it passes, restore the marketplace-first README Install wording.

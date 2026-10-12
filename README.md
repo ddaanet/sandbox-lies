@@ -19,17 +19,20 @@ through with no output.
 
 ## Install
 
-```
-/plugin marketplace add ddaanet/claude-plugins
-/plugin install sandbox-lies@ddaanet
-```
-
-Or load it from a plain clone, which leaves out the `memory` submodule the
-plugin does not need:
+Load it from a plain clone, which leaves out the `memory` submodule the plugin
+does not need:
 
 ```sh
 git clone https://github.com/ddaanet/sandbox-lies.git
 claude --plugin-dir "$PWD/sandbox-lies"
+```
+
+The marketplace route needs an SSH key registered on GitHub: the install clones
+this repository over SSH and aborts without one.
+
+```
+/plugin marketplace add ddaanet/claude-plugins
+/plugin install sandbox-lies@ddaanet
 ```
 
 The hook needs `jq` on `PATH`: without it, it stays silent and every Bash result
