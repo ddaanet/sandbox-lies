@@ -58,7 +58,7 @@ probe_readonly_path() {
     # instead: the output ends in "\nx", and removing those two characters
     # leaves the name exactly as the walk printed it.
     base="$cwd"
-    if _probe_partial_checkout_line "$line"; then
+    if _probe_partial_checkout_text "$line"; then
         start="$cwd"
         [ -n "$start" ] || start="$PWD"
         top=$(_readonly_git_dir "$start" && printf x) && base="${top%?x}"
@@ -107,28 +107,38 @@ _probe_path_line() {
     fi
 }
 
-# _probe_partial_checkout_line <line> — true when <line> opens with one of git's
-# three partial-checkout messages, each with its own prefix ("error: " for the
-# two unable-to lines, "fatal: " for the directory one). Anchored, so a cp or
-# mv refusal naming a path that holds one of the phrases does not qualify. The
-# phrases are built from fragments, so this file holds none whole, and they
-# live here alone: _readonly_partial_checkout_text calls this per line.
-_probe_partial_checkout_line() {
-    local line="$1" needle
+# _probe_partial_checkout_text <text> — true when some line of <text> opens
+# with one of git's three partial-checkout messages, each with its own prefix
+# ("error: " for the two unable-to lines, "fatal: " for the directory one), or
+# follows a carriage return on its line (git's own progress fragment, "Updating
+# files: N%", ends in one and the message follows with no newline). Anchored,
+# so a cp or mv refusal naming a path that holds one of the phrases does not
+# qualify, nor does a git line another program prefixed or indented. Each
+# needle is matched after a newline prepended to <text>, with `case` alone: no
+# loop, no process, and no here-string, which bash spools through a temp file
+# (always before 5.1, above the pipe size after) and NFR-4 forbids, as
+# hooks/annotate.sh says of the here-document. The phrases are built from
+# fragments, so this file holds none whole, and they live here alone.
+_probe_partial_checkout_text() {
+    local text needle nl cr
+    nl='
+'
+    cr=$'\r'
+    text="$nl$1"
     needle='error: unable to unlink'
     needle="$needle old"
-    case "$line" in
-        "$needle"*) return 0 ;;
+    case "$text" in
+        *"$nl$needle"* | *"$cr$needle"*) return 0 ;;
     esac
     needle='error: unable to create'
     needle="$needle file"
-    case "$line" in
-        "$needle"*) return 0 ;;
+    case "$text" in
+        *"$nl$needle"* | *"$cr$needle"*) return 0 ;;
     esac
     needle='fatal: cannot create'
     needle="$needle directory at"
-    case "$line" in
-        "$needle"*) return 0 ;;
+    case "$text" in
+        *"$nl$needle"* | *"$cr$needle"*) return 0 ;;
     esac
     return 1
 }

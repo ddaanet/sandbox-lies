@@ -80,7 +80,7 @@ on. The command shapes the wording only; detection never reads it (D-1).
 | key | printed when |
 |---|---|
 | `merge=1` | a git segment of the command runs `merge`, `pull`, `checkout`, `switch`, `rebase` or `cherry-pick`, after any global options; or `partial=1` is printed |
-| `partial=1` | a line of the text opens with git's partial-checkout message, its `error: ` or `fatal: ` prefix included, for `unable to unlink old`, `unable to create file` or `cannot create directory at`, under any command |
+| `partial=1` | a line of the text opens with git's partial-checkout message, its `error: ` or `fatal: ` prefix included, or holds it after a carriage return (git's own progress fragment), for `unable to unlink old`, `unable to create file` or `cannot create directory at`, under any command |
 | `target=<ref>` | with `merge=1`: the first word after a `merge`, `checkout` or `switch` subcommand, before any `--`, that resolves to a commit |
 | `match=<repo>/<file>` | with `target=`: one line per file modified against HEAD, staged or not, whose working-tree content equals the target's, named by absolute path — the repository root, trailing slashes stripped, then the file's name within it |
 | `readfile=<path>` | every command in the call's pipelines and lists is a reader — `cat`, `head`, `tail`, `grep`, `sed` without in-place editing, `awk`, `cut`, `sort`, `uniq` without a second operand, `wc`, `tr`, `less` — with no output redirection, and an input-file operand or `<` target has a command-output name: `*.log`, `*.output`, `*.out`, `*.err`; the first such. Never an input operand: a word opening with `-`; the first operand of `grep`, `sed` or `awk`, the pattern or program, unless an `-e` or `-f` came earlier in the segment; the word after a separate `-e` or `-f` |
@@ -101,21 +101,21 @@ checkout leaves none of. A partial checkout whose text lost git's error — cut 
 a `tail`, or sent to a file — and whose target does not resolve gets no clause.
 `partial=1` does not check which git command printed the error, so a `stash` or
 `restore` dying on the same error counts too. A git partial-checkout line that
-does not open its line, because another program prefixed or indented it (a
-wrapper's own prefix), no longer counts. A file whose name holds a newline is
-never a `match=` or a `readfile=`, and a repository root holding one gives no
-`target=` or `match=` at all: either would split a `match=` line and forge the
-key line after it. A repository at `/` gives `match=//<file>`. A reader behind a
-`cd`, or a reader or git behind a variable assignment, is not recognised. The
-scan does not parse `$( )`, backticks, subshells, braces or `$'…'`, so their
-contents read as words of the command around them; it stops at the end of a line
-holding `<<`, and after 16384 characters, and neither cut command yields
-`readfile=`. A `>` anywhere in a word counts as output redirection, quoted or
-not, except a descriptor duplication (`2>&1`, `>&2`); so do `sort -o` and
-`awk -i`. A candidate ref holding `@{`, `^{`, `:` or a leading `-` is skipped.
-With an unborn HEAD, or past 1000 files modified against HEAD, no `target=` is
-printed. A file matches byte for byte, before any clean filter, and never as a
-symlink.
+another program prefixed or indented (a wrapper's own prefix) does not count;
+git's own progress fragment before the message, ended by a carriage return,
+does. A file whose name holds a newline is never a `match=` or a `readfile=`,
+and a repository root holding one gives no `target=` or `match=` at all: either
+would split a `match=` line and forge the key line after it. A repository at `/`
+gives `match=//<file>`. A reader behind a `cd`, or a reader or git behind a
+variable assignment, is not recognised. The scan does not parse `$( )`,
+backticks, subshells, braces or `$'…'`, so their contents read as words of the
+command around them; it stops at the end of a line holding `<<`, and after 16384
+characters, and neither cut command yields `readfile=`. A `>` anywhere in a word
+counts as output redirection, quoted or not, except a descriptor duplication
+(`2>&1`, `>&2`); so do `sort -o` and `awk -i`. A candidate ref holding `@{`,
+`^{`, `:` or a leading `-` is skipped. With an unborn HEAD, or past 1000 files
+modified against HEAD, no `target=` is printed. A file matches byte for byte,
+before any clean filter, and never as a symlink.
 
 The `readfile=` operand rule leaves these residuals, each shown by what the
 probe prints:

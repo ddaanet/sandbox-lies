@@ -42,7 +42,7 @@ _readonly_print_facts() {
         fi
     done < <(_readonly_merge_segment \
         ${_readonly_tokens[@]+"${_readonly_tokens[@]}"})
-    if _readonly_partial_checkout_text "$text"; then
+    if _probe_partial_checkout_text "$text"; then
         partial=1
     fi
     if [ -z "$sub" ] && [ "$partial" -eq 0 ]; then
@@ -62,25 +62,6 @@ _readonly_print_facts() {
     [ -n "$start" ] || start="$cwd"
     repo=$(_readonly_git_dir "$start") || return 0
     _readonly_repo_facts "$repo" "${cands[@]}"
-}
-
-# _readonly_partial_checkout_text <text> — true when some line of <text>
-# opens with one of git's three prefixed partial-checkout messages, as
-# _probe_partial_checkout_line (lib/probes-readonly.sh, which sources this
-# file and so defines it before any call) decides for one line: the phrases
-# live there alone. Per line, not anywhere in <text>, because another tool's
-# refusal (cp, mv) can carry the phrase inside its quoted path. A final line
-# with no trailing newline is still read; a prefixed or indented line
-# (a wrapper's own prefix) does not open its line and does not count. Pure
-# bash, one here-string, no process per line (NFR-3).
-_readonly_partial_checkout_text() {
-    local line
-    while IFS= read -r line || [ -n "$line" ]; do
-        if _probe_partial_checkout_line "$line"; then
-            return 0
-        fi
-    done <<<"$1"
-    return 1
 }
 
 # _readonly_git_dir <dir> — the nearest ancestor of <dir>, <dir> included,

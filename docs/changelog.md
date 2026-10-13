@@ -196,6 +196,8 @@ catch was added; a valid neighbouring line is read as before.
 `partial=1` fired when git's partial-checkout phrase appeared anywhere in the
 text, so a `cp` or `mv` refusal quoting a path that held the phrase printed
 `merge=1` and `partial=1` with them. It now requires a line that opens with
-git's prefixed message, the test `_probe_partial_checkout_line` already applied
-to the matching line, so the phrases live in one place. A git line prefixed or
-indented by another program no longer counts.
+git's prefixed message, or holds it after a carriage return (git's own progress
+fragment), so the phrases live in one place, `_probe_partial_checkout_text`. The
+match is `case` on the text with a newline prepended: no here-string, which bash
+spools through a temp file (NFR-4), and no per-line loop. A git line another
+program prefixed or indented no longer counts.
