@@ -111,8 +111,8 @@ _probe_path_line() {
 # three partial-checkout messages, each with its own prefix ("error: " for the
 # two unable-to lines, "fatal: " for the directory one). Anchored, so a cp or
 # mv refusal naming a path that holds one of the phrases does not qualify. The
-# phrases are built from fragments, as _readonly_partial_checkout_text builds
-# them, so this file holds none whole.
+# phrases are built from fragments, so this file holds none whole, and they
+# live here alone: _readonly_partial_checkout_text calls this per line.
 _probe_partial_checkout_line() {
     local line="$1" needle
     needle='error: unable to unlink'

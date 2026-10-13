@@ -222,6 +222,33 @@ setup() {
   run ! grep -q '^partial=1$' <<<"$output"
 }
 
+@test "a partial-checkout phrase inside another tool's quoted path prints neither merge=1 nor partial=1" {
+  local text n facts
+
+  for n in 1 2 3; do
+    text=$(cp_refusal_in_path "$BATS_TEST_TMPDIR" "$n")
+    run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+      'cp src dst' "$text"
+    [ "$status" -eq 0 ]
+    # `run` below replaces $output, so the facts are held aside first.
+    facts="$output"
+    run ! grep -q '^merge=1$' <<<"$facts"
+    run ! grep -q '^partial=1$' <<<"$facts"
+  done
+}
+
+# Pin: git's line counts wherever it sits, not only as the first line.
+@test "partial=1 still fires when git's partial-checkout line is not the first line" {
+  local text
+
+  text="hint: something unrelated
+$(partial_checkout_unlink_error "$BATS_TEST_TMPDIR/a")"
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'just sync' "$text"
+  [ "$status" -eq 0 ]
+  printf '%s\n' "$output" | grep -qxF 'partial=1'
+}
+
 # The index is back-dated so that a rewrite moves its mtime even within the
 # second the fixture was made in, and snapshotted around the probe call only.
 @test "target and match select files at the resolved ref, staged or not, never one edited otherwise" {

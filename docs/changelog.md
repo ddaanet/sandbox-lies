@@ -190,3 +190,12 @@ directory alone. `aggregate` splits a verdict line with `partition`, so a line
 with no tab is counted in `verdict lines skipped, no manifest entry` like a line
 naming an unknown file, instead of raising `ValueError`. No broad exception
 catch was added; a valid neighbouring line is read as before.
+
+## 2026-10-13 — `partial=1` reads lines, not the whole text
+
+`partial=1` fired when git's partial-checkout phrase appeared anywhere in the
+text, so a `cp` or `mv` refusal quoting a path that held the phrase printed
+`merge=1` and `partial=1` with them. It now requires a line that opens with
+git's prefixed message, the test `_probe_partial_checkout_line` already applied
+to the matching line, so the phrases live in one place. A git line prefixed or
+indented by another program no longer counts.

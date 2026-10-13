@@ -64,31 +64,22 @@ _readonly_print_facts() {
     _readonly_repo_facts "$repo" "${cands[@]}"
 }
 
-# _readonly_partial_checkout_text <text> — true when <text> holds one of
-# git's three partial-checkout refusals, "unable to unlink old", "unable to
-# create file" or "cannot create directory at" (a checkout or merge that
-# only wrote some of the target's files before the mount refused the rest),
-# each built from two fragments so this file holds none of the three
-# phrases whole (self-quiet, FR-11, as tests/helpers/probes.bash's
-# git_lock_error does for git's own lock text). `case` glob matching, not
-# grep: `*` matches across the embedded newlines <text> may hold.
+# _readonly_partial_checkout_text <text> — true when some line of <text>
+# opens with one of git's three prefixed partial-checkout messages, as
+# _probe_partial_checkout_line (lib/probes-readonly.sh, which sources this
+# file and so defines it before any call) decides for one line: the phrases
+# live there alone. Per line, not anywhere in <text>, because another tool's
+# refusal (cp, mv) can carry the phrase inside its quoted path. A final line
+# with no trailing newline is still read; a prefixed or indented line
+# (a wrapper's own prefix) does not open its line and does not count. Pure
+# bash, one here-string, no process per line (NFR-3).
 _readonly_partial_checkout_text() {
-    local text="$1" needle
-    needle='unable to unlink'
-    needle="$needle old"
-    case "$text" in
-        *"$needle"*) return 0 ;;
-    esac
-    needle='unable to create'
-    needle="$needle file"
-    case "$text" in
-        *"$needle"*) return 0 ;;
-    esac
-    needle='cannot create'
-    needle="$needle directory at"
-    case "$text" in
-        *"$needle"*) return 0 ;;
-    esac
+    local line
+    while IFS= read -r line || [ -n "$line" ]; do
+        if _probe_partial_checkout_line "$line"; then
+            return 0
+        fi
+    done <<<"$1"
     return 1
 }
 

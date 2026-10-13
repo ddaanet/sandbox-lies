@@ -77,6 +77,25 @@ partial_checkout_mkdir_error() {
   printf '%s\n' "$msg"
 }
 
+# cp_refusal_in_path <dir> <n> — a cp refusal (not git's) whose single-quoted
+# path holds partial-checkout phrase <n> (1 unlink, 2 create, 3 mkdir) mid-path,
+# the phrase built from two fragments as the helpers above build theirs.
+cp_refusal_in_path() {
+  local phrase
+  case "$2" in
+    1) phrase='error: unable to unlink ' ;;
+    2) phrase='error: unable to create ' ;;
+    3) phrase='fatal: cannot create ' ;;
+  esac
+  case "$2" in
+    1) phrase="${phrase}old" ;;
+    2) phrase="${phrase}file" ;;
+    3) phrase="${phrase}directory at" ;;
+  esac
+  printf "cp: cannot create regular file '%s/%s x': %s\n" \
+    "$1" "$phrase" "$(erofs_message)"
+}
+
 # readonly_path_text <fixture> <replacement> — the cut fire-readonly-path-*
 # fixture (tests/fixtures/<fixture>.txt) with its first single-quoted path
 # replaced by <replacement>, built at run time as git_lock_error is, so this
