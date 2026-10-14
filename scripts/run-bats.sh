@@ -22,7 +22,10 @@ pass=$(grep -c '^ok ' "$log" || true)
 fail=$(grep -c '^not ok ' "$log" || true)
 
 if [ "$fail" -gt 0 ]; then
-    awk '/^not ok /{show=1} /^ok /{show=0} show' "$log"
+    # C locale for awk alone: macOS awk aborts on the first invalid UTF-8 byte
+    # (a failure message cutting a multibyte character), hiding every later
+    # failure. The bats run above keeps the caller's locale.
+    LC_ALL=C awk '/^not ok /{show=1} /^ok /{show=0} show' "$log"
     echo
 elif [ "$pass" -eq 0 ]; then
     # Nothing recognizable as TAP output at all (e.g. bats errored before

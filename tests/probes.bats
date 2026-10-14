@@ -55,12 +55,14 @@ teardown() {
 # The directory name holds a raw non-UTF-8 byte (octal 351). Run under
 # the UTF-8 locale utf8_locale finds: under it GNU sed's "." does not match an
 # invalid byte, which is exactly why the extractor forces LC_ALL=C internally.
-# The path is asserted byte-exact via an exact-line path= match.
+# The path is asserted byte-exact via an exact-line path= match. The repo is
+# never created: the probe only tests the lock path, which is gone either way,
+# and APFS refuses a non-UTF-8 name (mkdir: Illegal byte sequence).
 @test "non-UTF-8 byte in the path" {
   local repo cwd lock loc
   repo="$BATS_TEST_TMPDIR/r$(printf '\351')n/r"
   cwd="$BATS_TEST_TMPDIR/elsewhere"
-  mkdir -p "$repo/.git" "$cwd"
+  mkdir -p "$cwd"
   lock="$repo/.git/index.lock"
   loc=$(utf8_locale)
 

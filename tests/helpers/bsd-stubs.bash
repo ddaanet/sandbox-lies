@@ -12,6 +12,11 @@ make_bsd_stubs() {
   mkdir -p "$dir"
   for tool in "$@"; do
     real=$(command -v "$tool") || { echo "make_bsd_stubs: no real $tool on PATH" >&2; return 1; }
+    if _bsd_native "$tool" "$real"; then
+      printf '#!/bin/sh\nexec "%s" "$@"\n' "$real" > "$dir/$tool"
+      chmod 755 "$dir/$tool"
+      continue
+    fi
     case "$tool" in
       sed)    _bsd_stub_sed "$dir/sed" "$real" ;;
       mktemp) _bsd_stub_mktemp "$dir/mktemp" "$real" ;;
@@ -22,6 +27,18 @@ make_bsd_stubs() {
     esac
     chmod 755 "$dir/$tool"
   done
+}
+
+# The stat and wc stubs rebuild BSD output from GNU's (`stat -c %Y`, a bare
+# `wc -c` count), so on a Mac, where the real tool is already BSD, they would
+# break what they emulate: there the stub is a plain pass-through. The other
+# stubs only refuse arguments before exec'ing the real tool, and hold on both.
+_bsd_native() {
+  case "$1" in
+    stat) ! "$2" -c %Y / >/dev/null 2>&1 ;;
+    wc) case $(printf x | "$2" -c) in ' '*) return 0 ;; *) return 1 ;; esac ;;
+    *) return 1 ;;
+  esac
 }
 
 # BSD sed takes -i's backup extension as a SEPARATE argument and GNU sed takes

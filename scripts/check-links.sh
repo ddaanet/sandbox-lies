@@ -34,7 +34,7 @@ EXIT_CODE=0
 
 # Report one line and set the exit code for each link in $1 (root-relative)
 # whose target does not resolve, relative to $1's own directory.
-# shellcheck disable=SC2317 # reached only through handle_file, itself
+# shellcheck disable=SC2317,SC2329 # reached only through handle_file, itself
 # invoked indirectly by name via walk_tracked_files's $handler
 check_links_in() {
     local file="$1" dir links link target scheme check_target
@@ -104,7 +104,7 @@ check_links_in() {
     done <<<"$links"
 }
 
-# shellcheck disable=SC2317 # invoked indirectly by name via
+# shellcheck disable=SC2317,SC2329 # invoked indirectly by name via
 # walk_tracked_files's $handler
 handle_file() {
     # Not `markdown_in_scope "$1" && check_links_in "$1"`: that form

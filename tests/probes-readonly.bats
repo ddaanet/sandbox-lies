@@ -209,9 +209,11 @@ ro_dir() {
 # a capture excluding the closing quote's bytes one by one stops inside it,
 # and a prefix excluding the opening quote's bytes (a tool invoked by a path
 # holding one) never reaches the quote. Of two curly segments, the first.
+# `${p}` is braced wherever a curly quote follows it: bash on macOS takes the
+# quote's leading byte as a name character, so `$p’` reads an unset variable.
 @test "curly-quoted mkdir path is extracted" {
   local p="$BATS_TEST_TMPDIR/curly — target" text
-  text="mkdir: cannot create directory ‘$p’: $(erofs_message)"
+  text="mkdir: cannot create directory ‘${p}’: $(erofs_message)"
 
   run_probe probe_readonly_path false "$BATS_TEST_TMPDIR" "$text"
 
@@ -220,7 +222,7 @@ ro_dir() {
   [ "${output%%$'\n'*}" = writable ]
   printf '%s\n' "$output" | grep -qxF "path=\$'$BATS_TEST_TMPDIR/curly \\342\\200\\224 target'"
 
-  text="/opt/tools—2/mkdir: cannot create directory ‘$p’"
+  text="/opt/tools—2/mkdir: cannot create directory ‘${p}’"
   text="$text ‘$BATS_TEST_TMPDIR/second’: $(erofs_message)"
 
   run_probe probe_readonly_path false "$BATS_TEST_TMPDIR" "$text"
@@ -367,7 +369,7 @@ ro_dir() {
   local bsd="$BATS_TEST_TMPDIR/bsdtools" p text
   make_bsd_stubs "$bsd" grep sed
   p="$BATS_TEST_TMPDIR/curly — target"
-  text="mkdir: cannot create directory ‘$p’: $(erofs_message)"
+  text="mkdir: cannot create directory ‘${p}’: $(erofs_message)"
 
   PATH="$bsd:$PATH" run_probe probe_readonly_path false "$BATS_TEST_TMPDIR" "$text"
 

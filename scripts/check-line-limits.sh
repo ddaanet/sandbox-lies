@@ -36,7 +36,7 @@ EXIT_CODE=0
 
 # Report one line and set the exit code if $1 (root-relative) exceeds $2
 # lines.
-# shellcheck disable=SC2317 # reached only through handle_file, itself
+# shellcheck disable=SC2317,SC2329 # reached only through handle_file, itself
 # invoked indirectly by name via walk_tracked_files's $handler
 check_cap() {
     local file="$1" cap="$2" line_count
@@ -60,7 +60,7 @@ check_cap() {
 # Markdown there is already outside `markdown_in_scope`.
 # SKILL.md's own 200 cap must precede the markdown fallback below: both
 # would otherwise match a SKILL.md, and `case` takes the first.
-# shellcheck disable=SC2317 # invoked indirectly by name via
+# shellcheck disable=SC2317,SC2329 # invoked indirectly by name via
 # walk_tracked_files's $handler
 handle_file() {
     local file="$1"
