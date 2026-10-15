@@ -56,5 +56,10 @@ format-docs:
 test:
     scripts/run-bats.sh tests/
 
+# The bats suites under /bin/bash: Apple's 3.2.57 on a Mac, where `env bash`
+# usually finds Homebrew's.
+test-system-bash:
+    scripts/run-bats-under.sh /bin/bash tests/
+
 # Checks that run before a release. Add slow or paid checks here.
 prerelease: precommit

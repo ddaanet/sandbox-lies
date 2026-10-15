@@ -23,7 +23,7 @@ load helpers/probes
 # only while BATS_TEST_TMPDIR holds no byte %q escapes.
 setup() {
   source "$ROOT/lib/probes.sh"
-  [ "$(LC_ALL=C printf %q "$BATS_TEST_TMPDIR")" = "$BATS_TEST_TMPDIR" ]
+  [ "$(LC_ALL=C; printf %q "$BATS_TEST_TMPDIR")" = "$BATS_TEST_TMPDIR" ]
 }
 
 # path_line — the one path= line of the last probe run, empty when none.
@@ -225,7 +225,7 @@ phrase_path() {
     mkdir -p "$repo/.git" "$repo/sub/${rel%/*}"
     : >"$repo/sub/$rel"
     text=$(readonly_path_text fire-readonly-path-cp-tmp "'$rel'")
-    LC_ALL=C printf -v expected 'path=%q' "$repo/sub/$rel"
+    expected=$(LC_ALL=C; printf 'path=%q' "$repo/sub/$rel")
 
     run_probe_command probe_readonly_path false "$repo/sub" "cp x '$rel'" "$text"
 
@@ -259,7 +259,7 @@ phrase_path() {
   mkdir -p "$top/.git" "$top/sub" "$top/d"
   : >"$top/d/f"
   text=$(partial_checkout_unlink_error d/f)
-  LC_ALL=C printf -v expected 'path=%q' "$top/d/f"
+  expected=$(LC_ALL=C; printf 'path=%q' "$top/d/f")
 
   run_probe_command probe_readonly_path false "$top/sub" 'just sync' "$text"
 

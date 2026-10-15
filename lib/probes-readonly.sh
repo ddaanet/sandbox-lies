@@ -98,11 +98,14 @@ probe_readonly_path() {
 # _probe_path_line <path> — the path= line: <path> in printf %q form, so a
 # blank, a quote or a newline cannot split the line or forge a key line.
 # LC_ALL=C keeps a UTF-8 byte in octal, as bash 5.2 under a UTF-8 locale would
-# print it raw. Nothing for an empty <path>.
+# print it raw. Set by plain assignment and put back: bash 3.2 ignores a
+# temporary LC_ALL= before a builtin. Nothing for an empty <path>.
 _probe_path_line() {
-    local quoted
+    local quoted saved=${LC_ALL-} had=${LC_ALL+x}
     if [ -n "$1" ]; then
-        LC_ALL=C printf -v quoted %q "$1"
+        LC_ALL=C
+        printf -v quoted %q "$1"
+        if [ -n "$had" ]; then LC_ALL=$saved; else unset LC_ALL; fi
         printf 'path=%s\n' "$quoted"
     fi
 }

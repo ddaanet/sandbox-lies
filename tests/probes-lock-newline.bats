@@ -27,7 +27,7 @@ setup() {
   _probe_holder_pid=
   # The literals below interpolate BATS_TEST_TMPDIR as itself; a byte %q
   # escapes in it would differ from the encoder's output for another reason.
-  [ "$(LC_ALL=C printf %q "$BATS_TEST_TMPDIR")" = "$BATS_TEST_TMPDIR" ]
+  [ "$(LC_ALL=C; printf %q "$BATS_TEST_TMPDIR")" = "$BATS_TEST_TMPDIR" ]
 }
 
 teardown() {

@@ -38,7 +38,7 @@ config_lock_error() {
 # tests/probes-readonly.bats, where it fails loudly instead.
 assert_unescaped_dir() {
   local dir="$1"
-  [ "$(LC_ALL=C printf %q "$dir")" = "$dir" ] && return 0
+  [ "$(LC_ALL=C; printf %q "$dir")" = "$dir" ] && return 0
   printf 'tmpdir %q holds a byte printf %%q escapes: the path= expectations spell %s unescaped\n' "$dir" "\$BATS_TEST_TMPDIR" >&2
   return 1
 }

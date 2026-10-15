@@ -51,7 +51,7 @@ path_verdict() {
   # that is valid UTF-8 text and that [:cntrl:] matches under a UTF-8 locale.
   for byte in $'\001' $'\t' $'\033' $'\037' $'\177'; do
     real="/x/a${byte}b/f"
-    wire=$(LC_ALL=C printf '%q' "$real")
+    wire=$(LC_ALL=C; printf '%q' "$real")
     [ "${wire#\$\'}" != "$wire" ]
     text=$(path_verdict writable "$wire")
     [ "$(printf '%s\n' "$text" | sed -n '1p')" = "\`$wire\` is writable outside the sandbox, whose allowlist refused it.$(readonly_path_tail)" ] \
@@ -60,7 +60,7 @@ path_verdict() {
   done
   for byte in $'\200' $'\377' $'\302\200'; do
     real="/x/a${byte}b/f"
-    wire=$(LC_ALL=C printf '%q' "$real")
+    wire=$(LC_ALL=C; printf '%q' "$real")
     [ "${wire#\$\'}" != "$wire" ]
     text=$(path_verdict writable "$wire")
     [ "$(printf '%s\n' "$text" | sed -n '1p')" = "\`$real\` is writable outside the sandbox, whose allowlist refused it.$(readonly_path_tail)" ] \
@@ -97,7 +97,7 @@ path_verdict() {
   # Two quotes in one value: every \' is swapped, not the first alone.
   for real in "/x/caf${eacute}'s\\n/f" "/x/caf${eacute}\\'s/f" "/x/caf${eacute}'\\/f" \
     "/x/caf${eacute}'a'b/f" "/x/caf${eacute}''\\'/f"; do
-    wire=$(LC_ALL=C printf '%q' "$real")
+    wire=$(LC_ALL=C; printf '%q' "$real")
     [ "${wire#\$\'}" != "$wire" ]
     line1=$(path_verdict writable "$wire" | sed -n '1p')
     [ "$line1" = "\`$real\` is writable outside the sandbox, whose allowlist refused it.$(readonly_path_tail)" ] \
@@ -111,7 +111,7 @@ path_verdict() {
   # substitution would create the file and the absence below could fail.
   [ -d "$BATS_TEST_TMPDIR" ] && [ -w "$BATS_TEST_TMPDIR" ]
   [ ! -e "$sentinel" ]
-  wire=$(LC_ALL=C printf '%q' "/x/\$(touch $sentinel)")
+  wire=$(LC_ALL=C; printf '%q' "/x/\$(touch $sentinel)")
   line1=$(path_verdict writable "$wire" | sed -n '1p')
   [ "$line1" = "\`/x/\$(touch $sentinel)\` is writable outside the sandbox, whose allowlist refused it.$(readonly_path_tail)" ]
   [ ! -e "$sentinel" ]
@@ -172,7 +172,7 @@ path_verdict() {
   for real in '/x/a&b/f' '/x/100%s/f' '/x/\1/f' '/x/a\b/f' "/x/a'b\"c/f" \
     '/x/${HOME}/`id`/f' '/x/*?[a]{b}#!/f' '/x/-n/f' '/x/f ' '/x/two  blanks/f' \
     "/x/caf${eacute}100%s%d&\\1\\n/f" "/x/caf${eacute}\$(id)\`id\`/f"; do
-    wire=$(LC_ALL=C printf '%q' "$real")
+    wire=$(LC_ALL=C; printf '%q' "$real")
     line1=$(path_verdict writable "$wire" | sed -n '1p')
     [ "$line1" = "\`$real\` is writable outside the sandbox, whose allowlist refused it.$(readonly_path_tail)" ] \
       || { printf 'wire %s gave: %s\n' "$wire" "$line1" >&2; return 1; }
@@ -188,14 +188,15 @@ path_verdict() {
   # form.
   for real in "/x/a"$'\004'"6/f" "/x/a"$'\001'"7/f" "/x/a"$'\037'"0/f" \
     "/x/caf${eacute}1/f" "/x/caf${eacute}\\0046/f"; do
-    wire=$(LC_ALL=C printf '%q' "$real")
+    wire=$(LC_ALL=C; printf '%q' "$real")
     [ "${wire#\$\'}" != "$wire" ]
     # shellcheck disable=SC1090 # $VERDICTS is lib/verdicts.sh, resolved above
     result=$(. "$VERDICTS"; _verdict_path_read "$wire"; printf '%s' "$_verdict_path_raw")
     [ "$result" = "$real" ] || { printf 'wire %s decoded to %s\n' "$wire" "$result" >&2; return 1; }
   done
   # The paragraph shows the wire form for the control byte, not a wrong path.
-  wire=$(LC_ALL=C printf '%q' "/x/a"$'\004'"6/f")
+  # shellcheck disable=SC2030 # the subshell sets LC_ALL (bash 3.2: no temporary assignment before a builtin)
+  wire=$(LC_ALL=C; printf '%q' "/x/a"$'\004'"6/f")
   [ "$(path_verdict writable "$wire" | sed -n '1p')" = "\`$wire\` is writable outside the sandbox, whose allowlist refused it.$(readonly_path_tail)" ]
 }
 
@@ -251,7 +252,7 @@ print("%.4f" % best)
   # speed.
   # shellcheck disable=SC1090
   [ "$(LC_ALL=$loc; . "$VERDICTS"; _verdict_path_read "$wire_n"; [ "$_verdict_path_raw" = "$p_n" ] && echo same)" = same ]
-  # shellcheck disable=SC1090
+  # shellcheck disable=SC1090,SC2030
   [ "$(LC_ALL=$loc; . "$VERDICTS"; _verdict_path_read "$wire_4n"; [ "$_verdict_path_raw" = "$p_4n" ] && echo same)" = same ]
 
   t_n=$(decode_seconds "$loc" "$wire_n")

@@ -33,8 +33,8 @@ updating the plugin.
 
 The symptoms, discriminators and corpus figures were recorded on Linux, where
 the command sandbox is bubblewrap. The scripts are written to run under macOS's
-bash 3.2 and BSD tools as well, and the test suite passes on macOS, but the
-macOS sandbox's messages and masks have not been verified.
+bash 3.2 and BSD tools as well, and the test suite passes on macOS under Apple's
+bash 3.2.57, but the macOS sandbox's messages and masks have not been verified.
 
 ## Detectors
 

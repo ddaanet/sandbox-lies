@@ -72,9 +72,12 @@ case "$parsed" in
     rest=${parsed#*"$nl"}
     flag=${rest%%"$nl"*}
     rest=${rest#*"$nl"}
-    printf -v cwd '%b' "${rest%%"$nl"*}"
+    # bash 3.2: printf -v x %b "" leaves x at the previous buffer, so skip empty.
+    v=${rest%%"$nl"*}
+    [ -z "$v" ] || printf -v cwd '%b' "$v"
     rest=${rest#*"$nl"}
-    printf -v command '%b' "${rest%%"$nl"*}"
+    v=${rest%%"$nl"*}
+    [ -z "$v" ] || printf -v command '%b' "$v"
     text=${rest#*"$nl"}
     ;;
 esac

@@ -15,12 +15,18 @@ set -euo pipefail
 # The helper beside this script. `%/*` leaves a slash-less path whole, so
 # a bare `bash check-links.sh` from scripts/ gets its own arm. A failed
 # `source` returns 1, which `set -e` would surface as a broken link: exit 2.
+# bash 3.2 exits 1 on a failed `source` even as `source … || exit 2`, so errexit
+# is off around it and the status is tested by hand.
 case "${BASH_SOURCE[0]}" in
 */*) LIB_DIR="${BASH_SOURCE[0]%/*}/lib" ;;
 *) LIB_DIR=lib ;;
 esac
+set +e
 # shellcheck source-path=SCRIPTDIR source=lib/tracked.sh
-source "$LIB_DIR/tracked.sh" || exit 2
+source "$LIB_DIR/tracked.sh"
+source_rc=$?
+set -e
+[ "$source_rc" -eq 0 ] || exit 2
 # check_links_in runs the other helper once per file: missing, it would
 # fail the first file checked and name that file as the unreadable one.
 if [ ! -r "$LIB_DIR/strip-code.awk" ]; then

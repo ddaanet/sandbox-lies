@@ -146,7 +146,7 @@ setup() {
 @test "a resolved refused path holding a newline gives writable and one encoded path= line" {
   local good="$BATS_TEST_TMPDIR/r readfile=x"
   local bad="$BATS_TEST_TMPDIR/r"$'\n'"readfile=x" text expected
-  [ "$(LC_ALL=C printf %q "$BATS_TEST_TMPDIR")" = "$BATS_TEST_TMPDIR" ]
+  [ "$(LC_ALL=C; printf %q "$BATS_TEST_TMPDIR")" = "$BATS_TEST_TMPDIR" ]
   mkdir "$good" "$bad"
   text=$(readonly_path_text fire-readonly-path-cp-tmp "'a'")
   expected=$(printf '%s\n' writable "path=$BATS_TEST_TMPDIR/r\\ readfile=x/a" \

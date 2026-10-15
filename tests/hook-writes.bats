@@ -163,7 +163,7 @@ run_spied() {
   failure_payload "$text" |
     jq --arg c "$cwd" '.cwd = $c | del(.tool_input.dangerouslyDisableSandbox)' \
       >"$PAYLOAD_FILE"
-  wire=$(LC_ALL=C printf '%q' "$cwd/f")
+  wire=$(LC_ALL=C; printf '%q' "$cwd/f")
   [ "${wire#\$\'}" != "$wire" ]
 
   run bash "$HOOK_COPY/hooks/annotate.sh" <"$PAYLOAD_FILE"
