@@ -13,3 +13,4 @@ __pycache__/
 
 # The dogfood copy plugin-dev/bin/claude loads (D-16).
 /dist/plugin/
+/.mcp.json
