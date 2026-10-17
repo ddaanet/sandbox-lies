@@ -12,11 +12,13 @@
 # Scope: `skills/`, `docs/` and root-level markdown. `plans/` and `memory/`
 # stay out (frozen work, and a submodule with its own gate). The root-level
 # pattern is `/*.md`, not `*.md`: an unanchored `*` crosses `/`, so `*.md`
-# pulls in `plans/`, `memory/` and every other tree.
+# pulls in `plans/`, `memory/` and every other tree. `TASK.md` and `TODO.md`
+# are handoff files, written by other tooling and left unwrapped.
 
 [global]
 enable = ["MD013"]
 include = ["skills/**/*.md", "docs/**/*.md", "/*.md"]
+exclude = ["/TASK.md", "/TODO.md"]
 
 [MD013]
 line-length = 80
