@@ -54,9 +54,9 @@ the tool's own diagnostic shape. Nine ship:
   or one that exists, so the sandbox is not the cause.
 - `seccomp-init` — the sandbox failing to start before the command ran.
 
-The matchers, probes, verdict text, flag policies and the corpus precision each
-detector was measured at are in
-[docs/references/detectors.md](docs/references/detectors.md).
+What each detector fires on, what it checks and what it says, outcome by
+outcome, is in [Detectors](manual/detectors.md); how the hook runs and where its
+checks look is in [The hook](manual/hook.md).
 
 ## The skill
 
@@ -67,11 +67,12 @@ break a cleanliness gate. The `sandbox-lies:sandbox-lies` skill carries that
 knowledge and triggers while an agent is writing an exclusion, a recipe, a
 cleanliness gate or a directive with a scratch path, before any output exists.
 
-## Design
+## Development
 
-[docs/design.md](docs/design.md) holds the requirements, decisions and
-limitations; [docs/references/hook.md](docs/references/hook.md) describes the
-hook at run time.
+The
+[design document](https://github.com/ddaanet/sandbox-lies/blob/main/docs/design.md)
+holds the requirements, decisions and limitations, and the corpus precision each
+detector was measured at.
 
 ## License
 

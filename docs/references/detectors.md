@@ -2,7 +2,9 @@
 
 The mechanism behind `docs/design.md` FR-7. One entry per detector: the memory
 section it replaces, the matcher's discriminator, the probe and its outcomes,
-the verdict text per outcome, and the corpus figure. A detector without a corpus
+the reason for its flag policy, and the corpus figure. What a shipped detector
+says, outcome by outcome, and its flag policy as a user meets it are in the
+manual's [Detectors](../../manual/detectors.md). A detector without a corpus
 figure is a candidate and does not ship (D-15, below). The two lock detectors
 and `readonly-path` keep a stub here and their entries in
 [lock-detectors.md](lock-detectors.md) and [readonly-path.md](readonly-path.md);
@@ -40,9 +42,10 @@ token on its first line followed by `key=value` lines. The **flag** is
 `tool_input` when unset (read as false) and `true` when set (recorded
 2026-09-23); every detector states its **flag policy** — what happens when the
 call ran unsandboxed. Verdict text is given as the agent paragraph, then the
-human line. No entry here quotes a diagnostic together with its follow-on
-sentence, and candidate strings are described rather than quoted, so that this
-file stays quiet under the detectors it specifies.
+human line: a candidate's here, a shipped detector's in the manual. No entry
+here quotes a diagnostic together with its follow-on sentence, and candidate
+strings are described rather than quoted, so that this file stays quiet under
+the detectors it specifies.
 
 Corpus: 21,453 Bash tool-use/result pairs, 1,682 JSONL files, 35 projects,
 measured 2026-09-03 with the shell matchers as arbiter
@@ -80,10 +83,8 @@ match; none exists in the corpus.
 
 **Probe.** None.
 
-**Verdict.** The character-device entries in this listing are sandbox masks, not
-files in the repository. Leave them out of every add, delete and report. With no
-sandboxed command running in the background, `ls -a` and `git status` run
-unsandboxed show the real tree. · `phantom dotfiles — sandbox masks in listing`
+**Verdict.** In the manual,
+[phantom-chardev](../../manual/detectors.md#phantom-chardev).
 
 **Flag policy.** Fires either way with the same verdict: masks have been seen
 from unsandboxed readers while another session's sandbox was live, and the
@@ -108,10 +109,10 @@ so it missed the tab-indented long-format block; its 41 is an undercount of the
 
 **Probe.** None.
 
-**Verdict.** As `phantom-chardev`, opening "The dotfile entries" in place of
-"The character-device entries", since a status lists names and not modes, with:
-a cleanliness check that reads these `??` lines as dirty is reading the sandbox,
-not the tree. · `phantom dotfiles — masks listed as untracked`
+**Verdict.** In the manual,
+[phantom-untracked](../../manual/detectors.md#phantom-untracked):
+`phantom-chardev`'s, opening on the dotfile entries rather than the
+character-device entries, since a status lists names and not modes.
 
 **Flag policy.** As `phantom-chardev`.
 
@@ -129,9 +130,8 @@ sentence, so the follow-on test does not separate these.
 
 **Probe.** None.
 
-**Verdict.** `git add` aborted on a sandbox mask, not a file. Stage explicit
-paths, or re-run the same command unsandboxed. ·
-`git add — refused a sandbox mask`
+**Verdict.** In the manual,
+[phantom-gitadd](../../manual/detectors.md#phantom-gitadd).
 
 **Flag policy.** Fires either way, same verdict.
 
@@ -172,10 +172,8 @@ deeper path is the near-miss.
 
 **Flag policy.** Fires only when the flag is true; silent otherwise.
 
-**Verdict.** `$TMPDIR` expanded empty in this unsandboxed call, so the path
-collapsed to `/`. Use the literal scratch path `/tmp/claude/<job>` (create it
-with `mkdir -p`) in this and every unsandboxed or delegated command. ·
-`$TMPDIR — expanded empty, path collapsed to /`
+**Verdict.** In the manual,
+[tmpdir-unset](../../manual/detectors.md#tmpdir-unset).
 
 **Corpus.** 13 hits, 13 true, each a `$TMPDIR` path collapsed to `/`. 100% on
 2026-09-25; no pilot traffic. The 182 matches without the flag are silent
@@ -226,16 +224,10 @@ was written depends on the call that should have written it, not on the call
 that resumes it, and a call an exclusion unsandboxed carries no flag anyway
 ([sandbox-state.md](sandbox-state.md)).
 
-**Verdicts.**
-
-- `lost` — The transcript was never written: `~/.claude/projects` is read-only
-  inside the sandbox. Run the entire multi-turn flow in one unsandboxed call. ·
-  `--resume — transcript not persisted in sandbox`
-- `found` — A transcript for this session exists, so the sandbox did not lose it
-  and an unsandboxed retry will not help. `--resume` finds a session from any
-  working directory: check that this call reads the config directory that holds
-  the transcript (`CLAUDE_CONFIG_DIR`, else `~/.claude`). ·
-  `--resume — transcript exists, not the sandbox`
+**Verdicts.** In the manual,
+[resume-lost](../../manual/detectors.md#resume-lost); `found` names the config
+directory because E5 below is the observed cause of a refusal over a transcript
+that exists.
 
 **Live reproduction (2026-10-07, CC 2.1.292).** Linux bubblewrap, with
 `~/.claude/projects` in the sandbox's write deny list; each sandboxed call
@@ -297,10 +289,8 @@ allowed): live, it is the whole result. The store quotes it mid-line.
 **Flag policy.** Cannot occur on an unsandboxed call; silent if the flag is
 true.
 
-**Verdict.** The sandbox failed to initialise before the command ran; this is
-transient. Retry the identical command once; if it fails the same way, split it
-into smaller calls. Escape the sandbox only after both. ·
-`sandbox init failed — transient, retry`
+**Verdict.** In the manual,
+[seccomp-init](../../manual/detectors.md#seccomp-init).
 
 **Corpus.** 8 hits, 8 true, all on 2026-08-14 in edify, handoff and gitlore.
 100% on 2026-09-25; no pilot traffic.

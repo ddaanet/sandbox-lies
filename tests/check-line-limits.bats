@@ -94,6 +94,25 @@ oversized-file: skills/x/references/n.md: 401 lines > 400" ]
   [ "$output" = "oversized-file: README.md: 401 lines > 400" ]
 }
 
+@test "oversized manual markdown is reported" {
+  local dir
+  dir=$(make_fixture_root manual)
+  mkdir -p "$dir/manual/sub"
+  # One over the cap at manual/'s top and one level down: `*` crosses `/`
+  # in a `case`, so the arm covers both, and the exact two-line output pins
+  # it to 400 for each.
+  seq 401 >"$dir/manual/a.md"
+  seq 401 >"$dir/manual/sub/b.md"
+  # Exactly at the cap: a `>=` comparison would report it.
+  seq 400 >"$dir/manual/c.md"
+  git -C "$dir" add manual/a.md manual/sub/b.md manual/c.md
+
+  run --separate-stderr "$SCRIPT" "$dir"
+  [ "$status" -eq 1 ]
+  [ "$output" = "oversized-file: manual/a.md: 401 lines > 400
+oversized-file: manual/sub/b.md: 401 lines > 400" ]
+}
+
 @test "markdown elsewhere is out of scope" {
   local dir
   dir=$(make_fixture_root elsewhere)

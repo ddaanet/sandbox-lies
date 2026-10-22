@@ -1,13 +1,14 @@
 # Lock detectors
 
 `git-lock` and `config-lock`, the two detectors whose verdict depends on a probe
-of a lock path: matcher, probe and outcomes, flag policy, verdict text per
-outcome, corpus figure and live reproductions, and the argument for D-14. The
-catalogue entry for each is a stub in [detectors.md](detectors.md), whose
-conventions — what a matcher, probe and flag are, the verdict-text format, the
-corpus the figures come from — apply here unchanged. No entry here quotes a
-diagnostic together with its follow-on sentence, so that this file stays quiet
-under the detectors it specifies.
+of a lock path: matcher, probe and outcomes, flag policy, corpus figure and live
+reproductions, and the argument for D-14. What each says, outcome by outcome, is
+in the manual's [Detectors](../../manual/detectors.md). The catalogue entry for
+each is a stub in [detectors.md](detectors.md), whose conventions — what a
+matcher, probe and flag are, the verdict-text format, the corpus the figures
+come from — apply here unchanged. No entry here quotes a diagnostic together
+with its follow-on sentence, so that this file stays quiet under the detectors
+it specifies.
 
 ## git-lock
 
@@ -50,27 +51,9 @@ visible outside the sandbox while a sandboxed command runs, where re-running
 unsandboxed at once changes nothing. The verdict takes the flag as its second
 argument and words the re-run of `mask`, `orphan` and `unknown` by it.
 
-**Verdicts.** *Re-run* and *Retry* stand for the flag's wording:
-
-| flag | *Re-run* | *Retry* |
-|---|---|---|
-| false | Re-run the same command with `dangerouslyDisableSandbox: true` | Retry the command with `dangerouslyDisableSandbox: true` |
-| true | Re-run the same command once no sandboxed command is running | Retry the command once |
-
-- `mask` — The lock in this error is a sandbox artefact and the repository is
-  healthy. *Re-run*. A repeat failure on a commit whose hook stages files is
-  that hook leaking `GIT_INDEX_FILE`, not the sandbox. ·
-  `index.lock — sandbox mask, not a real lock`
-- `gone` — No lock exists now; git cleaned it after the failure. Retry once. A
-  repeat failure on a commit whose hook stages files is that hook leaking
-  `GIT_INDEX_FILE`, not the sandbox. · `index.lock — cleared after failure`
-- `held` — A process (pid N) holds the lock. Wait for it, then retry. ·
-  `index.lock — held by pid N`
-- `orphan` — The lock exists outside the sandbox (N bytes, age Ns) and no
-  process holds it. *Retry*; a second identical failure means the lock predates
-  this session. · `index.lock — present, no holder`
-- `unknown` — The lock exists outside the sandbox (N bytes, age Ns); no holder
-  check is available here. *Retry*. · `index.lock — present, holder unknown`
+**Verdicts.** In the manual, [git-lock](../../manual/detectors.md#git-lock),
+with the flag's wording of the re-run and the retry. No outcome carries a
+removal instruction, `orphan` included (D-14, above).
 
 **Corpus.** 14 hits, 9 true, 5 self-reference (fixture reads, a fault-injection
 probe, this project's replay). 64% on 2026-09-03 after pilot traffic; 82% on
@@ -135,27 +118,13 @@ is why a relative path resolves from the nearest `.git` directory rather than
 from the `cwd`. Note `.git/config.lock` is itself in the masked set, so the
 sandboxed write fails on a bind-mount, not on a file.
 
-**Verdicts.** `git-lock`'s, naming `config.lock`, without the `GIT_INDEX_FILE`
-leak clause, which concerns `index.lock` only. In `mask`, when the probe's
-`path=` is a `.claude/settings.json.lock`, the act "Write
-`.claude/settings.json` through the `update-config` skill" takes the place of
-*Re-run*, under either flag. The suffix test runs on the decoded value of
-`path=`, not on the wire form (the printed value, defined in
-[readonly-path.md](readonly-path.md), Probe); a value that decodes to no path
-keeps *Re-run*.
-
-- `mask` — The `config.lock` behind this error is a sandbox artefact and the
-  repository is healthy. *Re-run*. ·
-  `config.lock — sandbox mask, not a real lock`
-- `gone` — No lock exists now; git cleaned it after the failure. Retry once. ·
-  `config.lock — cleared after failure`
-- `held` — A process (pid N) holds the lock. Wait for it, then retry. ·
-  `config.lock — held by pid N`
-- `orphan` — The lock exists outside the sandbox (N bytes, age Ns) and no
-  process holds it. *Retry*; a second identical failure means the lock predates
-  this session. · `config.lock — present, no holder`
-- `unknown` — The lock exists outside the sandbox (N bytes, age Ns); no holder
-  check is available here. *Retry*. · `config.lock — present, holder unknown`
+**Verdicts.** In the manual,
+[config-lock](../../manual/detectors.md#config-lock): `git-lock`'s, naming
+`config.lock`, without the `GIT_INDEX_FILE` leak clause, which concerns
+`index.lock` only. The test that swaps the re-run for the `update-config` act on
+a `.claude/settings.json.lock` runs on the decoded value of `path=`, not on the
+wire form (the printed value, defined in [readonly-path.md](readonly-path.md),
+Probe); a value that decodes to no path keeps the re-run.
 
 **Flag policy.** As `git-lock`.
 

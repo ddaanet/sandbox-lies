@@ -30,4 +30,4 @@ version=$(env bash -c 'printf %s "$BASH_VERSION"')
 echo "bats under $bash_bin (bash $version)"
 
 # Not exec: the EXIT trap removes the shim once the run is over.
-"$(dirname "$0")/run-bats.sh" "$@"
+"$(dirname "$0")/../plugin-dev/run-bats.sh" "$@"

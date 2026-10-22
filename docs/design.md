@@ -224,6 +224,7 @@ lib/probes.sh           probe_<verdict> functions   (layer 3)
 lib/probes-readonly*.sh probe_readonly_path, its D-17 facts and command scan
 lib/verdicts.sh         agent paragraph + human line per verdict
 skills/sandbox-lies/    the symptom-less knowledge
+manual/                 user documentation: the detectors, the hook
 tests/                  matchers, hook, probes, verdicts, docs; fixtures/
 scripts/run-bats.sh     failure-only bats wrapper
 scripts/check-*.sh      line-limit and link gates, NFR-5
@@ -232,12 +233,12 @@ scripts/check-*.sh      line-limit and link gates, NFR-5
 The harness starts `annotate.sh` outside the command sandbox, so a probe's stat
 is the unsandboxed step the memory file asked the agent to take (reopen-if: a
 hook is ever found sandboxed), and a character device at a probed path is a
-mask. The call flow, that argument and how a probe resolves a relative path are
-in [references/hook.md](references/hook.md).
+mask. The call flow and that argument are in
+[references/hook.md](references/hook.md).
 
-The detector-by-detector mechanism — matcher shape, discriminator, probe,
-verdict outcomes, corpus figure — is in
-[references/detectors.md](references/detectors.md).
+The detector-by-detector mechanism — matcher shape, discriminator, probe, corpus
+figure — is in [references/detectors.md](references/detectors.md); what the hook
+and each detector say is in the manual, [`manual/`](../manual/detectors.md).
 
 ## Design decisions
 

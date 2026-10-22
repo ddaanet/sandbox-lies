@@ -1,12 +1,13 @@
 # readonly-path
 
 The `readonly-path` detector: matcher, probe and outcomes, flag policy, Probe
-facts, verdict text per outcome, live reproductions, corpus figure and the
-decision. The catalogue entry is a stub in [detectors.md](detectors.md), whose
-conventions — what a matcher, probe and flag are, the verdict-text format, the
-corpus the figures come from — apply here unchanged. No entry here quotes a
-diagnostic together with its follow-on sentence, so that this file stays quiet
-under the detectors it specifies.
+facts, how those facts select the verdict, live reproductions, corpus figure and
+the decision. What it says, outcome by outcome, is in the manual's
+[Detectors](../../manual/detectors.md). The catalogue entry is a stub in
+[detectors.md](detectors.md), whose conventions — what a matcher, probe and flag
+are, the verdict-text format, the corpus the figures come from — apply here
+unchanged. No entry here quotes a diagnostic together with its follow-on
+sentence, so that this file stays quiet under the detectors it specifies.
 
 ## readonly-path
 
@@ -169,15 +170,9 @@ directory died on git's `cannot create directory at` error, one also changing a
 tracked file on `unable to unlink old` first; HEAD stayed put. Cut as
 `fire-readonly-path-git-mkdir`.
 
-**Verdicts.**
-
-- `writable` — `<path>` is writable outside the sandbox, whose allowlist refused
-  it. Then the tail below. · `read-only — sandbox allowlist, writable outside`
-- `readonly` — `<path>` is not writable outside the sandbox either; this is not
-  a sandbox effect. Unsandboxing will not help: write somewhere writable, or ask
-  before changing its permissions. · `read-only — real`
-- `nopath` — The sandbox's write allowlist most likely refused this write. Then
-  the tail below. · `read-only — probably the sandbox, path not checked`
+**Verdicts.** In the manual,
+[readonly-path](../../manual/detectors.md#readonly-path): one paragraph per
+outcome, `writable` and `nopath` followed by a tail act, `readonly` by none.
 
 `<path>` is the decoded path, shown raw: a blank or a UTF-8 byte reads as the
 path holds it. When it holds a control byte (`\001` to `\037`, `\177`) the wire
@@ -196,14 +191,13 @@ The tail is one act, the first of these whose fact the probe printed:
 The act stands alone as its own sentence, capitalised, unless a merge clause
 leads into it, lowercase. With `merge=1`, the probe's facts select the clause:
 
-- `match=` lines — The merge or checkout left files at the target with HEAD
-  unmoved, blocking a re-run: restore `<a>`, `<b>` from HEAD — they match
-  `<target>` —, then *act*. Five names at most, then `and N more`. Each name is
-  its `match=` line's absolute path, so the clause names the same files from any
+- `match=` lines — the clause names the files at the target, to be restored from
+  HEAD before the act: five names at most, then `and N more`. Each name is its
+  `match=` line's absolute path, so the clause names the same files from any
   working directory; a backtick in a name closes its code span early, bytes
   intact.
-- no `target=`, and `partial=1` — The merge or checkout left the files it wrote
-  with HEAD unmoved, blocking a re-run: restore them from HEAD, then *act*.
+- no `target=`, and `partial=1` — the clause names no file: it says to restore
+  the files the command wrote from HEAD before the act.
 - `target=` and no `match=` — no clause: nothing sits at the target to restore.
 - neither `target=` nor `partial=1` — no clause: the command shape alone does
   not show the git segment wrote anything. Of 195 hits on 2026-09-27, 3 were

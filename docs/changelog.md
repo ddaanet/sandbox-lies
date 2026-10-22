@@ -5,6 +5,25 @@ Design-significant changes only; git history is the full record.
 Entries from 2026-09-22 to 2026-09-27 are in
 [changelog-2026-09.md](changelog-2026-09.md).
 
+## 2026-10-21 — user documentation moves to `manual/`, design stops shipping
+
+The release toolkit moved to 0.12.0, whose `dist` branch ships only the paths
+`dist.include` lists and whose reference check refuses a shipped file linking to
+one it leaves out. `docs/` is design and no longer ships, so what a plugin user
+reads moved to a shipped `manual/`: `manual/detectors.md`, what each of the nine
+shipped detectors fires on, what its check finds and what it says per outcome,
+and `manual/hook.md`, which script runs on which event, the `jq` notice and
+where a probe resolves a relative path. The design nodes keep the mechanism and
+the argument; each Verdict or Verdicts section in `detectors.md`,
+`lock-detectors.md` and `readonly-path.md`, and the matching paragraphs of
+`hook.md`, is now a link to the manual's anchor, keeping any reasoning it
+carried. `readonly-path.md` keeps how the probe's facts select the tail act and
+the merge clause; the wording is the manual's. The README links the manual and
+reaches the design by one URL. `manual/` joins the gate's inputs, the rumdl wrap
+and the 400-line cap of `scripts/check-line-limits.sh`. The same pull brought
+the toolkit's gate sentinel, so `precommit` skips itself while no input it reads
+has changed, and the quiet bats runner replaced `scripts/run-bats.sh`.
+
 ## 2026-10-05 — dogfood through the toolkit's shim
 
 The release toolkit moved to 0.9.0, which ships a `claude` shim at

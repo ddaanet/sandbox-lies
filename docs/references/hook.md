@@ -7,8 +7,11 @@ the registration in `hooks/hooks.json`, with the `SessionStart` check that says
 when `jq` (D-12) is missing. `docs/design.md` §Architecture keeps the component
 map and one line for each conclusion here; the per-detector mechanism is in
 [detectors.md](detectors.md), [lock-detectors.md](lock-detectors.md) and
-[readonly-path.md](readonly-path.md). Read this node before changing
-`annotate.sh`'s call sequence, a probe's path handling, or `hooks/hooks.json`.
+[readonly-path.md](readonly-path.md). What a user meets of the hook — its
+events, its two channels, the `jq` notice and where a check looks — is the
+manual's [The hook](../../manual/hook.md), which this node does not restate.
+Read this node before changing `annotate.sh`'s call sequence, a probe's path
+handling, or `hooks/hooks.json`.
 
 **Flow.** The harness starts `annotate.sh` after every Bash call with the
 payload on stdin: `PostToolUseFailure` when the command exited non-zero,
@@ -24,18 +27,18 @@ paragraphs concatenate into `additionalContext`, the human lines into
 
 **Registration.** `hooks/hooks.json` holds three entries, each a single command
 hook of the form `bash "${CLAUDE_PLUGIN_ROOT}/hooks/<script>"` with a 10 s
-`timeout`: `annotate.sh` on `PostToolUse` and on `PostToolUseFailure`, both with
-matcher `Bash`, and `check-jq.sh` on `SessionStart` with no matcher. Running the
-script through `bash`, with the root quoted inside the command string, makes the
-executable bit and a space in the plugin root irrelevant. On `SessionStart` a
-matcher filters the start source (`startup`, `resume`, `clear`, `compact`); with
-none the check fires on all four, so the notice is issued again after a `clear`
-or a `compact`, either of which can leave the conversation without the first
-one. The `SessionStart` entry takes the annotate entries' 10 s bound (NFR-3)
-rather than the harness default. Pinned by `tests/hook.bats` "hooks.json names
-the three events": exactly these three event keys (FR-1: no `PreToolUse`), one
-entry each, the `Bash` matcher on the two annotate entries and no matcher key on
-the `SessionStart` one, each `timeout` and each command string.
+`timeout`; which script runs on which event is in the
+[manual](../../manual/hook.md#what-runs-and-when). Running the script through
+`bash`, with the root quoted inside the command string, makes the executable bit
+and a space in the plugin root irrelevant. On `SessionStart` a matcher filters
+the start source (`startup`, `resume`, `clear`, `compact`), so the entry has
+none: the notice is issued again after a `clear` or a `compact`, either of which
+can leave the conversation without the first one. The `SessionStart` entry takes
+the annotate entries' 10 s bound (NFR-3) rather than the harness default. Pinned
+by `tests/hook.bats` "hooks.json names the three events": exactly these three
+event keys (FR-1: no `PreToolUse`), one entry each, the `Bash` matcher on the
+two annotate entries and no matcher key on the `SessionStart` one, each
+`timeout` and each command string.
 
 **When `jq` is missing (D-12).** `annotate.sh` parses the payload with `jq`;
 without it that first call fails and the script exits 0 with nothing on stdout
@@ -45,20 +48,14 @@ without it that first call fails and the script exits 0 with nothing on stdout
 exported function of that name included. When `jq` resolves, it prints nothing.
 Otherwise it prints one fixed JSON object with a single `printf`, with no
 interpolation and no external tool, so the notice needs no `jq` to be emitted.
-The object carries two channels:
-
-- `systemMessage`, for the user: one line naming the plugin, that `jq` was not
-  found on `PATH`, and that Bash result annotations are off until it is
-  installed. It opens with a style reset written as the JSON escape `\u001b[0m`,
-  since a raw ESC byte would make the object invalid JSON. The reset lifts the
-  line out of the dimming Claude Code applies to ordinary hook output, which
-  suits a hook that speaks only when something is wrong.
-- `hookSpecificOutput.additionalContext`, with `hookEventName` `SessionStart`,
-  for the agent: annotations are off because `jq` is not on `PATH`, no Bash
-  result carries a sandbox-lies note until it is, and a result without one is to
-  be read as unchecked, not as undistorted. "Until it is" holds within the
-  session: `annotate.sh` looks `jq` up on every call, so a `jq` that appears on
-  `PATH` restores the annotations without a restart.
+The object carries `systemMessage` for the user and
+`hookSpecificOutput.additionalContext`, with `hookEventName` `SessionStart`, for
+the agent; what each says is in the [manual](../../manual/hook.md#without-jq).
+The user line's style reset is written as the JSON escape `\u001b[0m`, since a
+raw ESC byte would make the object invalid JSON; the reset lifts the line out of
+the dimming Claude Code applies to ordinary hook output, which suits a hook that
+speaks only when something is wrong. The agent text's "until it is" holds within
+the session because `annotate.sh` looks `jq` up on every call.
 
 The script writes no file, needs no temp directory, and exits 0 on every path.
 Pinned by `tests/check-jq.bats`, which runs the command string registered in
@@ -95,16 +92,14 @@ returned what the memory claims is an assertion, not evidence, so each is proved
 once live. Accepted tradeoff: a holder check costs a few hundred milliseconds on
 a hook that otherwise costs nothing.
 
-**Paths.** A lock probe takes its path from the error text; a relative one (git
-prints it from the main worktree's top-level) resolves from the nearest ancestor
-of the payload's `cwd`, itself included, holding a `.git` directory, else from
-the `cwd`, and with no `cwd` from the probe's working directory, never `/`.
-Phantom masks sit under the sandboxed call's working directory: the session's
-project root, or a subdirectory a persisted `cd` left the Bash tool in (seen on
-CC 2.1.281). The `phantom-*` detectors read text and run no probe; their verdict
-names no location, so it holds under any working directory. The `readonly-path`
-probe resolves a relative path the same way, except that git's partial-checkout
-refusals join onto the worktree top; that walk is in
+**Paths.** Where each probe resolves a relative path is in the
+[manual](../../manual/hook.md#where-a-check-looks). A lock probe takes its path
+from the error text and resolves a relative one from the nearest `.git`
+directory, not the payload's `cwd`, because git prints it from the main
+worktree's top-level. Phantom masks sit under the sandboxed call's working
+directory: the session's project root, or a subdirectory a persisted `cd` left
+the Bash tool in (seen on CC 2.1.281), which is why the `phantom-*` verdicts
+name no location. The `readonly-path` walk onto the worktree top is in
 [readonly-path.md](readonly-path.md), Probe.
 
 **Failures arrive on `PostToolUseFailure` (D-13).** In the CC 2.1.280 bundle the

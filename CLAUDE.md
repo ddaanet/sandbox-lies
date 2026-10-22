@@ -3,6 +3,8 @@
 A Claude Code plugin: `hooks/annotate.sh` annotates Bash results the command
 sandbox distorts, and `skills/sandbox-lies/` carries what has no symptom in the
 output. Design and per-detector mechanism: `docs/design.md`, `docs/references/`.
+User documentation, shipped: `manual/`; a change to what a detector or the hook
+does updates it there.
 
 - **Run `just precommit` before every commit** and read its own exit status. It
   parses the two JSON manifests, then runs shellcheck, `bash -n`, the rumdl wrap

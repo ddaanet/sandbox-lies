@@ -8,7 +8,7 @@
 # `git ls-files -z` instead of `find` so `.venv/` and gitlinks stay out.
 #
 # Scope, in root-relative paths, where a `case` `*` crosses `/`: markdown
-# at any depth under docs/, cap 400; under skills/, cap 200 for a
+# at any depth under docs/ or manual/, cap 400; under skills/, cap 200 for a
 # `skills/*/SKILL.md` and 400 for any other; at the root itself (no `/` in
 # the path), cap 400. A script (`.sh`, `.bash`, `.bats`, `.py`) at any depth,
 # cap 400. An awk, TOML or JSON file (`.awk`, `.toml`, `.json`) or a
@@ -65,7 +65,9 @@ check_cap() {
 # precede the script arm below, which would otherwise cap a script there.
 # Markdown there is already outside `markdown_in_scope`.
 # SKILL.md's own 200 cap must precede the markdown fallback below: both
-# would otherwise match a SKILL.md, and `case` takes the first.
+# would otherwise match a SKILL.md, and `case` takes the first. The shipped
+# manual/ is capped here rather than in `markdown_in_scope`, which the link
+# check shares.
 # shellcheck disable=SC2317,SC2329 # invoked indirectly by name via
 # walk_tracked_files's $handler
 handle_file() {
@@ -73,6 +75,7 @@ handle_file() {
     case "$file" in
     plans/* | plugin-dev/*) ;;
     skills/*/SKILL.md) check_cap "$file" 200 ;;
+    manual/*.md) check_cap "$file" 400 ;;
     *.sh | *.bash | *.bats | *.py) check_cap "$file" 400 ;;
     *.awk | *.toml | justfile | */justfile | *.json)
         case "$file" in

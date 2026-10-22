@@ -1,12 +1,25 @@
 import 'plugin-dev/release.just'
+import 'plugin-dev/gates.just'
+
+# Tool versions the precommit hash folds in: no lockfile pins them. rumdl is
+# pinned by uv.lock, which is an input.
+export PLUGIN_DEV_GATE_TOOLS := "bats --version\nshellcheck --version\njq --version\npython3 --version\ngit --version\nbash --version"
 
 # Each check runs through `report`, which records its name; a clean run ends
 # with the list of checks that passed, and a failing one stops at that check
-# with the check's own output.
+# with the check's own output. The gate skips itself, printing "cached", while
+# no input it reads has changed (sentinel-guard; plugin-dev/manual/gates.md).
 [doc('Checks that run before every commit.')]
-precommit:
-    #!/usr/bin/env bash
-    set -euo pipefail
+precommit: check-refs
+    #!{{ plugin_dev_gate_prolog }}
+    # gate_dirs: every tracked top-level directory except the memory gitlink,
+    # which no check reads and the hash cannot see. tests/docs.bats sweeps
+    # every tracked file, so plans/ and .gitlore/ are inputs; the root files
+    # are listed by name below, and a new one needs adding.
+    gate_dirs=(.claude .claude-plugin .gitlore docs hooks lib manual plans
+        plugin-dev scripts skills tests)
+    sentinel-guard precommit "${gate_dirs[@]}" .envrc .gitignore .gitmodules \
+        .rumdl.toml LICENSE dist.include pyproject.toml uv.lock ':(glob)*.md'
     passed=""
     report() {
         local name="$1"
@@ -14,16 +27,23 @@ precommit:
         "$@"
         passed="${passed:+$passed, }$name"
     }
-    # lint_paths: tracked and untracked-unignored paths matching the
-    # pathspecs, so a new file is linted before its first commit (wider than
-    # scripts/lib/tracked.sh's tracked-only list), NUL-delimited through a
-    # file so names with whitespace survive and a git failure stops the gate.
+    # lint_paths: tracked and untracked-unignored files under gate_dirs with
+    # one of the extensions given, so a new file is linted before its first
+    # commit (wider than scripts/lib/tracked.sh's tracked-only list) and never
+    # outside what the hash covers. NUL-delimited through a file so names with
+    # whitespace survive and a git failure stops the gate.
     list=$(mktemp "${TMPDIR:-/tmp}/sandbox-lies-precommit.XXXXXX")
     trap 'rm -f "$list"' EXIT
     lint_paths() {
-        git ls-files -z --cached --others --exclude-standard -- "$@" >"$list"
+        local f ext
+        git ls-files -z --cached --others --exclude-standard -- \
+            "${gate_dirs[@]}" >"$list"
         files=()
-        while IFS= read -r -d '' f; do files+=("$f"); done <"$list"
+        while IFS= read -r -d '' f; do
+            for ext in "$@"; do
+                case "$f" in *."$ext") files+=("$f"); break ;; esac
+            done
+        done <"$list"
     }
     each_bash_n() {
         local f
@@ -31,9 +51,9 @@ precommit:
     }
     report plugin.json jq empty .claude-plugin/plugin.json
     report hooks.json jq empty hooks/hooks.json
-    lint_paths '*.sh' '*.bash' '*.bats'
+    lint_paths sh bash bats
     report shellcheck shellcheck "${files[@]}"
-    lint_paths '*.sh'
+    lint_paths sh
     report 'bash -n' each_bash_n "${files[@]}"
     report rumdl rumdl fmt --check -q --no-cache
     report 'line limits' scripts/check-line-limits.sh
@@ -47,14 +67,15 @@ precommit:
         tests/extract-fixtures.py tests/corpus-eval.py
     report tests just test
     printf 'precommit passed: %s\n' "$passed"
+    record-sentinel
 
 # Hard-wrap the markdown in scope (.rumdl.toml) at 80 columns.
 format-docs:
     rumdl fmt -q --no-cache
 
-# The bats suites, failures only (full TAP log path on the last line).
+# The bats suites, failures only (the full TAP log path is kept on a failure).
 test:
-    scripts/run-bats.sh tests/
+    plugin-dev/run-bats.sh tests/
 
 # The bats suites under /bin/bash: Apple's 3.2.57 on a Mac, where `env bash`
 # usually finds Homebrew's.
