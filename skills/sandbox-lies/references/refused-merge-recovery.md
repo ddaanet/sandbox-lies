@@ -4,8 +4,8 @@ A sandboxed `git merge --ff-only` or `git checkout <branch>` can die on a file
 the sandbox will not let git write. Where HEAD ends up depends on how git
 failed, and neither the exit status nor the command decides it. Check first:
 
-- the branch line of `git status`, or `git rev-parse HEAD` compared with the
-  target's (`git rev-parse <target>`): this says whether HEAD moved;
+- `git rev-parse HEAD` compared with the target's (`git rev-parse <target>`):
+  this says whether HEAD moved;
 - whether git printed a `fatal:` line.
 
 Never assume HEAD is still the pre-merge commit, and never assume it moved. The
@@ -56,10 +56,12 @@ Recover before retrying:
    added.
 3. Re-run the whole merge or checkout unsandboxed in one call, not piecemeal,
    then repeat the check above.
-4. If the file restore of step 2 and the re-run both choke on protected files,
-   `git reset --hard <target>` run unsandboxed completes the fast-forward. It
-   discards every uncommitted change, so it follows normal confirmation, and
-   first confirm `git status` lists only files the merge wrote.
+4. For a `merge --ff-only` only: if the file restore of step 2 and the re-run
+   both choke on protected files, `git reset --hard <target>` run unsandboxed
+   completes the fast-forward. Never use it for a checkout: it moves the current
+   branch to the target instead of switching to it. It discards every
+   uncommitted change, so it follows normal confirmation, and first confirm
+   `git status` lists only files the merge wrote.
 
 ## HEAD moved
 

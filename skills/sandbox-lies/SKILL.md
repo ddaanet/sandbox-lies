@@ -161,11 +161,11 @@ Mask shapes and placement, and the expansion path's mechanism:
 ## Recovering a merge a sandbox refusal killed
 
 After a refused `git merge --ff-only` or `git checkout <branch>`, first tell
-whether HEAD moved: the branch line of `git status`, or `git rev-parse HEAD`
-against the target. Either command can have moved it, whatever its exit status.
-HEAD moved: restore the refused files unsandboxed, and do not re-run the
-command. HEAD unmoved: recover per the node before any re-run. The cases and the
-steps:
+whether HEAD moved: `git rev-parse HEAD` against the target's commit. Either
+command can have moved it, whatever its exit status. HEAD moved: unsandboxed,
+restore each modified or deleted refused path to HEAD and remove an untracked
+one the target deleted; do not re-run the command. HEAD unmoved: recover per the
+node before any re-run. The cases and the steps:
 [references/refused-merge-recovery.md](references/refused-merge-recovery.md).
 
 ## Background tasks are invisible to a sandboxed `ps`
