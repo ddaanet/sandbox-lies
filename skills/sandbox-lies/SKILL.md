@@ -160,41 +160,15 @@ Mask shapes and placement, and the expansion path's mechanism:
 
 ## Recovering a merge a sandbox refusal killed
 
-A sandboxed `git merge --ff-only` or `git checkout <branch>` that dies on a
-harness-mounted file — the session's live `hooks/hooks.json`, held read-only
-whatever the write allowlist says — updates every other file it processed to the
-target's content while HEAD stays at the pre-merge commit. Git does not roll
-them back, and a plain re-run refuses them, as it refuses the files the target
-adds once they exist untracked. On a sibling worktree outside the write
-allowlist altogether, the same merge or checkout died on git's own error
-creating a directory the target adds, or replacing a tracked file it changes,
-HEAD again unmoved (2026-09-27, CC 2.1.281). Recover before retrying:
-
-1. Start from the files the hook's verdict names, where it names them; else
-   `git status`. Diff each modified file against the merge target
-   (`git diff <target> -- <file>`).
-2. If they match the target exactly, restore them with
-   `git checkout HEAD -- <files>`, and remove the untracked files the target
-   added.
-3. Re-run the whole merge unsandboxed in one call, not piecemeal.
-4. If the checkout and the merge both choke on protected files,
-   `git reset --hard <target>` run unsandboxed completes the fast-forward. It
-   discards every uncommitted change, so it follows normal confirmation, and
-   first confirm `git status` lists only files the merge wrote.
+After a refused `git merge --ff-only` or `git checkout <branch>`, run
+`git log -1` and `git status` before anything else: a checkout can have moved
+HEAD and exited 0. Re-run unsandboxed in one call, not piecemeal. The cases and
+the recovery steps:
+[references/refused-merge-recovery.md](references/refused-merge-recovery.md).
 
 ## Background tasks are invisible to a sandboxed `ps`
 
-A sandboxed Bash call runs in its own PID namespace, so its `ps` lists only that
-call's processes: a `run_in_background` task, with everything it spawns, is
-absent from it. An unsandboxed `ps` lists it. Checked 2026-09-27 on CC 2.1.281:
-with a sandboxed `sleep` running in the background, `ps -eo pid,args` returned 5
-lines and no `sleep` sandboxed, and 204 lines with the `sleep` unsandboxed.
-Earlier, a `ps` showed two `bash` entries while a background test suite was
-mid-run and went on to complete (2026-08-15, CC version not recorded). An empty
-sandboxed `ps` is not evidence that a background job died. Restarting the work
-in the foreground to check puts two heavy runs on the box; the second times out,
-and both then look like the first one failing. Check with an unsandboxed `ps`,
-and watch the task's output file and the artifact the job writes on success; a
-completion notification may never reach a subagent, so it is never the only
-thing waited on. Key a wait on the command's exit, not on an output line that
-reads as terminal.
+A sandboxed `ps` cannot see `run_in_background` tasks, so an empty one is not
+evidence a job died: check with an unsandboxed `ps`, the task's output file and
+the artifact it writes. Evidence and waiting rules:
+[references/background-tasks.md](references/background-tasks.md).
