@@ -65,6 +65,11 @@ read-only by `chmod 555`.
   `a`, with `g` updated and `h` untracked: the case the skill already describes.
 
 So the skill's "Recovering a merge a sandbox refusal killed" claims HEAD unmoved
-for both commands, and that holds for the merge only. A checkout's exit status
-does not show the failure either. `skills/sandbox-lies/SKILL.md` is at the
-200-line hub cap, so the fix moves that section into a `references/` node.
+for both commands with no qualification, and for a failed unlink of a tracked
+file that holds for the merge only; a checkout's exit status does not show the
+failure either. The section's 2026-09-27 sibling-worktree observation, HEAD
+unmoved after a merge or checkout died creating a directory or replacing a file,
+may still hold for a checkout: find out which command that run used first, then
+split the section on the failure mode rather than deleting checkout from it.
+`skills/sandbox-lies/SKILL.md` is at the 200-line hub cap, so the fix moves that
+section into a `references/` node.

@@ -187,9 +187,11 @@ loads it. Done.
 path runs after every Bash call. With a verdict and no probe, under 100 ms.
 Probes are bounded: no recursive `du`, no network, hook timeout 10 s, the
 `SessionStart` check's too. Where · pinned by: `hooks/hooks.json` timeout ·
-`tests/hook.bats` asserts empty stdout on quiet fixtures. Done (100 ms bound
-measured 2026-09-24 as a 64 ms mean of 30 runs, with one run at 169 ms on a
-loaded box; not gated).
+`tests/hook.bats` asserts empty stdout on quiet fixtures. Done (measured
+2026-09-24, means of 30 runs on a 2-core box at load ~2.1 inside the sandbox: 52
+ms quiet on `quiet-clean-status`, 64 ms with a verdict on
+`fire-masks-porcelain`; an earlier first pass had one verdict run at 169 ms, so
+the bound holds for the mean, not every run; not gated).
 
 **NFR-4 — Hermetic.** The hook writes nothing (it runs outside the sandbox,
 where `$TMPDIR` may be unset). It reads only what the result names: the

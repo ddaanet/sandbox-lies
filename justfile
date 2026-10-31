@@ -14,10 +14,10 @@ precommit: check-refs
     #!{{ plugin_dev_gate_prolog }}
     # gate_dirs: every tracked top-level directory except the memory gitlink,
     # which no check reads and the hash cannot see. tests/docs.bats sweeps
-    # every tracked file, so plans/ and .gitlore/ are inputs; the root files
-    # are listed by name below, and a new one needs adding.
-    gate_dirs=(.claude .claude-plugin .gitlore docs hooks lib manual plans
-        plugin-dev scripts skills tests)
+    # every tracked file, so plans/, inbox/ and .gitlore/ are inputs; the root
+    # files are listed by name below, and a new one needs adding.
+    gate_dirs=(.claude .claude-plugin .gitlore docs hooks inbox lib manual
+        plans plugin-dev scripts skills tests)
     sentinel-guard precommit "${gate_dirs[@]}" .envrc .gitignore .gitmodules \
         .rumdl.toml LICENSE dist.include pyproject.toml uv.lock ':(glob)*.md'
     passed=""
