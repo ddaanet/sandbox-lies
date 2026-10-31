@@ -8,12 +8,11 @@ probe's facts, the `SessionStart` `jq` check, and the skill. Dogfooded
 `path=` form with its decoder, and the worktree-top join; no later dogfood run
 is recorded.
 
-Changelog: [changelog.md](changelog.md). This document is a hub; `references/`
-holds one node per mechanism — per detector in
-[references/detectors.md](references/detectors.md), the hook at run time in
-[references/hook.md](references/hook.md). Read the node before making a claim
-about, or changing, the mechanism it argues; never make a behavioural claim from
-this hub that a node does not carry.
+This document is a hub; `references/` holds one node per mechanism — per
+detector in [references/detectors.md](references/detectors.md), the hook at run
+time in [references/hook.md](references/hook.md). Read the node before making a
+claim about, or changing, the mechanism it argues; never make a behavioural
+claim from this hub that a node does not carry.
 
 ## Now
 
@@ -185,12 +184,12 @@ suites. Where · pinned by: `tests/helpers/bsd-stubs.bash` · every bats file
 loads it. Done.
 
 **NFR-3 — Cost.** No verdict, no output: the hook exits 0 silently, and that
-path runs after every Bash call, so its wall time on a quiet result is recorded
-in the changelog at each release. With a verdict and no probe, under 100 ms.
+path runs after every Bash call. With a verdict and no probe, under 100 ms.
 Probes are bounded: no recursive `du`, no network, hook timeout 10 s, the
 `SessionStart` check's too. Where · pinned by: `hooks/hooks.json` timeout ·
 `tests/hook.bats` asserts empty stdout on quiet fixtures. Done (100 ms bound
-measured, not gated).
+measured 2026-09-24 as a 64 ms mean of 30 runs, with one run at 169 ms on a
+loaded box; not gated).
 
 **NFR-4 — Hermetic.** The hook writes nothing (it runs outside the sandbox,
 where `$TMPDIR` may be unset). It reads only what the result names: the
