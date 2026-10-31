@@ -6,16 +6,18 @@ either moved or not. Neither the exit status nor the command says which, and the
 hook's verdict may say "HEAD unmoved" either way. One procedure covered every
 case observed (below), run unsandboxed:
 
-1. **Find where HEAD is.** Compare `git rev-parse HEAD` with
-   `git rev-parse <target>`. The commit before the command is `HEAD` if they
-   differ, `HEAD@{1}` if they match: call it `<pre>`.
+1. **Find whether the command reached the target.** For a checkout, the target
+   is reached when `git symbolic-ref HEAD` names the target branch; for a merge,
+   when `git rev-parse HEAD` equals `git rev-parse <target>`. The commit before
+   the command, `<pre>`, is `HEAD@{1}` if it reached it, `HEAD` otherwise.
 2. **Bring the paths the command touched back to HEAD.** For each path in
-   `git diff --name-only <pre> <target>`: a tracked one `git status` lists is
-   restored with `git checkout HEAD -- <path>`; an untracked one is removed.
-   Limit it to that list: other uncommitted work is not the command's, which
-   would have refused to start had it overlapped.
-3. **If HEAD is not at the target, re-run the whole command once**, in one call,
-   not piecemeal. Re-running when HEAD already moved does nothing: a checkout
+   `git diff --name-only <pre> <target>` that `git status` lists, and whose
+   working copy (or its absence) equals its `<pre>` or `<target>` version:
+   restore a tracked one with `git checkout HEAD -- <path>`, remove an untracked
+   one. A path matching neither version holds uncommitted work git carried over:
+   leave it.
+3. **If the command did not reach the target, re-run it once**, in one call, not
+   piecemeal. Re-running when HEAD already moved does nothing: a checkout
    reports "Already on" and leaves the refused files as they were.
 4. **Never finish a checkout with `git reset --hard <target>`**: it moves the
    current branch to the target instead of switching to it, and drops the
@@ -42,8 +44,9 @@ target changed one thing in a refused directory:
 Where HEAD stayed unmoved, the other files git processed were still at the
 target, and the files the target adds were untracked. These are the cases seen,
 not a closed list: a run can mix them. The procedure above was re-run over all
-eight (2026-10-31): each ended with HEAD at the target and an unrelated
-uncommitted change kept.
+eight, and over a path staged with the target's content then edited further and
+a checkout of a branch at the current commit refused on the index lock
+(2026-10-31): each ended at the target with the uncommitted work kept.
 
 Recorded 2026-09-27 on CC 2.1.281: a sandboxed `git checkout` on a linked
 worktree outside the write allowlist died on the directory-creation `fatal:`,
