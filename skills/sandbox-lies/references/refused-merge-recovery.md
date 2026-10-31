@@ -1,16 +1,30 @@
 # Recovering a merge or checkout a sandbox refusal killed
 
 A sandboxed `git merge --ff-only` or `git checkout <branch>` can die on a file
-the sandbox will not let git write. Where HEAD ends up depends on how git
-failed, and neither the exit status nor the command decides it. Check first:
+the sandbox will not let git write, leaving some files at the target and HEAD
+either moved or not. Neither the exit status nor the command says which, and the
+hook's verdict may say "HEAD unmoved" either way. One procedure covered every
+case observed (below), run unsandboxed:
 
-- `git rev-parse HEAD` compared with the target's (`git rev-parse <target>`):
-  this says whether HEAD moved;
-- whether git printed a `fatal:` line.
+1. **Find where HEAD is.** Compare `git rev-parse HEAD` with
+   `git rev-parse <target>`. The commit before the command is `HEAD` if they
+   differ, `HEAD@{1}` if they match: call it `<pre>`.
+2. **Bring the paths the command touched back to HEAD.** For each path in
+   `git diff --name-only <pre> <target>`: a tracked one `git status` lists is
+   restored with `git checkout HEAD -- <path>`; an untracked one is removed.
+   Limit it to that list: other uncommitted work is not the command's, which
+   would have refused to start had it overlapped.
+3. **If HEAD is not at the target, re-run the whole command once**, in one call,
+   not piecemeal. Re-running when HEAD already moved does nothing: a checkout
+   reports "Already on" and leaves the refused files as they were.
+4. **Never finish a checkout with `git reset --hard <target>`**: it moves the
+   current branch to the target instead of switching to it, and drops the
+   commits the target lacks. For a `merge --ff-only` that still refuses after
+   step 3 it completes the fast-forward; it discards every uncommitted change,
+   so it follows normal confirmation.
 
-Never assume HEAD is still the pre-merge commit, and never assume it moved. The
-hook's verdict may say "HEAD unmoved" either way: trust the check above, not the
-verdict.
+Auto mode's classifier has refused `git checkout HEAD -- <file>` as destructive
+(seen 2026-10-31): ask for it rather than reaching for a broader command.
 
 ## What was observed
 
@@ -27,7 +41,9 @@ target changed one thing in a refused directory:
 
 Where HEAD stayed unmoved, the other files git processed were still at the
 target, and the files the target adds were untracked. These are the cases seen,
-not a closed list: a run can mix them, and the check above decides.
+not a closed list: a run can mix them. The procedure above was re-run over all
+eight (2026-10-31): each ended with HEAD at the target and an unrelated
+uncommitted change kept.
 
 Recorded 2026-09-27 on CC 2.1.281: a sandboxed `git checkout` on a linked
 worktree outside the write allowlist died on the directory-creation `fatal:`,
@@ -43,35 +59,3 @@ HEAD moved (2026-10-31, CC version not recorded).
 Git rolls back none of the files it updated. Where HEAD stayed unmoved, a plain
 re-run of the command refuses them, and refuses the files the target adds once
 they exist untracked.
-
-## HEAD unmoved
-
-Recover before retrying:
-
-1. Start from the files the hook's verdict names, where it names them; else
-   `git status`. Diff each modified file against the target
-   (`git diff <target> -- <file>`).
-2. If they match the target exactly, restore them with
-   `git checkout HEAD -- <files>`, and remove the untracked files the target
-   added.
-3. Re-run the whole merge or checkout unsandboxed in one call, not piecemeal,
-   then repeat the check above.
-4. For a `merge --ff-only` only: if the file restore of step 2 and the re-run
-   both choke on protected files, `git reset --hard <target>` run unsandboxed
-   completes the fast-forward. Never use it for a checkout: it moves the current
-   branch to the target instead of switching to it. It discards every
-   uncommitted change, so it follows normal confirmation, and first confirm
-   `git status` lists only files the merge wrote.
-
-## HEAD moved
-
-The target is already checked out. Do not re-run the command: a checkout of the
-branch it is on reports "Already on" and leaves every refused file as it was.
-The refused files are the casualties: a file the target changes still holds the
-old branch's content (`M`), a file the target adds is missing (`D`), and a file
-the target deletes is left untracked (`??`). Restore the first two to HEAD and
-remove the third, unsandboxed.
-
-Auto mode's classifier has refused `git checkout HEAD -- <file>` as destructive
-(seen 2026-10-31). When the stranded copy is exactly the version a following
-fast-forward brings in, `git add` of it lets that fast-forward proceed.
