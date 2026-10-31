@@ -160,15 +160,18 @@ Mask shapes and placement, and the expansion path's mechanism:
 
 ## Recovering a merge a sandbox refusal killed
 
-After a refused `git merge --ff-only` or `git checkout <branch>`, run
-`git log -1` and `git status` before anything else: a checkout can have moved
-HEAD and exited 0. Re-run unsandboxed in one call, not piecemeal. The cases and
-the recovery steps:
+After a refused `git merge --ff-only` or `git checkout <branch>`, first tell
+whether HEAD moved: the branch line of `git status`, or `git rev-parse HEAD`
+against the target. Either command can have moved it, whatever its exit status.
+HEAD moved: restore the refused files unsandboxed, and do not re-run the
+command. HEAD unmoved: recover per the node before any re-run. The cases and the
+steps:
 [references/refused-merge-recovery.md](references/refused-merge-recovery.md).
 
 ## Background tasks are invisible to a sandboxed `ps`
 
 A sandboxed `ps` cannot see `run_in_background` tasks, so an empty one is not
 evidence a job died: check with an unsandboxed `ps`, the task's output file and
-the artifact it writes. Evidence and waiting rules:
+the artifact it writes. Never restart the job in the foreground to check.
+Evidence and waiting rules:
 [references/background-tasks.md](references/background-tasks.md).
