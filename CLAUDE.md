@@ -27,5 +27,8 @@ does updates it there.
   the suite's assertions are about: a library it only runs to build its input
   (`verdicts*.bats` pipe text through `lib/matchers.sh`) is covered by its own
   suites.
+- **Prospective content goes in `plans/`.** A brief arriving from a session in
+  *another* repository goes in `inbox/`, never the repo root, where it reads as
+  a tracked project document.
 
 @memory/ddaanet/shared-claude.md

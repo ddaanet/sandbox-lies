@@ -166,7 +166,8 @@ _probe_lock_at() {
     # GNU, -f is filesystem mode and %m a file operand: the attempt fails,
     # or with a file named %m in the cwd exits 0 printing filesystem
     # reports. Provoking that is the selection mechanism, so its stderr is
-    # discarded (no-stderr-suppression exception 1 of 2). Residual: on BSD
+    # discarded (shell-gotchas robustness: provoking the error is the
+    # mechanism). Residual: on BSD
     # a -f failure other than a vanish loses its own message, and stderr
     # carries BSD's refusal of -c instead.
     #
@@ -307,7 +308,8 @@ _probe_resolve_path() {
 # unset). That stderr is passed on unless it is one of two expected shapes:
 # - fuser's "<path>:" line, then only access-code letters (psmisc c/e/r/m;
 #   other builds use their own): normal operation, not a diagnostic
-#   (no-stderr-suppression exception 2 of 2). POSIX has fuser print it on
+#   (shell-gotchas robustness: capture and match the expected shapes
+#   instead of suppressing). POSIX has fuser print it on
 #   every call; psmisc only when it finds a holder.
 # - anything, once nothing the tool can stat is at the path: either git
 #   removed the lock after the presence test (a holder that exited) and the
