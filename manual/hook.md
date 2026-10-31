@@ -17,13 +17,14 @@ There is no `PreToolUse` hook: nothing runs before a Bash call.
 
 ## On each Bash call
 
-The hook reads the result text exactly as the agent saw it, never the command,
-and does not consult the exit status. It runs every detector over that text. For
-each detector that fires and is not silent for this call (some are silent on an
-unsandboxed call), it runs that detector's check, if it has one, then composes
-the verdict. The agent's paragraphs go into one `additionalContext` and your
-one-line notices into one `systemMessage`, joined by `; `. A result that matches
-nothing produces no output.
+The hook reads the result text exactly as the agent saw it and does not consult
+the exit status. It runs every detector over that text; detection reads nothing
+else. The command only shapes wording: `readonly-path`'s check reads it to pick
+the act and the merge clause. For each detector that fires and is not silent for
+this call (some are silent on an unsandboxed call), it runs that detector's
+check, if it has one, then composes the verdict. The agent's paragraphs go into
+one `additionalContext` and your one-line notices into one `systemMessage`,
+joined by `; `. A result that matches nothing produces no output.
 
 The hook never blocks, rewrites or unsandboxes anything, and the original result
 stays visible beside the annotation. The annotation reaches the agent with its

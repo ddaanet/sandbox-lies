@@ -1,6 +1,6 @@
 ---
 name: sandbox-lies
-description: "What the Claude Code command sandbox does to Bash calls that no tool result reveals: whether a call ran sandboxed, what `excludedCommands` and `dangerouslyDisableSandbox` cost, why `$TMPDIR` does not survive a call, and where masks land. Use when writing a `sandbox.excludedCommands` entry, a recipe or script that must run unsandboxed, a cleanliness gate over `git status`, a `cd` into a submodule or subdirectory, a scratch path a later command or subagent reads, a `claude -p` run for a `SessionStart` hook's side effect, or a multi-turn `claude --resume` flow; when acting on a slash command's `` !`cmd` `` context block or recovering a merge a sandbox write refusal killed; and when reading `ps` for a background task."
+description: "What the Claude Code command sandbox does to Bash calls that no tool result reveals: whether a call ran sandboxed, what `excludedCommands` and `dangerouslyDisableSandbox` cost, why `$TMPDIR` does not survive a call, and where masks land. Use when writing a `sandbox.excludedCommands` entry, a recipe or script that must run unsandboxed, a cleanliness gate over `git status`, a `cd` into a submodule or subdirectory, a scratch path a later command or subagent reads, a `claude -p` run for a `SessionStart` hook's side effect, or a multi-turn `claude --resume` flow; when acting on a slash command's `` !`cmd` `` context block or recovering a merge or checkout a sandbox write refusal hit, even one that exited 0; and when reading `ps` for a background task."
 ---
 
 # Sandbox lies
@@ -158,7 +158,7 @@ The observed collapse:
 Mask shapes and placement, and the expansion path's mechanism:
 [references/masks-and-gates.md](references/masks-and-gates.md).
 
-## Recovering a merge a sandbox refusal killed
+## Recovering a merge or checkout a sandbox refusal hit
 
 After a refused `git merge --ff-only` or `git checkout <branch>`, whatever its
 exit status, run unsandboxed: find whether it reached the target (for a

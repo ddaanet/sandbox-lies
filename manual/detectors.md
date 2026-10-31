@@ -5,10 +5,11 @@ when the detectors read it back. -->
 # Detectors
 
 Each detector reads the text of a Bash result, never the command, and fires only
-on the shape the failing tool itself prints. A quotation of that output inside a
-document, a log or a report does not fire. When a detector fires, the agent
-receives a short paragraph and you a one-line notice; both are given below for
-each outcome, the paragraph first, then the notice after a `·`. Where the answer
+on the shape the failing tool itself prints. It matches the shape of a line, so
+a quotation set inside a sentence does not fire, but a log holding the line
+verbatim fires when it is read back. When a detector fires, the agent receives a
+short paragraph and you a one-line notice; both are given below for each
+outcome, the paragraph first, then the notice after a `·`. Where the answer
 depends on the machine, the hook first runs a check outside the sandbox, and its
 outcome picks the paragraph. How the hook runs and where its checks look is in
 [The hook](hook.md).
