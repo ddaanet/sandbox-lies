@@ -8,7 +8,7 @@
 #
 # The shapes here are not guesses: layer 1 replayed the naive forms over 21,272
 # recorded Bash calls and each discriminator below is the one the corpus
-# selected. See plans/2026-09-02-sandbox-detector-replay-results.md.
+# selected. manual/detectors.md describes each shape.
 #
 # bash 3.2 and BSD grep/sed: no -P, no \s, no \d, no GNU-only flags.
 

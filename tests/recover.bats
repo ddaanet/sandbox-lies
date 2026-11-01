@@ -208,6 +208,22 @@ teardown() {
   [[ "$output" == *"keep "*"d/nl"*"file.txt"* ]]
 }
 
+# A pathspec is magic only at its start, and only the root is outside the
+# frozen directory, so the checkout wrote this name; putting the old version
+# back stands in for a refused write. Read as magic, the name means every file
+# but x, and the restore takes the edits with it.
+@test "a path named like pathspec magic is restored alone" {
+  scenario checkout magic
+  printf 'x v1\n' >"$REPO/:!x"
+  printf 'g mine\n' >"$REPO/d/g"
+  apply_ok
+  [[ "$output" == *"restore :!x"* ]]
+  assert_reached
+  assert_status ' M d/g'
+  assert_bytes ":!x" $'x v2\n'
+  assert_bytes d/g $'g mine\n'
+}
+
 @test "an unrelated uncommitted change survives, under checkout" {
   UNRELATED=1
   scenario checkout change

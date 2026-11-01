@@ -85,6 +85,9 @@ build_repo() {
     printf 'sp v1\n' >"$REPO/d/sp ace.txt"
     printf 'nl v1\n' >"$REPO/d/nl"$'\n'"file.txt"
   fi
+  if [ "$kind" = magic ]; then
+    printf 'x v1\n' >"$REPO/:!x"
+  fi
   # The working copy holds what git writes on checkout: CRLF, while the blobs
   # hold LF, so a byte comparison with a blob never matches.
   if [ "$kind" = crlf ]; then
@@ -119,6 +122,7 @@ build_repo() {
     deldir) g rm -q -r d ;;
     rename) mkdir "$REPO/e"; g mv d/f e/f ;;
     crlf) printf 'f v2\r\n' >"$REPO/d/f" ;;
+    magic) printf 'f v2\n' >"$REPO/d/f"; printf 'x v2\n' >"$REPO/:!x" ;;
     gitlink | gitlink_add)
       printf 'f v2\n' >"$REPO/d/f"
       mkdir -p "$REPO/sub"
