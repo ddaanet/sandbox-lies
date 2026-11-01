@@ -69,6 +69,7 @@ _readonly_print_facts() {
     start="$path"
     [ -n "$start" ] || start="$cwd"
     repo=$(_readonly_git_dir "$start") || return 0
+    [ "$(_readonly_git_dir "$cwd")" = "$repo" ] || recover=''
     _readonly_repo_facts "$repo" "$recover" "${cands[@]}"
 }
 
@@ -78,7 +79,8 @@ _readonly_print_facts() {
 # call ran: the call holds one merge-style segment and its scan was not cut; git
 # runs where the probe looks, with no -C, --git-dir or --work-tree and no earlier
 # cd or pushd, since git's partial-checkout paths are relative and the probe joins
-# them onto the cwd; no literal --; (these three checked by the caller) exactly one
+# them onto the cwd, and the refused path's repository is the cwd's; no literal --;
+# (these three checked by the caller) exactly one
 # non-option word, the target, a word holding > or < being a redirection and not
 # counted; the only options are -q, --quiet and --ff-only; for a checkout or
 # switch, refs/heads/<target> exists (_readonly_repo_facts).

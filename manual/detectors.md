@@ -182,9 +182,10 @@ The clause tells you to run `sandbox-lies-recover -C <repo> <kind> <ref>` with
 is exactly what the call ran; the `sandbox-lies:sandbox-lies` skill says how to
 carry the plan out. That takes one such git command in the call, running where
 the hook looks (no `-C`, `--git-dir` or `--work-tree`, no `cd` or `pushd` before
-it), with one target and no `--`, no option but `-q`, `--quiet` and `--ff-only`,
-and for a `checkout` or `switch` a local branch. Otherwise the clause points at
-the skill's recovery of a refused merge or checkout.
+it, and the refused path in the working directory's repository), with one target
+and no `--`, no option but `-q`, `--quiet` and `--ff-only`, and for a `checkout`
+or `switch` a local branch. Otherwise the clause points at the skill's recovery
+of a refused merge or checkout.
 
 The clause does not say where HEAD is, since a checkout can move HEAD although
 git reported an error and exited 0. It removes nothing and never asks for the

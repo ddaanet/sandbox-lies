@@ -179,6 +179,39 @@ no_recover() {
   printf '%s\n' "$output" | grep -qxF 'recover=checkout'
 }
 
+# no_recover_at <cwd> <path> — the probe over `git checkout feat`, run at <cwd>
+# with <path> refused, reads as writable, keeps target=feat from <path>'s
+# repository and prints neither recover= nor repo=.
+no_recover_at() {
+  run_probe_command probe_readonly_path false "$1" 'git checkout feat' \
+    "$(readonly_path_text fire-readonly-path-cp-tmp "'$2'")"
+  [ "$status" -eq 0 ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'target=feat'
+  run ! grep -qE '^(recover|repo)=' <<<"$output"
+}
+
+@test "a refused path in another repository withholds recover=" {
+  local other="$BATS_TEST_TMPDIR/other"
+  make_scratch_repo "$other"
+  no_recover_at "$REPO" "$other/a"
+}
+
+@test "a linked worktree refused on the main checkout's git dir withholds recover=" {
+  local wt="$BATS_TEST_TMPDIR/wt"
+  git -C "$REPO" worktree add -q -b wt-branch "$wt" main
+  no_recover_at "$wt" "$REPO/.git/worktrees/wt/index.lock"
+}
+
+@test "a cwd in a subdirectory of the refused path's repository keeps recover=" {
+  mkdir "$REPO/sub"
+  run_probe_command probe_readonly_path false "$REPO/sub" 'git checkout feat' "$TEXT"
+  [ "$status" -eq 0 ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'recover=checkout'
+  printf '%s\n' "$output" | grep -q '^repo='
+}
+
 @test "a cut command withholds recover=" {
   no_recover $'git checkout feat <<EOF\nbody\nEOF' feat
 }

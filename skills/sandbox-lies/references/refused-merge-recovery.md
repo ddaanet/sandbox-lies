@@ -17,8 +17,10 @@ script covers every case observed (below); run it unsandboxed:
    restores and removals, then re-runs the original command once, in one call,
    if the target was not reached. Under the sandbox's strict mode, where a call
    cannot run unsandboxed, the `--apply` run cannot work from the agent: ask the
-   human partner to run it as `! sandbox-lies-recover --apply checkout <branch>`
-   (or `merge <commit-ish>`).
+   human partner to run it as
+   `! sandbox-lies-recover --apply -C <repo> checkout <branch>` (or
+   `merge <commit-ish>`), `<repo>` being what the verdict printed, or the
+   directory the command ran in.
 3. **Never finish a checkout with `git reset --hard <target>`**: it moves the
    current branch to the target instead of switching to it, and drops the
    commits the target lacks. For a `merge --ff-only` that still refuses after
@@ -29,14 +31,13 @@ script covers every case observed (below); run it unsandboxed:
    the plan kept, so do not use it: report instead. Where it does apply it
    discards every uncommitted change, so it follows normal confirmation.
 
-The script applies to a `checkout` or `switch` of a local branch you can name
-from the command, and to a `merge`. When the verdict names no ref, take it from
-the command if the command names one. If that command ran elsewhere
-(`git -C <dir>`, `cd <dir> &&`), pass that directory to the script as
-`-C <dir>`, or the plan reads the wrong repository. Otherwise read `git status`
+The script applies when the call ran exactly one such command, and that command
+is `git checkout <branch>` or `git switch <branch>` of a local branch, or
+`git merge <commit-ish>`, with no option but `-q`, `--quiet` or `--ff-only`. If
+that command ran elsewhere (`git -C <dir>`, `cd <dir> &&`), pass the directory
+as `-C <dir>`. For anything else the script does not apply: read `git status`
 and `git log -1` before any re-run and report rather than guess.
 
-In a call that ran several of these commands, read the plan for each in order.
 The script re-runs only the one command it names, so the rest of the call stays
 yours to run, unsandboxed.
 

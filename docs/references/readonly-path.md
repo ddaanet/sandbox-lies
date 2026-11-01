@@ -95,8 +95,9 @@ what the call ran, which takes all of these:
   subcommands, and the scan of the command was not cut;
 - git runs where the probe looks: the segment has no `-C`, `--git-dir` or
   `--work-tree` global option, and no segment before it opens with `cd` or
-  `pushd`. git's partial-checkout paths are relative and join onto the `cwd`, so
-  otherwise the probe's repository is not the one git ran in;
+  `pushd`, and the refused path's repository is the `cwd`'s. git's
+  partial-checkout paths are relative and join onto the `cwd`, so otherwise the
+  probe's repository is not the one git ran in;
 - the segment holds exactly one non-option word, the target, a word holding `>`
   or `<` being a redirection and not counted;
 - its only options are `-q`, `--quiet` and `--ff-only`;
