@@ -41,12 +41,8 @@ target changed one thing in a refused directory:
 
 Where HEAD stayed unmoved, the other files git processed were still at the
 target, and the files the target adds were untracked. These are the cases seen,
-not a closed list: a run can mix them. These states, and a path staged with the
-target's content then edited further, a checkout of a branch at the current
-commit refused on the index lock (2026-10-31), a checkout re-run by hand before
-recovery, a file added inside a new directory, a deleted directory, a rename out
-of a refused directory and an untracked leftover identical to the pre-command
-version, are covered by `tests/recover.bats` in the plugin repository.
+not a closed list: a run can mix them. `tests/recover.bats` in the plugin
+repository covers them and their neighbours.
 
 Recorded 2026-09-27 on CC 2.1.281: a sandboxed `git checkout` on a linked
 worktree outside the write allowlist died on the directory-creation `fatal:`,
