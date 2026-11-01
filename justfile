@@ -25,7 +25,7 @@ precommit: check-refs
     # docs.bats skips gitlinks. tests/docs.bats sweeps
     # every tracked file, so plans/, inbox/ and .gitlore/ are inputs; the root
     # files are listed by name below, and a new one needs adding.
-    gate_dirs=(.claude .claude-plugin .gitlore docs hooks inbox lib manual
+    gate_dirs=(.claude .claude-plugin .gitlore bin docs hooks inbox lib manual
         plans plugin-dev scripts skills tests)
     sentinel-guard precommit "${gate_dirs[@]}" .envrc .gitignore .gitmodules \
         .rumdl.toml LICENSE dist.include pyproject.toml uv.lock ':(glob)*.md'
@@ -37,7 +37,8 @@ precommit: check-refs
         passed="${passed:+$passed, }$name"
     }
     # lint_paths: tracked and untracked-unignored files under gate_dirs with
-    # one of the extensions given, so a new file is linted before its first
+    # one of the extensions given, plus every file under bin/, whose shipped
+    # scripts are extensionless bash, so a new file is linted before its first
     # commit (wider than scripts/lib/tracked.sh's tracked-only list) and never
     # outside what the hash covers. NUL-delimited through a file so names with
     # whitespace survive and a git failure stops the gate.
@@ -50,7 +51,7 @@ precommit: check-refs
         files=()
         while IFS= read -r -d '' f; do
             for ext in "$@"; do
-                case "$f" in *."$ext") files+=("$f"); break ;; esac
+                case "$f" in bin/* | *."$ext") files+=("$f"); break ;; esac
             done
         done <"$list"
     }
