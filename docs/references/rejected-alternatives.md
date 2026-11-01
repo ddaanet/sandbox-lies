@@ -39,3 +39,15 @@ untranslated.
 **`sandbox-gotchas`, `sandbox-effects` as names.** The first promises a
 catalogue, which is what moving this knowledge into hooks stops it being; the
 second is the memory file's name and both would exist during the transition.
+
+**D-9 — The skill lives here and carries the plugin's name.** `craft`'s premise
+is facts that fire on a design moment with no token to match; the escapes
+knowledge has a moment (writing an exclusion, a recipe, a gate) that is
+sandbox-specific, and this repository is the one place that knowledge is
+maintained. Sending it to `craft` would split the retirement across two repos,
+one of which is read-only from here. As the plugin's only skill it is
+`sandbox-lies:sandbox-lies`; a second name would add nothing.
+
+*Rejected:* a home in `craft` (the wrong trigger axis) or `prohibitions` (it
+forbids actions; this enriches results); `sandbox-gotchas` or `sandbox-effects`
+as names — a catalogue, and the memory file's own name.

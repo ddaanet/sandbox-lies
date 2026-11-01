@@ -10,9 +10,13 @@ is recorded.
 
 This document is a hub; `references/` holds one node per mechanism — per
 detector in [references/detectors.md](references/detectors.md), the hook at run
-time in [references/hook.md](references/hook.md). Read the node before making a
-claim about, or changing, the mechanism it argues; never make a behavioural
-claim from this hub that a node does not carry.
+time in [references/hook.md](references/hook.md), each requirement's pins in
+[references/requirements-coverage.md](references/requirements-coverage.md),
+verdict wording in
+[references/verdict-wording.md](references/verdict-wording.md), self-quiet files
+in [references/self-quiet.md](references/self-quiet.md). Read the node before
+making a claim about, or changing, the mechanism it argues; never make a
+behavioural claim from this hub that a node does not carry.
 
 ## Now
 
@@ -56,27 +60,19 @@ the macOS sandbox's messages and masks are unverified.
 `permissionDecision`, no `updatedInput`, no `updatedToolOutput`. The original
 result stays in context beside the verdict. A second script, `hooks/check-jq.sh`
 on `SessionStart`, annotates nothing: it speaks only when `jq` is missing
-(D-12). Where · pinned by: `hooks/hooks.json` · `tests/hook.bats` asserts the
-three event keys and that the emitted JSON carries only
-`hookSpecificOutput.additionalContext` and `systemMessage`;
-`tests/check-jq.bats` runs the `SessionStart` command. Done.
+(D-12). Done.
 
 **FR-2 — Matcher contract.** A matcher is a shell function that reads one Bash
 tool result on stdin and exits 0 when its symptom is present, 1 when it is not.
 It reads output text only — never the command, never the exit status. `detect`
 runs the set over one in-memory copy and prints one verdict name per firing
-matcher. Where · pinned by: `lib/matchers.sh` · `tests/matchers.bats`, which
-asserts the full verdict set per fixture so a matcher that starts firing on a
-neighbour's symptom fails rather than double-reporting. Done.
+matcher. Done.
 
 **FR-3 — One hook composes everything.** The hook script parses the payload,
 rebuilds the tool-result text — the `error` string on a failure payload, stdout
 then stderr from `tool_response` on a success payload — holds it in memory, runs
 `detect`, runs the probe for each verdict that has one, and emits a single JSON
-document. Any parse or runtime failure exits 0 with no output. Where · pinned
-by: `hooks/annotate.sh` · `tests/hook.bats` over both events' recorded payloads,
-`tests/hook-malformed.bats` over malformed ones and a probe or verdict that dies
-mid-run, `tests/hook-locks.bats` over the probe call. Done.
+document. Any parse or runtime failure exits 0 with no output. Done.
 
 **FR-4 — Probes.** For each verdict whose correct action depends on state the
 tool could not see, the hook runs a discriminator outside the sandbox and the
@@ -89,10 +85,7 @@ writability (`readonly-path`), which also reports the command facts and the
 partial-merge files its acts depend on (D-17), and transcript existence
 (`resume-lost`). Each probe is proved once against a live reproduction before it
 ships; the reproduction is recorded in `references/` (for `resume-lost`, CC's
-behaviour its probe reads, not a run of the probe on a live refusal). Where ·
-pinned by: `lib/probes.sh`, `lib/probes-readonly*.sh` · the `tests/probes*.bats`
-family over synthetic trees and the `tests/hook-*.bats` family over the hook's
-calls. Done.
+behaviour its probe reads, not a run of the probe on a live refusal). Done.
 
 **FR-5 — Sandbox-state awareness.** The payload's
 `tool_input.dangerouslyDisableSandbox` (absent means false) decides wording: a
@@ -100,10 +93,7 @@ symptom on a call that ran unsandboxed has a different cause, and the verdict
 says so or the detector stays silent, except `resume-lost`, whose probe decides
 under either value (D-8). Every detector states its flag policy in
 `references/`; the gating lives in the hook or the verdict, never in a matcher.
-Where · pinned by: `hooks/annotate.sh` · `tests/hook.bats`,
-`tests/hook-locks.bats` and `tests/hook-candidates.bats` pair each fixture with
-both flag values against that policy, and `tests/hook-resume.bats` pairs
-`resume-lost`'s four transcript states with both. Done.
+Done.
 
 **FR-6 — Verdict text.** Each verdict is a short paragraph of acts the agent
 performs, under 400 characters before a probe value (a path, a pid) is
@@ -112,30 +102,18 @@ verdict instructs removing anything (D-7). Verdicts compose in catalogue order;
 the two `phantom-*` listing verdicts share one paragraph when both fire, and a
 paragraph that would push `additionalContext` past 2 KB is dropped while its
 human line is kept. The human line on `systemMessage` is one lowercase clause.
-No verdict quotes a diagnostic together with its follow-on sentence. Where ·
-pinned by: `lib/verdicts.sh` · `tests/verdicts.bats` asserts length with no
-probe lines on stdin and runs `detect` over every verdict text expecting
-silence; `tests/verdicts-locks.bats` asserts the D-17 flag wording for the lock
-verdicts, `tests/verdicts-readonly.bats` each `readonly-path` composition and
-its length, `tests/verdicts-readonly-path.bats` the `path=` decode and display
-rule; `tests/hook-cap.bats` asserts the 2 KB cap with stub paragraphs. Done.
+No verdict quotes a diagnostic together with its follow-on sentence. Done.
 
 **FR-7 — Detector catalogue.** Ten detectors, in
 [references/detectors.md](references/detectors.md): five measured and shipped
 from the pilot, five candidates. A candidate ships under the rule in D-15, with
 its corpus figure — hit count, precision, measurement date, pilot-traffic note.
-Where · pinned by: the reference's per-detector table · `tests/matchers.bats`
-has a `fire-*` and a `quiet-*` fixture per shipped detector. Done (four
-candidates shipped; `zellij-socket` stays a candidate under D-15).
+Done (four candidates shipped; `zellij-socket` stays a candidate under D-15).
 
 **FR-8 — Fixtures come from the corpus.** Every `fire-*` fixture is a verbatim
 tool result cut by `tests/extract-fixtures.py` from `~/.claude/projects`; every
 `quiet-*` fixture is a recorded near-miss. Hand writing a fixture encodes what
-the output was expected to look like. Where · pinned by:
-`tests/extract-fixtures.py` · the `fire-*` and `quiet-*` set is reproducible
-from the script in part: re-run at the 2026-09-28 review, it re-cut 25 of the 34
-byte for byte; two undated entries picked other calls, as the script warns, and
-seven were not found in the corpus, cause not established. Done.
+the output was expected to look like. Done.
 
 **FR-9 — The symptom-less knowledge is a skill.** Which calls an
 `excludedCommands` entry unsandboxes (only one whose every command it covers),
@@ -143,8 +121,7 @@ the two escapes and their costs, strict mode, `$TMPDIR` scoping, a `claude` or
 `git` inside a recipe, and how to write a cleanliness gate that survives the
 masks fire while an agent is *writing* something, not while reading output. That
 is the plugin's one skill, `skills/sandbox-lies/SKILL.md`, triggered on those
-authoring moments. Where · pinned by: the skill file · `tests/docs.bats` runs
-`detect` over it. Done.
+authoring moments. Done.
 
 **FR-10 — Memory retirement, per section.** The commit that lands a detector or
 a skill section deletes the memory section it translates from
@@ -152,66 +129,44 @@ a skill section deletes the memory section it translates from
 retired. The file keeps what it does not: the phantom-dotfile leak, and the
 zellij section, whose detector stays a candidate under D-15. One residue
 survives as prose: the `!`-expansion phantom-listing rule, folded into the
-existing phantom-dotfile bullet of `memory/ddaanet/shared-claude.md`. Where ·
-pinned by: the tier's index, and the translation map in
-`references/detectors.md` that audits every paragraph. Done (prose): no test or
-gate re-checks it.
+existing phantom-dotfile bullet of `memory/ddaanet/shared-claude.md`. Done
+(prose).
 
 **FR-11 — Self-quiet.** No live file in this repository fires a detector when
 read back. Source files build each diagnostic literal from fragments so the
-bytes on disk never hold a whole follow-on sentence. Two residuals are exempt by
-name: `tests/fixtures/`, and three dated pilot files that quote live diagnostics
-(`plans/2026-09-02-sandbox-detector-replay.py`,
-`plans/2026-09-02-sandbox-detector-hits.jsonl`,
-`plans/2026-09-03-sandbox-matcher-corpus-eval.md`) (D-10). Where · pinned by:
-`tests/docs.bats` runs `detect` over every other tracked regular file. Done.
+bytes on disk never hold a whole follow-on sentence. Two residuals exempt by
+name, listed in [references/self-quiet.md](references/self-quiet.md) (D-10).
+Done.
 
 ## Non-functional requirements
 
 **NFR-1 — Precision.** A shipped detector holds the precision measured at its
 last replay, and every false positive is classified. Corpus figures carry their
 date and how much pilot traffic the corpus had absorbed, because the corpus is
-self-polluting. Where · pinned by: `references/` per detector · the replay
-harness under `tests/`. Done (harness promoted; each shipped candidate
-re-measured with its shipped matcher as arbiter, not gated).
+self-polluting. Done (not gated).
 
 **NFR-2 — Portability.** bash 3.2, BSD `grep`/`sed`/`mktemp`/`stat`/`wc`, `jq`.
 A suite whose code under test calls one of those five tools keeps one case
 re-run with BSD-strict stubs on `PATH`. The code under test is what the suite's
 assertions are about: a library it only runs to build its input
 (`verdicts*.bats` pipe text through `lib/matchers.sh`) is covered by its own
-suites. Where · pinned by: `tests/helpers/bsd-stubs.bash` · every bats file
-loads it. Done.
+suites. Done.
 
 **NFR-3 — Cost.** No verdict, no output: the hook exits 0 silently, and that
 path runs after every Bash call. With a verdict and no probe, under 100 ms.
 Probes are bounded: no recursive `du`, no network, hook timeout 10 s, the
-`SessionStart` check's too. Where · pinned by: `hooks/hooks.json` timeout ·
-`tests/hook.bats` asserts empty stdout on quiet fixtures. Done (measured
-2026-09-24, means of 30 runs on a 2-core box at load ~2.1 inside the sandbox: 52
-ms quiet on `quiet-clean-status`, 64 ms with a verdict on
-`fire-masks-porcelain`; an earlier first pass had one verdict run at 169 ms, so
-the bound holds for the mean, not every run; not gated).
+`SessionStart` check's too. Done (not gated).
 
 **NFR-4 — Hermetic.** The hook writes nothing (it runs outside the sandbox,
 where `$TMPDIR` may be unset). It reads only what the result names: the
 repository holding a refused path, possibly a sibling worktree rather than the
 call's, or with no path the payload `cwd`'s; the lock paths the error names; and
 whether each session id a `--resume` refusal names has a transcript, never
-opening one. Where · pinned by: `tests/hook.bats` and `tests/matchers.bats` run
-the hook and `detect` with `TMPDIR` naming a missing directory,
-`tests/hook-writes.bats` the hook through a real readonly-path and git-lock
-probe, `tests/probes-edges.bats` those two probes, `tests/check-jq.bats` the
-`SessionStart` check with a `mktemp` spy, `tests/probes-resume.bats` the
-`resume-lost` read scope (`HOME/.claude` unread when `CLAUDE_CONFIG_DIR` is set)
-and `tests/probes-resume-tree.bats` its other half (no transcript opened). Done
-(read scope: `resume-lost`'s pinned, the rest review, not gated).
+opening one. Done (partly not gated).
 
 **NFR-5 — Size and links.** Every document, script, awk, TOML or JSON file and
 `justfile` is at most 400 lines (a `SKILL.md` at most 200), and every inline
-relative link resolves (reference style unchecked). Where · pinned by:
-`scripts/check-line-limits.sh`, `scripts/check-links.sh` · both run in
-`just precommit`. Done.
+relative link resolves (reference style unchecked). Done.
 
 ## Architecture
 
@@ -279,17 +234,10 @@ pilot's own reports echo the strings behind a `> ` marker.
 probe is proved once live before it ships. Argued in
 [references/hook.md](references/hook.md).
 
-**D-7 — Verdict wording follows the directive rules.** `additionalContext` is a
-directive channel, so imperative acts are correct there: "re-run the same
-command unsandboxed", "stage explicit paths". Mechanism, rationale and
-prohibitions naming things the agent could not otherwise reach are cut. Where an
-omission would read as failure, one clause of reassurance stays ("the repository
-is healthy"). No verdict instructs removing a lock or a file, even
-conditionally: agents remove orphan locks eagerly enough, and a verdict that
-reports the lock's state is the whole of what they lack. `systemMessage` is one
-lowercase clause with an em-dash, no instruction. Neither channel spells a
-diagnostic and its follow-on on one line — the corpus eval report fires
-`git-lock` on itself for exactly that.
+**D-7 — Verdict wording follows the directive rules.** No verdict instructs a
+removal; `additionalContext` is a directive channel, so imperative acts are
+correct there. Argued in
+[references/verdict-wording.md](references/verdict-wording.md).
 
 **D-8 — Sandbox state from the payload.** Detectors read
 `tool_input.dangerouslyDisableSandbox` and either change wording or stay silent.
@@ -298,27 +246,18 @@ tradeoff: a call an exclusion unsandboxed carries no flag, so a covered `git`
 whose lock was gone by probe time reads `mask`, whose re-run is harmless. Argued
 in [references/sandbox-state.md](references/sandbox-state.md).
 
-**D-9 — The skill lives here and carries the plugin's name.** `craft`'s premise
-is facts that fire on a design moment with no token to match; the escapes
-knowledge has a moment (writing an exclusion, a recipe, a gate) that is
-sandbox-specific, and this repository is the one place that knowledge is
-maintained. Sending it to `craft` would split the retirement across two repos,
-one of which is read-only from here. As the plugin's only skill it is
-`sandbox-lies:sandbox-lies`; a second name would add nothing.
+**D-9 — The skill lives here and carries the plugin's name.** The escapes
+knowledge is maintained here, not in `craft`; as the plugin's only skill it is
+`sandbox-lies:sandbox-lies`. Argued in
+[references/rejected-alternatives.md](references/rejected-alternatives.md).
+*Rejected:* a home in `craft` or `prohibitions`; `sandbox-gotchas` or
+`sandbox-effects` as names.
 
-*Rejected:* a home in `craft` (the wrong trigger axis) or `prohibitions` (it
-forbids actions; this enriches results); `sandbox-gotchas` or `sandbox-effects`
-as names — a catalogue, and the memory file's own name.
-
-**D-10 — Self-reference is handled at the document, not the matcher.** Every
-false positive in the corpus is this project reading its own artefacts back. The
-matchers do not special-case that: a command-text suppression would need the
-fixture path, which is a convention a matcher should not know. Instead the
-repository's live documents are constrained never to fire a detector (FR-11),
-and two residuals are accepted by name: fixture reads, and the dated pilot
-evidence under `plans/`, which quotes diagnostics verbatim and is frozen.
-Accepted tradeoff: `cat tests/fixtures/fire-*.txt` or a read of the layer-2
-report from inside this repo annotates itself.
+**D-10 — Self-reference is handled at the document, not the matcher.** The
+repository's live documents never fire a detector (FR-11), and the matchers do
+not special-case self-reading. Accepted tradeoff: a read of a fixture or of the
+dated pilot evidence from inside this repo annotates itself. Argued in
+[references/self-quiet.md](references/self-quiet.md).
 
 **D-11 — Retire each section the moment its translation lands.** A memory
 section and the hook or skill text that replaces it never coexist: the commit
