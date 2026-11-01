@@ -1,9 +1,16 @@
 import 'plugin-dev/release.just'
 import 'plugin-dev/gates.just'
 
-# Tool versions the precommit hash folds in: no lockfile pins them. rumdl is
-# pinned by uv.lock, which is an input.
-export PLUGIN_DEV_GATE_TOOLS := "bats --version\nshellcheck --version\njq --version\npython3 --version\ngit --version\nbash --version"
+# Lines the precommit hash folds in, each a command whose output is hashed.
+# Tool versions first: no lockfile pins them. rumdl is pinned by uv.lock, which
+# is an input. Then two inputs the hashed file list cannot carry:
+# - the tracked set, by name: the hash lists tracked and untracked files alike,
+#   while check-line-limits, check-links and tests/docs.bats walk tracked files
+#   only, so without it a pass taken before `git add` of a new file stays
+#   cached after it;
+# - the memory file tests/matchers.bats sweeps, inside the memory gitlink the
+#   hash sees by name only ("absent" while the tier is not mounted).
+export PLUGIN_DEV_GATE_TOOLS := "bats --version\nshellcheck --version\njq --version\npython3 --version\ngit --version\nbash --version\n" + "set -o pipefail; git ls-files -z | cksum\n" + "f=memory/ddaanet/sandbox-effects.md; if [ -f \"$f\" ]; then git hash-object -- \"$f\"; else echo absent; fi"
 
 # Each check runs through `report`, which records its name; a clean run ends
 # with the list of checks that passed, and a failing one stops at that check
@@ -13,7 +20,9 @@ export PLUGIN_DEV_GATE_TOOLS := "bats --version\nshellcheck --version\njq --vers
 precommit: check-refs
     #!{{ plugin_dev_gate_prolog }}
     # gate_dirs: every tracked top-level directory except the memory gitlink,
-    # which no check reads and the hash cannot see. tests/docs.bats sweeps
+    # which the hash sees by name only: the one memory file a check reads
+    # (tests/matchers.bats) is folded in by PLUGIN_DEV_GATE_TOOLS instead, and
+    # docs.bats skips gitlinks. tests/docs.bats sweeps
     # every tracked file, so plans/, inbox/ and .gitlore/ are inputs; the root
     # files are listed by name below, and a new one needs adding.
     gate_dirs=(.claude .claude-plugin .gitlore docs hooks inbox lib manual

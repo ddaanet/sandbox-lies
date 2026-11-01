@@ -106,3 +106,28 @@ $shape$git_line"
   [ "$status" -eq 0 ]
   printf '%s\n' "$output" | grep -qxF 'partial=1'
 }
+
+# The extraction the cases above lean on (grep for the refusal line, sed for
+# its path) under BSD grep and sed: git's line still counts off the first line,
+# and a phrase inside cp's quoted path still does not.
+@test "partial=1 survives BSD grep and sed" {
+  local bsd="$BATS_TEST_TMPDIR/bsdtools" text
+  make_bsd_stubs "$bsd" grep sed
+
+  text="hint: something unrelated
+$(partial_checkout_unlink_error "$BATS_TEST_TMPDIR/a")"
+  PATH="$bsd:$PATH" run_probe_command probe_readonly_path false \
+    "$BATS_TEST_TMPDIR" 'just sync' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF 'partial=1'
+
+  text=$(cp_refusal_in_path "$BATS_TEST_TMPDIR" 2)
+  PATH="$bsd:$PATH" run_probe_command probe_readonly_path false \
+    "$BATS_TEST_TMPDIR" 'cp src dst' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = writable ]
+  run ! grep -q '^partial=1$' <<<"$output"
+}
