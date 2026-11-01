@@ -1,0 +1,237 @@
+#!/bin/bash
+# sandbox-lies-recover: carry out the recovery of a `git checkout <branch>` or
+# `git merge --ff-only <commit-ish>` that a sandbox refusal killed part-way.
+# Contract: plans/2026-11-01-recovery-script.md. Without --apply it prints the
+# plan and changes nothing; with --apply it runs each act as it prints it.
+#
+#   sandbox-lies-recover [--apply] [-C <dir>] checkout <branch>
+#   sandbox-lies-recover [--apply] [-C <dir>] merge <commit-ish>
+#
+# Exit: 0 nothing left to do, plan carried out, or dry-run printed; 1 the
+# re-run or an act failed; 2 usage error or a state it cannot tell.
+#
+# Residual bound: a working-tree path is compared with a version by its bytes
+# only when it is a regular file. Symlinks, directories and other non-regular
+# entries are compared only as presence, and mode-only changes are not seen at
+# all. Submodules are compared only as presence too.
+#
+# bash 3.2, BSD tools: no mapfile, no ${x,,}, no associative arrays. Paths are
+# read NUL-delimited, so spaces and newlines in a name are data.
+
+main() {
+  APPLY=
+  C=.
+  ACTS=0
+  parse_args "$@"
+  top=$(git -C "$C" rev-parse --show-toplevel 2>/dev/null) ||
+    usage "not inside a git repository: $C"
+  resolve_target
+  if reached; then
+    REACHED=1
+    find_pre || usage "cannot tell where the command stopped: no move onto $ARG in the HEAD reflog. Nothing changed."
+  else
+    REACHED=0
+    PRE=$(git -C "$top" rev-parse HEAD)
+  fi
+  walk_paths
+  if [ "$REACHED" -eq 0 ]; then
+    rerun
+  elif [ "$ACTS" -eq 0 ]; then
+    printf 'nothing to do\n'
+  fi
+  exit 0
+}
+
+parse_args() {
+  while [ $# -gt 0 ]; do
+    case $1 in
+      --apply) APPLY=1; shift ;;
+      -C) [ $# -ge 2 ] || usage "-C needs a directory"; C=$2; shift 2 ;;
+      -*) usage "unknown option: $1" ;;
+      *) break ;;
+    esac
+  done
+  [ $# -eq 2 ] || usage
+  case $1 in
+    checkout|merge) SUB=$1 ;;
+    *) usage "unknown subcommand: $1" ;;
+  esac
+  case $2 in
+    ''|-*) usage "missing or invalid ref: '$2'" ;;
+  esac
+  ARG=$2
+}
+
+usage() {
+  printf 'usage: sandbox-lies-recover [--apply] [-C <dir>] {checkout <branch> | merge <commit-ish>}\n' >&2
+  [ $# -eq 0 ] || printf '%s\n' "$1" >&2
+  exit 2
+}
+
+# TARGET is the commit the refused command was going to reach.
+resolve_target() {
+  if [ "$SUB" = checkout ]; then
+    TARGET=$(git -C "$top" rev-parse --verify -q "refs/heads/$ARG^{commit}")
+    [ -n "$TARGET" ] || usage "no such branch: $ARG"
+  else
+    TARGET=$(git -C "$top" rev-parse --verify -q "$ARG^{commit}")
+    [ -n "$TARGET" ] || usage "no such commit: $ARG"
+  fi
+}
+
+# Reached: a checkout has switched HEAD to the branch, a merge has moved HEAD
+# to the target commit.
+reached() {
+  if [ "$SUB" = checkout ]; then
+    [ "$(git -C "$top" symbolic-ref -q HEAD)" = "refs/heads/$ARG" ]
+  else
+    [ "$(git -C "$top" rev-parse HEAD)" = "$TARGET" ]
+  fi
+}
+
+# Sets PRE to the old value of the newest HEAD reflog entry that moved onto
+# the target from elsewhere. The old value of an entry is the new value of
+# the entry after it. Returns 1 when no such entry exists.
+find_pre() {
+  local reflog line sha msg want=
+  reflog=$(git -C "$top" log -g --format='%H %gs' HEAD) || return 1
+  while IFS= read -r line; do
+    sha=${line%% *}
+    msg=${line#* }
+    if [ -n "$want" ]; then
+      PRE=$sha
+      return 0
+    fi
+    if moved_onto "$sha" "$msg"; then
+      want=1
+    fi
+  done <<<"$reflog"
+  return 1
+}
+
+# Whether a HEAD reflog entry (new value $1, message $2) is the move the
+# refused command made. A re-run's same-branch entry is not a move.
+moved_onto() {
+  local rest
+  if [ "$SUB" = checkout ]; then
+    rest=${2#checkout: moving from }
+    [ "$rest" != "$2" ] || return 1
+    case $rest in
+      *" to $ARG") ;;
+      *) return 1 ;;
+    esac
+    [ "${rest%" to $ARG"}" != "$ARG" ]
+  else
+    case $2 in
+      "merge "*": Fast-forward") [ "$1" = "$TARGET" ] ;;
+      *) return 1 ;;
+    esac
+  fi
+}
+
+# Every path the refused command changed, read NUL-delimited. No status filter:
+# a path git did not get to may still match neither version and must be kept.
+walk_paths() {
+  local p
+  while IFS= read -r -d '' p; do
+    classify "$p"
+  done < <(git -C "$top" diff --no-renames --name-only -z "$PRE" "$TARGET")
+}
+
+# The working copy's version of a path: restore it, remove it, or keep it.
+classify() {
+  local p=$1
+  if same_as HEAD "$p"; then
+    return 0
+  fi
+  if same_as "$PRE" "$p" || same_as "$TARGET" "$p"; then
+    if has_path HEAD "$p"; then
+      act restore "$p"
+    else
+      act remove "$p"
+    fi
+  else
+    act keep "$p"
+  fi
+}
+
+# act <restore|remove|keep> <path>: print the act, and carry it out with --apply.
+act() {
+  printf '%s %s\n' "$1" "$2"
+  [ "$1" != keep ] || return 0
+  ACTS=$((ACTS + 1))
+  [ -n "$APPLY" ] || return 0
+  case $1 in
+    restore) git -C "$top" checkout HEAD -- "$2" </dev/null || fail "restore failed: $2" ;;
+    remove) rm -f -- "$top/$2" || fail "remove failed: $2" ;;
+  esac
+}
+
+fail() {
+  printf '%s\n' "$1" >&2
+  exit 1
+}
+
+# Re-run the original command once, when the target was not reached. Its
+# refusal is reported and exits 1; it is never replaced by a reset.
+rerun() {
+  local rc=0
+  if [ "$SUB" = checkout ]; then
+    printf 'git checkout %s\n' "$ARG"
+  else
+    printf 'git merge --ff-only %s\n' "$ARG"
+  fi
+  [ -n "$APPLY" ] || return 0
+  rerun_cmd || rc=$?
+  [ "$rc" -eq 0 ] || fail "re-run exited $rc"
+}
+
+rerun_cmd() {
+  if [ "$SUB" = checkout ]; then
+    git -C "$top" checkout "$ARG" </dev/null
+  else
+    git -C "$top" merge --ff-only "$ARG" </dev/null
+  fi
+}
+
+# Working copy state of a path: absent, file (a regular file), or other
+# (a symlink, a directory or another non-regular entry).
+wstate() {
+  if [ -L "$top/$1" ] || [ -d "$top/$1" ]; then
+    echo other
+  elif [ -f "$top/$1" ]; then
+    echo file
+  elif [ -e "$top/$1" ]; then
+    echo other
+  else
+    echo absent
+  fi
+}
+
+# Whether <rev> has an entry at <path> that is a blob or a submodule commit.
+has_path() {
+  local kind
+  kind=$(git -C "$top" cat-file -t "$1:$2" 2>/dev/null) || return 1
+  [ "$kind" != tree ]
+}
+
+# Whether the working copy of <path> matches <rev>'s version: absent where the
+# rev has none, bytes for a regular file, presence only for anything else.
+same_as() {
+  local st
+  st=$(wstate "$2")
+  if has_path "$1" "$2"; then
+    case $st in
+      absent) return 1 ;;
+      file)
+        [ "$(git -C "$top" cat-file -t "$1:$2")" = blob ] || return 1
+        git -C "$top" cat-file blob "$1:$2" | cmp -s - "$top/$2"
+        ;;
+      *) return 0 ;;
+    esac
+  else
+    [ "$st" = absent ]
+  fi
+}
+
+main "$@"
