@@ -10,10 +10,10 @@
 # Exit: 0 nothing left to do, plan carried out, or dry-run printed; 1 the
 # re-run or an act failed; 2 usage error or a state it cannot tell.
 #
-# Residual bound: a working-tree path is compared with a version by its bytes
-# only when it is a regular file. Symlinks, directories and other non-regular
-# entries are compared only as presence, and mode-only changes are not seen at
-# all. Submodules are compared only as presence too.
+# Residual bound: a working-tree path is compared with a version by content,
+# as git stores it, only when it is a regular file. Symlinks, directories and
+# other non-regular entries are compared only as presence, and mode-only
+# changes are not seen at all. Submodules are compared only as presence too.
 #
 # bash 3.2, BSD tools: no mapfile, no ${x,,}, no associative arrays. Paths are
 # read NUL-delimited, so spaces and newlines in a name are data.
@@ -216,7 +216,9 @@ has_path() {
 }
 
 # Whether the working copy of <path> matches <rev>'s version: absent where the
-# rev has none, bytes for a regular file, presence only for anything else.
+# rev has none, for a regular file its blob id as git would store it (eol and
+# filter attributes applied, as `git status` compares), presence only for
+# anything else.
 same_as() {
   local st
   st=$(wstate "$2")
@@ -225,7 +227,8 @@ same_as() {
       absent) return 1 ;;
       file)
         [ "$(git -C "$top" cat-file -t "$1:$2")" = blob ] || return 1
-        git -C "$top" cat-file blob "$1:$2" | cmp -s - "$top/$2"
+        [ "$(git -C "$top" hash-object --path="$2" "$top/$2")" = \
+          "$(git -C "$top" rev-parse "$1:$2")" ]
         ;;
       *) return 0 ;;
     esac
