@@ -1,4 +1,5 @@
 .claude-plugin
+bin
 hooks
 lib
 skills

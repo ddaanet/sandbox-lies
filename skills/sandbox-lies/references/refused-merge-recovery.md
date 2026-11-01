@@ -3,30 +3,28 @@
 A sandboxed `git merge --ff-only` or `git checkout <branch>` can die on a file
 the sandbox will not let git write, leaving some files at the target and HEAD
 either moved or not. Neither the exit status nor the command says which, and the
-hook's verdict may say "HEAD unmoved" either way. One procedure covered every
-case observed (below), run unsandboxed:
+hook's verdict may say "HEAD unmoved" either way. One script covers every case
+observed (below); run it unsandboxed:
 
-1. **Find whether the command reached the target.** For a checkout, the target
-   is reached when `git symbolic-ref HEAD` names the target branch; for a merge,
-   when `git rev-parse HEAD` equals `git rev-parse <target>`. The commit before
-   the command, `<pre>`, is `HEAD@{1}` if it reached it, `HEAD` otherwise.
-2. **Bring the paths the command touched back to HEAD.** For each path in
-   `git diff --name-only <pre> <target>` that `git status` lists, and whose
-   working copy (or its absence) equals its `<pre>` or `<target>` version:
-   restore a tracked one with `git checkout HEAD -- <path>`, remove an untracked
-   one. A path matching neither version holds uncommitted work git carried over:
-   leave it.
-3. **If the command did not reach the target, re-run it once**, in one call, not
-   piecemeal. Re-running when HEAD already moved does nothing: a checkout
-   reports "Already on" and leaves the refused files as they were.
-4. **Never finish a checkout with `git reset --hard <target>`**: it moves the
+1. **Read the plan.** Run `sandbox-lies-recover checkout <branch>` (or
+   `sandbox-lies-recover merge <commit-ish>`) without `--apply`. It changes
+   nothing and prints one line per path. `restore` and `remove` bring a path the
+   command touched back to HEAD; `keep` is uncommitted work git carried over,
+   left untouched. A last line is the command to re-run, when it did not reach
+   the target. Exit 2 means the script cannot tell the state: act on nothing and
+   report.
+2. **Carry it out.** Run the same command again with `--apply`. It does the
+   restores and removals, then re-runs the original command once, in one call,
+   if the target was not reached.
+3. **Never finish a checkout with `git reset --hard <target>`**: it moves the
    current branch to the target instead of switching to it, and drops the
    commits the target lacks. For a `merge --ff-only` that still refuses after
-   step 3 it completes the fast-forward; it discards every uncommitted change,
+   step 2 it completes the fast-forward; it discards every uncommitted change,
    so it follows normal confirmation.
 
 Auto mode's classifier has refused `git checkout HEAD -- <file>` as destructive
-(seen 2026-10-31): ask for it rather than reaching for a broader command.
+(seen 2026-10-31). The dry-run plan is what lets a refused `--apply` be asked
+for: show the plan and ask, rather than reaching for a broader command.
 
 ## What was observed
 
@@ -43,10 +41,12 @@ target changed one thing in a refused directory:
 
 Where HEAD stayed unmoved, the other files git processed were still at the
 target, and the files the target adds were untracked. These are the cases seen,
-not a closed list: a run can mix them. The procedure above was re-run over all
-eight, and over a path staged with the target's content then edited further and
-a checkout of a branch at the current commit refused on the index lock
-(2026-10-31): each ended at the target with the uncommitted work kept.
+not a closed list: a run can mix them. These states, and a path staged with the
+target's content then edited further, a checkout of a branch at the current
+commit refused on the index lock (2026-10-31), a checkout re-run by hand before
+recovery, a file added inside a new directory, a deleted directory, a rename out
+of a refused directory and an untracked leftover identical to the pre-command
+version, are covered by `tests/recover.bats` in the plugin repository.
 
 Recorded 2026-09-27 on CC 2.1.281: a sandboxed `git checkout` on a linked
 worktree outside the write allowlist died on the directory-creation `fatal:`,
