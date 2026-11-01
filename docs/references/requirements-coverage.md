@@ -54,6 +54,9 @@ gate re-checks it.
 **FR-11** — Where · pinned by: `tests/docs.bats` runs `detect` over every other
 tracked regular file.
 
+**FR-12** — Where · pinned by: `bin/sandbox-lies-recover` ·
+`tests/recover.bats`, `tests/recover-cli.bats`.
+
 **NFR-1** — Where · pinned by: `references/` per detector · the replay harness
 under `tests/`. Done (harness promoted; each shipped candidate re-measured with
 its shipped matcher as arbiter, not gated).

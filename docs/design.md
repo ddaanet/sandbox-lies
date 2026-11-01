@@ -1,12 +1,12 @@
 # sandbox-lies — design
 
 **Status:** Built and tested: the hook, the `phantom-*` and lock verdicts, the
-hook's lock and `resume-lost` probe calls, the `tmpdir-unset`, `resume-lost` and
-`seccomp-init` verdicts, the `readonly-path` verdicts composed from their
-probe's facts, the `SessionStart` `jq` check, and the skill. Dogfooded
-2026-09-27 on CC 2.1.283, before the `resume-lost` probe, the `printf %q`
-`path=` form with its decoder, and the worktree-top join; no later dogfood run
-is recorded.
+hook's lock and `resume-lost` probe calls, the recovery script
+`bin/sandbox-lies-recover`, the `tmpdir-unset`, `resume-lost` and `seccomp-init`
+verdicts, the `readonly-path` verdicts composed from their probe's facts, the
+`SessionStart` `jq` check, and the skill. Dogfooded 2026-09-27 on CC 2.1.283,
+before the `resume-lost` probe, the `printf %q` `path=` form with its decoder,
+and the worktree-top join; no later dogfood run is recorded.
 
 This document is a hub; `references/` holds one node per mechanism — per
 detector in [references/detectors.md](references/detectors.md), the hook at run
@@ -20,9 +20,6 @@ behavioural claim from this hub that a node does not carry.
 
 ## Now
 
-- **Focus:** publishing. Both public remotes exist; nothing is pushed yet.
-- **Next:** the gitlore push, then the repo push, then the release, each a
-  prerequisite of the next.
 - **Do not re-litigate:** output annotation over command matching (D-1); hooks
   do not block or rewrite (D-2); exit status is not a gate (D-4); the skill
   lives here, not in `craft` (D-9); no verdict instructs a removal (D-7);
@@ -138,6 +135,14 @@ bytes on disk never hold a whole follow-on sentence. Two residuals exempt by
 name, listed in [references/self-quiet.md](references/self-quiet.md) (D-10).
 Done.
 
+**FR-12 — Recovery script.** `bin/sandbox-lies-recover` carries out the recovery
+of a `git checkout <branch>` or `git merge --ff-only <commit-ish>` that a
+sandbox refusal killed part-way. Without `--apply` it prints the plan and
+changes nothing; with `--apply` it runs each act as it prints it. Exit 0 is
+nothing left to do, a plan carried out or a dry run printed; 1 a failed re-run
+or act; 2 a usage error or a state it cannot tell. Its use is in
+`skills/sandbox-lies/references/refused-merge-recovery.md`. Done.
+
 ## Non-functional requirements
 
 **NFR-1 — Precision.** A shipped detector holds the precision measured at its
@@ -175,6 +180,7 @@ hooks/hooks.json        PostToolUse + PostToolUseFailure · "Bash" · timeout 10
                         SessionStart · no matcher · timeout 10
 hooks/annotate.sh       payload → text → detect → probes → one JSON
 hooks/check-jq.sh       SessionStart: a notice when jq is missing; annotates nothing
+bin/sandbox-lies-recover  recovery of a refused checkout or ff-only merge (FR-12)
 lib/matchers.sh         matchers + detect          (promoted from the pilot)
 lib/probes.sh           probe_<verdict> functions   (layer 3)
 lib/probes-readonly*.sh probe_readonly_path, its D-17 facts and command scan
@@ -182,7 +188,7 @@ lib/verdicts.sh         agent paragraph + human line per verdict
 skills/sandbox-lies/    the symptom-less knowledge
 manual/                 user documentation: the detectors, the hook
 tests/                  matchers, hook, probes, verdicts, docs; fixtures/
-scripts/run-bats.sh     failure-only bats wrapper
+plugin-dev/run-bats.sh   failure-only bats wrapper (vendored toolkit)
 scripts/check-*.sh      line-limit and link gates, NFR-5
 ```
 
