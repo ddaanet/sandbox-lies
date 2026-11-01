@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # lib/probes-readonly-facts.sh — the readfile=/merge=1/partial=1/target=/
-# match= facts _readonly_print_facts derives for probe_readonly_path under
+# recover=/match= facts _readonly_print_facts derives for probe_readonly_path under
 # writable and nopath (readonly-path.md's readonly-path Probe facts table),
 # reading the command through lib/probes-readonly-command.sh's scan. Split
 # out of lib/probes-readonly.sh to keep that file under the line cap;
@@ -26,7 +26,7 @@ set -u
 # _readonly_tokens and _readonly_tokens_cut are _readonly_tokenize's output.
 _readonly_print_facts() {
     local text="$1" command="$2" path="$3" cwd="$4" readfile word sub=''
-    local start repo _readonly_tokens_cut=0 partial=0
+    local start repo recover _readonly_tokens_cut=0 partial=0 pathspec=0
     local -a _readonly_tokens=() cands=()
 
     _readonly_tokenize "$command"
@@ -37,6 +37,8 @@ _readonly_print_facts() {
     while IFS= read -r -d '' word; do
         if [ -z "$sub" ]; then
             sub="$word"
+        elif [ "$word" = -- ]; then
+            pathspec=1
         else
             cands+=("$word")
         fi
@@ -57,11 +59,20 @@ _readonly_print_facts() {
         merge | checkout | switch) ;;
         *) return 0 ;;
     esac
+    # recover= names the ref sandbox-lies-recover takes; a pathspec after --
+    # is a checkout of files, which it does not take.
+    recover=''
+    if [ "$pathspec" -eq 0 ]; then
+        case "$sub" in
+            merge) recover=merge ;;
+            checkout | switch) recover=checkout ;;
+        esac
+    fi
     [ "${#cands[@]}" -gt 0 ] || return 0
     start="$path"
     [ -n "$start" ] || start="$cwd"
     repo=$(_readonly_git_dir "$start") || return 0
-    _readonly_repo_facts "$repo" "${cands[@]}"
+    _readonly_repo_facts "$repo" "$recover" "${cands[@]}"
 }
 
 # _readonly_git_dir <dir> — the nearest ancestor of <dir>, <dir> included,
@@ -93,8 +104,10 @@ _readonly_git_dir() {
     done
 }
 
-# _readonly_repo_facts <repo> <candidate...> — target= for the first
-# <candidate> naming a commit in <repo>, then match=<repo>/<file> for each
+# _readonly_repo_facts <repo> <recover> <candidate...> — target= for the first
+# <candidate> naming a commit in <repo>, then recover=<recover> when <recover>
+# names a ref sandbox-lies-recover can take (a checkout or switch onto a local
+# branch, or a merge), then match=<repo>/<file> for each
 # regular file differing from HEAD in the working tree, staged or not, whose
 # bytes equal the target's blob (readonly-path.md's target= and match=), named
 # by absolute path so the verdict's clause reads from any cwd; nothing when no
@@ -103,10 +116,10 @@ _readonly_git_dir() {
 # repository variables inherited from the hook's own environment (a claude
 # started inside a git hook) would point every read at another repository.
 #
-# Bounded (NFR-3): four git processes whatever the file count, and past
-# 1000 modified files no target= either, so the verdict's generic "restore
-# them from HEAD" clause — printed only when the text itself gave
-# partial=1 — stands in for a list it could not build in time.
+# Bounded (NFR-3): five git processes whatever the file count (the fifth is
+# show-ref, run only for a checkout), and past 1000 modified files no target=
+# either, so the verdict's generic clause — printed only when the text itself
+# gave partial=1 — stands in for a list it could not build in time.
 # Writes nothing (NFR-4): optional locks off; diff-index compares stat data
 # without refreshing the index (a porcelain `git diff` refresh can rewrite
 # it) and with fsmonitor off (its daemon writes an IPC socket under .git);
@@ -121,10 +134,10 @@ _readonly_git_dir() {
 # a key line), a : (a path), and @{ or ^{ (a reflog past its end kills
 # cat-file; ^{/re} walks history).
 _readonly_repo_facts() (
-    local repo="$1" cand type target='' meta file rec n=0 complete=0 wt
-    local i=0 j=0 out=''
+    local repo="$1" recover="$2" cand type target='' meta file rec n=0 complete=0
+    local wt i=0 j=0 out=''
     local -a names=() files=() heads=() shas=() tpaths=() tshas=()
-    shift
+    shift 2
     # Every match= line opens with <repo>: a newline in it would split the
     # line and forge the key line after it, as for a file name below. A
     # refused path comes off one line of the text, so only the cwd, joined
@@ -237,7 +250,15 @@ _readonly_repo_facts() (
             i=$((i + 1))
         fi
     done
-    # target= waits for the match= lines: printed alone it says nothing
-    # sits at the target.
-    printf 'target=%s\n%s' "$target" "$out"
+    # A checkout's recover= is kept only for a local branch, which
+    # sandbox-lies-recover can take. target=, then recover=, then match= is
+    # printing order alone: target= no longer means no clause is possible,
+    # since recover= with target= sets one, and the verdict reads them whole.
+    if [ "$recover" = checkout ] \
+        && ! git -C "$repo" show-ref -q --verify "refs/heads/$target" 2>/dev/null; then
+        recover=''
+    fi
+    printf 'target=%s\n' "$target"
+    [ -z "$recover" ] || printf 'recover=%s\n' "$recover"
+    printf '%s' "$out"
 )

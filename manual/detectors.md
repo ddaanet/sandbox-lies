@@ -167,19 +167,23 @@ The act is the first of these that applies:
 - every command in the call only reads files, and one file it reads has a
   command-output name (`*.log`, `*.output`, `*.out`, `*.err`) — re-run the
   command that wrote that file, since the refusal in it came from that call;
-- the path is a `.claude/settings.json` (`writable` only) — write
+- the path is a `.claude/settings.json` (`writable` only) and the call ran no
+  git `merge`, `pull`, `checkout`, `switch`, `rebase` or `cherry-pick` — write
   `.claude/settings.json` through the `update-config` skill;
 - otherwise — re-run the whole call with `dangerouslyDisableSandbox: true`.
 
-When the call ran a git `merge`, `pull`, `checkout`, `switch`, `rebase` or
-`cherry-pick`, or git reported a partially written checkout, a clause comes
-before the act. If modified files already match the target the command was
-moving to, it names up to five of them by absolute path and says to restore them
-from HEAD first, since they block a re-run; if git reported a partial checkout
-and no target could be read, it says to restore the files the command wrote from
-HEAD. With a target and no matching file, or with neither a target nor a partial
-checkout, there is no clause. The clause removes nothing; untracked files the
-target added are left to the skill's recovery procedure.
+When the call ran one of those git commands and git reported a partially written
+checkout, or modified files already match the target the command was moving to,
+a recovery clause replaces the act. For a `merge`, or a `checkout` or `switch`
+of a local branch, it tells you to run `sandbox-lies-recover` for that command
+with `dangerouslyDisableSandbox: true` and read its plan; the
+`sandbox-lies:sandbox-lies` skill says how to carry the plan out. For any other
+case it points at the skill's recovery of a refused merge or checkout. The
+clause does not say where HEAD is, since a checkout can move HEAD although git
+reported an error and exited 0. It removes nothing and never asks for the
+script's `--apply`. If the refusal came from a file the call read, the re-run of
+the command that wrote that file follows the clause as its own sentence. With no
+partial checkout and no matching file, there is no clause and the act applies.
 
 ## tmpdir-unset
 

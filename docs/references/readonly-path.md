@@ -83,40 +83,46 @@ on. The command shapes the wording only; detection never reads it (D-1).
 | `merge=1` | a git segment of the command runs `merge`, `pull`, `checkout`, `switch`, `rebase` or `cherry-pick`, after any global options; or `partial=1` is printed |
 | `partial=1` | a line of the text opens with git's partial-checkout message, its `error: ` or `fatal: ` prefix included, or holds it after a carriage return (git's own progress fragment), for `unable to unlink old`, `unable to create file` or `cannot create directory at`, under any command |
 | `target=<ref>` | with `merge=1`: the first word after a `merge`, `checkout` or `switch` subcommand, before any `--`, that resolves to a commit |
+| `recover=<kind>` | with `target=`: `merge` for a `merge` segment; `checkout` for a `checkout` or `switch` segment whose target is a local branch (`refs/heads/<target>` exists). No line when the target is not a local branch, when the segment holds a literal `--` (`git checkout main -- f` restores paths), for `pull`, `rebase` and `cherry-pick`, or with no target |
 | `match=<repo>/<file>` | with `target=`: one line per file modified against HEAD, staged or not, whose working-tree content equals the target's, named by absolute path — the repository root, trailing slashes stripped, then the file's name within it |
 | `readfile=<path>` | every command in the call's pipelines and lists is a reader — `cat`, `head`, `tail`, `grep`, `sed` without in-place editing, `awk`, `cut`, `sort`, `uniq` without a second operand, `wc`, `tr`, `less` — with no output redirection, and an input-file operand or `<` target has a command-output name: `*.log`, `*.output`, `*.out`, `*.err`; the first such. Never an input operand: a word opening with `-`; the first operand of `grep`, `sed` or `awk`, the pattern or program, unless an `-e` or `-f` came earlier in the segment; the word after a separate `-e` or `-f` |
 
-The repository for `target=` and `match=` is the one holding the path's nearest
-existing directory, else the payload `cwd`'s. Git reads run with optional locks
-off, so the probe writes nothing (NFR-4). Word splitting is safe for `target=`,
-since a ref name holds no blank; `readfile=` honours single and double quotes. A
-`readfile=` candidate holding `*`, `?`, `[`, `{` or `$` is a glob, a brace
-expansion or a `$` expansion, not a name the command wrote, and is passed over
-for the next one; in a word holding `<`, only the name after the last `<` is
-tested. So `grep pat *.log x.err` gives `x.err`, `cat $OUT.log` and
-`cat {a,b}.log` give no line, and `grep 'err.*'<x.log` gives `x.log`. Residuals:
-`merge=1` read off the command alone does not show that the git segment died, so
-a call whose merge or checkout succeeded before another command's write was
-refused gets it too; its clause then rests on `match=` lines, which a finished
-checkout leaves none of. A partial checkout whose text lost git's error — cut by
-a `tail`, or sent to a file — and whose target does not resolve gets no clause.
-`partial=1` does not check which git command printed the error, so a `stash` or
-`restore` dying on the same error counts too. A git partial-checkout line that
-another program prefixed or indented (a wrapper's own prefix) does not count;
-git's own progress fragment before the message, ended by a carriage return,
-does. A file whose name holds a newline is never a `match=` or a `readfile=`,
-and a repository root holding one gives no `target=` or `match=` at all: either
-would split a `match=` line and forge the key line after it. A repository at `/`
-gives `match=//<file>`. A reader behind a `cd`, or a reader or git behind a
-variable assignment, is not recognised. The scan does not parse `$( )`,
-backticks, subshells, braces or `$'…'`, so their contents read as words of the
-command around them; it stops at the end of a line holding `<<`, and after 16384
-characters, and neither cut command yields `readfile=`. A `>` anywhere in a word
-counts as output redirection, quoted or not, except a descriptor duplication
-(`2>&1`, `>&2`); so do `sort -o` and `awk -i`. A candidate ref holding `@{`,
-`^{`, `:` or a leading `-` is skipped. With an unborn HEAD, or past 1000 files
-modified against HEAD, no `target=` is printed. A file matches byte for byte,
-before any clean filter, and never as a symlink.
+The repository for `target=`, `recover=` and `match=` is the one holding the
+path's nearest existing directory, else the payload `cwd`'s. The probe runs five
+git processes, with optional locks off, so it writes nothing (NFR-4). Word
+splitting is safe for `target=`, since a ref name holds no blank; `readfile=`
+honours single and double quotes. A `readfile=` candidate holding `*`, `?`, `[`,
+`{` or `$` is a glob, a brace expansion or a `$` expansion, not a name the
+command wrote, and is passed over for the next one; in a word holding `<`, only
+the name after the last `<` is tested. So `grep pat *.log x.err` gives `x.err`,
+`cat $OUT.log` and `cat {a,b}.log` give no line, and `grep 'err.*'<x.log` gives
+`x.log`. Residuals: `merge=1` read off the command alone does not show that the
+git segment died, so a call whose merge or checkout succeeded before another
+command's write was refused gets it too; its clause then rests on `match=`
+lines, which a finished checkout leaves none of. A partial checkout whose text
+lost git's error — cut by a `tail`, or sent to a file — gets a clause only
+through a `match=` line. `git checkout main f`, with no `--`, reads as a switch
+to `main` and gets `recover=checkout`. A non-fast-forward merge also gets
+`recover=merge`; the script's re-run line is then `merge --ff-only`, which
+refuses safely. The delete-only case (git's `warning:` on an unlink, exit 0,
+HEAD moved) prints no `partial=1`, so it gets a clause only when a `match=` line
+fires. `partial=1` does not check which git command printed the error, so a
+`stash` or `restore` dying on the same error counts too. A git partial-checkout
+line that another program prefixed or indented (a wrapper's own prefix) does not
+count; git's own progress fragment before the message, ended by a carriage
+return, does. A file whose name holds a newline is never a `match=` or a
+`readfile=`, and a repository root holding one gives no `target=` or `match=` at
+all: either would split a `match=` line and forge the key line after it. A
+repository at `/` gives `match=//<file>`. A reader behind a `cd`, or a reader or
+git behind a variable assignment, is not recognised. The scan does not parse
+`$( )`, backticks, subshells, braces or `$'…'`, so their contents read as words
+of the command around them; it stops at the end of a line holding `<<`, and
+after 16384 characters, and neither cut command yields `readfile=`. A `>`
+anywhere in a word counts as output redirection, quoted or not, except a
+descriptor duplication (`2>&1`, `>&2`); so do `sort -o` and `awk -i`. A
+candidate ref holding `@{`, `^{`, `:` or a leading `-` is skipped. With an
+unborn HEAD, or past 1000 files modified against HEAD, no `target=` is printed.
+A file matches byte for byte, before any clean filter, and never as a symlink.
 
 The `readfile=` operand rule leaves these residuals, each shown by what the
 probe prints:
@@ -184,32 +190,49 @@ decoder never evaluates the value.
 The tail is one act, the first of these whose fact the probe printed:
 
 - `readfile=` — re-run the command that wrote `<readfile>`
-- `path=` names a `.claude/settings.json` (`writable` only) — write
-  `.claude/settings.json` through the `update-config` skill
+- `path=` names a `.claude/settings.json` (`writable` only) and no `merge=1` —
+  write `.claude/settings.json` through the `update-config` skill
 - otherwise — re-run the whole call with `dangerouslyDisableSandbox: true`
 
-The act stands alone as its own sentence, capitalised, unless a merge clause
-leads into it, lowercase. With `merge=1`, the probe's facts select the clause:
+The `update-config` act is for a settings edit; a checkout or merge that tripped
+on the file is not one, so with `merge=1` it falls through to the plain re-run.
 
-- `match=` lines — the clause names the files at the target, to be restored from
-  HEAD before the act: five names at most, then `and N more`. Each name is its
-  `match=` line's absolute path, so the clause names the same files from any
-  working directory; a backtick in a name closes its code span early, bytes
-  intact.
-- no `target=`, and `partial=1` — the clause names no file: it says to restore
-  the files the command wrote from HEAD before the act.
-- `target=` and no `match=` — no clause: nothing sits at the target to restore.
-- neither `target=` nor `partial=1` — no clause: the command shape alone does
-  not show the git segment wrote anything. Of 195 hits on 2026-09-27, 3 were
-  this case, each another write's refusal (`fire-readonly-path-git-config-busy`
-  is one).
+The act stands alone as its own sentence, capitalised. With `merge=1`, a clause
+fires and replaces the act when `partial=1` is printed or any `match=` line is.
+`match=` lines only decide that: they signal that git wrote at the target when
+the text lost git's own error, and no file name reaches the verdict. The clause
+is one of two:
+
+- `target=` and `recover=` both printed — it names the script: run
+  `sandbox-lies-recover checkout <branch>` (or `merge <commit-ish>`) with
+  `dangerouslyDisableSandbox: true` and read its plan; the
+  `sandbox-lies:sandbox-lies` skill says how to carry it out. It never names
+  `--apply` and instructs no removal (D-7).
+- otherwise — it points at the skill's recovery of a refused merge or checkout.
+
+Neither says where HEAD is: a checkout can move HEAD at exit 0 and a merge not
+(`skills/sandbox-lies/references/refused-merge-recovery.md`). With neither
+`partial=1` nor a `match=` line there is no clause and the act stands alone, as
+before: the command shape alone does not show the git segment wrote anything. Of
+195 hits on 2026-09-27, 3 were this case, each another write's refusal
+(`fire-readonly-path-git-config-busy` is one).
+
+If `readfile=` is printed, the read act follows the clause as its own sentence,
+since the refusal came from the call that wrote that file.
+
+The clause replaces the act because, after a checkout that moved HEAD, a re-run
+does nothing and adds a reflog entry the script must skip, while the script's
+plan prints the re-run when one is needed. Recorded case:
+`fire-readonly-path-checkout-moved`, 2026-10-31 in the handoff repository, a
+`git checkout main && git merge --ff-only dev` whose unlink refusal on
+`.claude/settings.json` still switched the branch; the reproduction table in the
+recovery reference gives the other outcomes. The clause removes nothing; a
+fast-forward re-run over files already at the target is refused
+(`tests/verdict-premises.bats`), and the untracked files the target added are
+left to the recovery procedure.
 
 The read act covers the corpus's command-output reads below: the refusal in such
 a file came from the call that wrote it, so re-running the read changes nothing.
-The merge clause states the tree's state and the order of acts and removes
-nothing: a fast-forward re-run over files already at the target is refused
-(`tests/verdict-premises.bats`), and the untracked files the target added are
-left to the skill's recovery procedure.
 
 **Corpus.** 162 hits, 161 true, 1 the residual (`mkdir` of a path directly under
 `/`, left by an empty variable). 99% on 2026-09-25; 11 hits this project's

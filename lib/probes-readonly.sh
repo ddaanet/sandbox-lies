@@ -5,7 +5,7 @@
 # tool_input.command as $3, and prints an outcome token on its first line, then
 # a path= line (printf %q form) under writable and readonly only (nopath
 # prints none), then — under writable and nopath only — the
-# readfile=/merge=1/partial=1/target=/match= facts readonly-path.md's
+# readfile=/merge=1/partial=1/target=/recover=/match= facts readonly-path.md's
 # readonly-path Probe facts table describes; exit 0. Split out of lib/probes.sh
 # to keep that file under the line cap; lib/probes.sh sources this file, so
 # hooks/annotate.sh needs no source line of its own for it.

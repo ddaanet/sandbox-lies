@@ -267,13 +267,13 @@ _verdict_has_control() {
 #
 # writable and nopath then carry the tail readonly-path.md's readonly-path
 # Verdicts compose from the probe's other stdin facts (readfile=, merge=1,
-# partial=1, target=, match=): one act, capitalised alone or lowercase after
-# a merge clause, each spelled twice since bash 3.2 has no case conversion.
-# readonly ignores every fact but path=. An outcome with no text here prints
-# nothing, as an unmatched lock outcome does.
+# partial=1, target=, recover=, match=): one act; a merge clause replaces it,
+# and a read act follows the clause as its own sentence. readonly ignores
+# every fact but path=. An outcome with no text here prints nothing, as an
+# unmatched lock outcome does.
 verdict_readonly_path() {
   local outcome="$1" line path='' readfile='' merge='' partial='' target=''
-  local matches=() subject act act_low rest
+  local recover='' matches=() subject act clause rest
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in
       path=*) path=${line#path=} ;;
@@ -281,6 +281,7 @@ verdict_readonly_path() {
       merge=*) merge=${line#merge=} ;;
       partial=*) partial=${line#partial=} ;;
       target=*) target=${line#target=} ;;
+      recover=*) recover=${line#recover=} ;;
       match=*) matches+=("${line#match=}") ;;
     esac
   done
@@ -294,32 +295,28 @@ verdict_readonly_path() {
     writable | nopath)
       if [ -n "$readfile" ]; then
         act="Re-run the command that wrote \`$readfile\`."
-        act_low="re-run the command that wrote \`$readfile\`."
       else
-        case "$outcome:$_verdict_path_raw" in
-          writable:*/.claude/settings.json)
+        case "$merge:$outcome:$_verdict_path_raw" in
+          :writable:*/.claude/settings.json)
             # shellcheck disable=SC2016 # backticks are literal prose, not expansion
             act='Write `.claude/settings.json` through the `update-config` skill.'
-            # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-            act_low='write `.claude/settings.json` through the `update-config` skill.'
             ;;
           *)
             # shellcheck disable=SC2016 # backticks are literal prose, not expansion
             act='Re-run the whole call with `dangerouslyDisableSandbox: true`.'
-            # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-            act_low='re-run the whole call with `dangerouslyDisableSandbox: true`.'
             ;;
         esac
       fi
       rest=" $act"
-      if [ -n "$merge" ]; then
-        if [ -n "$target" ]; then
-          if [ "${#matches[@]}" -gt 0 ]; then
-            rest=" The merge or checkout left files at the target with HEAD unmoved, blocking a re-run: restore $(_readonly_match_list "${matches[@]}") from HEAD — they match \`$target\` —, then $act_low"
-          fi
-        elif [ -n "$partial" ]; then
-          rest=" The merge or checkout left the files it wrote with HEAD unmoved, blocking a re-run: restore them from HEAD, then $act_low"
+      if [ -n "$merge" ] && { [ -n "$partial" ] || [ "${#matches[@]}" -gt 0 ]; }; then
+        if [ -n "$recover" ] && [ -n "$target" ]; then
+          clause="Before any re-run, run \`sandbox-lies-recover $recover $target\` with \`dangerouslyDisableSandbox: true\` and read its plan: the git command may have stopped part-way. The \`sandbox-lies:sandbox-lies\` skill says how to carry the plan out."
+        else
+          # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+          clause='Before any re-run, follow the `sandbox-lies:sandbox-lies` skill'"'"'s recovery of a refused merge or checkout: the git command may have stopped part-way.'
         fi
+        rest=" $clause"
+        [ -z "$readfile" ] || rest=" $clause $act"
       fi
       ;;
   esac
@@ -338,25 +335,6 @@ verdict_readonly_path() {
       printf '%s\n' 'read-only — probably the sandbox, path not checked'
       ;;
   esac
-}
-
-# _readonly_match_list <name...> — the restore clause's file list: each name
-# in backticks, comma-joined, capped at the first five with "and N more"
-# appended past that (readonly-path.md leaves the comma before "and" open).
-_readonly_match_list() {
-  local names='' extra=0 i=0 m
-  for m in "$@"; do
-    i=$((i + 1))
-    if [ "$i" -le 5 ]; then
-      names="${names:+$names, }\`$m\`"
-    else
-      extra=$((extra + 1))
-    fi
-  done
-  if [ "$extra" -gt 0 ]; then
-    names="$names and $extra more"
-  fi
-  printf '%s' "$names"
 }
 
 # The shipped candidates. Each takes no outcome, as the phantom verdicts do,

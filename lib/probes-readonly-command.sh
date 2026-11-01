@@ -270,8 +270,9 @@ _readonly_readfile_arg() {
 # _readonly_merge_segment <token...> — for the first segment that opens with
 # `git`, after skipping its own global options, and runs merge, pull,
 # checkout, switch, rebase or cherry-pick: the subcommand, then each
-# following word up to a literal -- (readonly-path.md's target= "before any
-# --"), each NUL-terminated; nothing when no segment matches.
+# following word up to and including a literal -- (readonly-path.md's target=
+# "before any --", which the -- record ends), each NUL-terminated; nothing when
+# no segment matches.
 _readonly_merge_segment() {
     local tok word state=start skip_next=0 sub=''
     local -a cands=()
@@ -312,10 +313,9 @@ _readonly_merge_segment() {
                 esac
                 ;;
             collect)
+                cands+=("$word")
                 if [ "$word" = -- ]; then
                     state=stop
-                else
-                    cands+=("$word")
                 fi
                 ;;
         esac

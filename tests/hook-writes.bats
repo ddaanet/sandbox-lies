@@ -6,8 +6,8 @@
 # its error text is built with helpers/probes, never a fixture's host path.
 # Proven by mutation: a mktemp call in annotate.sh's probe branch before the
 # probe call, and one at the top of _readonly_print_facts, each turn a case
-# here red. The restore-clause case drives the same real-probe payload from
-# a subdirectory cwd and pins the clause's absolute match= names (outline D3).
+# here red. The recovery-clause case drives the same real-probe payload from
+# a subdirectory cwd and pins the script clause, which names no match= file.
 
 bats_require_minimum_version 1.5.0
 
@@ -109,9 +109,10 @@ run_spied() {
   [ ! -e "$SPY_CALLS" ] || { cat "$SPY_CALLS" >&2; return 1; }
 }
 
-# The restore clause names the matching files by absolute path, from a
-# payload whose cwd is a subdirectory of the repo: real probe, flag absent.
-@test "hook restore clause names the match by absolute path" {
+# The recovery clause sends the agent to the script for the resolved ref and
+# names no file, from a payload whose cwd is a subdirectory of the repo: real
+# probe, flag absent.
+@test "hook recovery clause names the script and ref, not the matching files" {
   local repo="$BATS_TEST_TMPDIR/repo" ctx
   make_scratch_repo "$repo"
   mkdir "$repo/sub"
@@ -123,7 +124,8 @@ run_spied() {
   [ "$status" -eq 0 ]
   ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  printf '%s' "$ctx" | grep -qF "restore \`$repo/a\`, \`$repo/b\`, \`$repo/e f\` from HEAD"
+  [ "$ctx" = "\`$repo/a\`"' is writable outside the sandbox, whose allowlist refused it. Before any re-run, run `sandbox-lies-recover merge feat` with `dangerouslyDisableSandbox: true` and read its plan: the git command may have stopped part-way. The `sandbox-lies:sandbox-lies` skill says how to carry the plan out.' ]
+  run ! grep -qF "$repo/b" <<<"$ctx"
 }
 
 # The probe prints path= in printf %q form (Item 1.1); the verdict decodes it

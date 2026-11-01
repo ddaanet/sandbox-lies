@@ -1,0 +1,11 @@
+error: unable to unlink old '.claude/settings.json': Device or resource busy
+Switched to branch 'main'
+M	.claude/settings.json
+M	memory
+Your branch is ahead of 'origin/main' by 4 commits.
+  (use "git push" to publish your local commits)
+error: Your local changes to the following files would be overwritten by merge:
+	.claude/settings.json
+Please commit your changes or stash them before you merge.
+Aborting
+Updating 7760885..c2fff7c

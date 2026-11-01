@@ -87,196 +87,240 @@ $n" "$MATCHERS"
   text_lacks "$line1" 'update-config'
 }
 
-@test "readonly-path merge with target and match restores the named files then acts" {
-  local text line1 line2
-  text=$(readonly_path_text writable path=/r/x merge=1 target=main match=a match=b)
-  line1=$(printf '%s\n' "$text" | sed -n '1p')
-  line2=$(printf '%s\n' "$text" | sed -n '2p')
+# writable_lead <path> — the writable outcome's first sentence for <path>.
+writable_lead() {
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  [ "$line1" = '`/r/x` is writable outside the sandbox, whose allowlist refused it. The merge or checkout left files at the target with HEAD unmoved, blocking a re-run: restore `a`, `b` from HEAD — they match `main` —, then re-run the whole call with `dangerouslyDisableSandbox: true`.' ]
-  [ "$line2" = 'read-only — sandbox allowlist, writable outside' ]
-  [ "${#line1}" -lt 400 ]
-  run bash -c 'printf "%s\n" "$1" | bash "$2"' _ "$text" "$MATCHERS"
-  [ "$status" -eq 1 ]
-  [ -z "$output" ]
+  printf '`%s` is writable outside the sandbox, whose allowlist refused it.' "$1"
 }
 
-@test "readonly-path merge with partial=1 and no target restores the written files then acts" {
+# script_clause <sub> <ref> — the clause that sends the agent to the recovery
+# script, built here from the contract's wording, not read off lib/.
+script_clause() {
+  printf '%s' "Before any re-run, run \`sandbox-lies-recover $1 $2\` with \`dangerouslyDisableSandbox: true\` and read its plan: the git command may have stopped part-way. The \`sandbox-lies:sandbox-lies\` skill says how to carry the plan out."
+}
+
+# generic_clause — the clause when no script invocation can be named.
+generic_clause() {
+  printf '%s' "Before any re-run, follow the \`sandbox-lies:sandbox-lies\` skill's recovery of a refused merge or checkout: the git command may have stopped part-way."
+}
+
+# line_one <text> — the verdict's first line.
+line_one() {
+  printf '%s\n' "$1" | sed -n '1p'
+}
+
+# assert_quiet <text> — every line of the verdict stays under 400 characters
+# and the matchers fire no detector on it (status 1, no output).
+assert_quiet() {
+  local l fired rc=0
+  while IFS= read -r l; do
+    [ "${#l}" -lt 400 ]
+  done <<<"$1"
+  fired=$(printf '%s\n' "$1" | bash "$MATCHERS") || rc=$?
+  [ "$rc" -eq 1 ]
+  [ -z "$fired" ]
+}
+
+@test "readonly-path merge with recover, target and match sends the agent to the script" {
+  local text line1
+  text=$(readonly_path_text writable path=/r/x merge=1 recover=checkout \
+    target=main match=/r/alpha.txt match=/r/beta.txt)
+  line1=$(line_one "$text")
+  [ "$line1" = "$(writable_lead /r/x) $(script_clause checkout main)" ]
+  [ "$(printf '%s\n' "$text" | sed -n '2p')" = 'read-only — sandbox allowlist, writable outside' ]
+  text_lacks "$line1" 'alpha'
+  text_lacks "$line1" 'beta'
+  text_lacks "$line1" 'HEAD unmoved'
+  text_lacks "$line1" 'restore'
+  assert_quiet "$text"
+}
+
+@test "readonly-path merge with recover, target and partial but no match still sends the agent to the script" {
+  # The moved-HEAD case: git stopped after the switch, so no file matches the
+  # target any more, and the clause must not say HEAD stayed.
+  local text line1
+  text=$(readonly_path_text writable path=/r/x merge=1 partial=1 \
+    recover=checkout target=main)
+  line1=$(line_one "$text")
+  [ "$line1" = "$(writable_lead /r/x) $(script_clause checkout main)" ]
+  text_lacks "$line1" 'HEAD unmoved'
+  text_lacks "$line1" 'restore'
+  assert_quiet "$text"
+}
+
+@test "readonly-path merge with recover=merge names the merge subcommand and its ref" {
+  local text line1
+  text=$(readonly_path_text writable path=/r/x merge=1 partial=1 \
+    recover=merge target=dev match=/r/alpha.txt)
+  line1=$(line_one "$text")
+  [ "$line1" = "$(writable_lead /r/x) $(script_clause merge dev)" ]
+  assert_quiet "$text"
+}
+
+@test "readonly-path merge with partial=1 and no target gives the generic clause" {
   local text line1
   text=$(readonly_path_text writable path=/r/x merge=1 partial=1)
-  line1=$(printf '%s\n' "$text" | sed -n '1p')
-  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  [ "$line1" = '`/r/x` is writable outside the sandbox, whose allowlist refused it. The merge or checkout left the files it wrote with HEAD unmoved, blocking a re-run: restore them from HEAD, then re-run the whole call with `dangerouslyDisableSandbox: true`.' ]
-  [ "${#line1}" -lt 400 ]
-  run bash -c 'printf "%s\n" "$1" | bash "$2"' _ "$text" "$MATCHERS"
-  [ "$status" -eq 1 ]
-  [ -z "$output" ]
+  line1=$(line_one "$text")
+  [ "$line1" = "$(writable_lead /r/x) $(generic_clause)" ]
+  assert_quiet "$text"
+
+  # recover= without target= cannot name the invocation either.
+  text=$(readonly_path_text writable path=/r/x merge=1 partial=1 recover=checkout)
+  line1=$(line_one "$text")
+  [ "$line1" = "$(writable_lead /r/x) $(generic_clause)" ]
+  assert_quiet "$text"
 }
 
-@test "readonly-path merge alone with no partial=1 states the act alone, capitalised" {
-  local text line1 baseline baseline1
-  # positive control: merge=1 with partial=1 keeps the restore-them clause.
-  text=$(readonly_path_text writable path=/r/x merge=1 partial=1)
-  line1=$(printf '%s\n' "$text" | sed -n '1p')
-  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  [ "$line1" = '`/r/x` is writable outside the sandbox, whose allowlist refused it. The merge or checkout left the files it wrote with HEAD unmoved, blocking a re-run: restore them from HEAD, then re-run the whole call with `dangerouslyDisableSandbox: true`.' ]
-  [ "${#line1}" -lt 400 ]
-
-  # negative: merge=1 alone, no partial=1, states the act alone, capitalised
-  # — identical to the no-facts baseline, no restore clause at all.
-  text=$(readonly_path_text writable path=/r/x merge=1)
-  baseline=$(readonly_path_text writable path=/r/x)
-  line1=$(printf '%s\n' "$text" | sed -n '1p')
-  baseline1=$(printf '%s\n' "$baseline" | sed -n '1p')
-  [ "$line1" = "$baseline1" ]
-  text_lacks "$line1" 'restore'
-  [ "${#line1}" -lt 400 ]
-  run bash -c 'printf "%s\n" "$1" | bash "$2"' _ "$text" "$MATCHERS"
-  [ "$status" -eq 1 ]
-  [ -z "$output" ]
-}
-
-@test "readonly-path merge with target, partial=1 and no match still states the act alone" {
-  # The target= branch decides the no-clause case whatever partial=1 says.
-  # Paired with the same facts plus a match= line, which keeps the match
-  # clause alongside partial=1.
-  local text baseline line1 baseline1
-  text=$(readonly_path_text writable path=/r/x merge=1 partial=1 target=main match=a)
-  line1=$(printf '%s\n' "$text" | sed -n '1p')
-  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  [ "$line1" = '`/r/x` is writable outside the sandbox, whose allowlist refused it. The merge or checkout left files at the target with HEAD unmoved, blocking a re-run: restore `a` from HEAD — they match `main` —, then re-run the whole call with `dangerouslyDisableSandbox: true`.' ]
-
+@test "readonly-path merge with a target but no recover gives the generic clause" {
+  local text line1
   text=$(readonly_path_text writable path=/r/x merge=1 partial=1 target=main)
-  baseline=$(readonly_path_text writable path=/r/x)
-  line1=$(printf '%s\n' "$text" | sed -n '1p')
-  baseline1=$(printf '%s\n' "$baseline" | sed -n '1p')
-  [ "$line1" = "$baseline1" ]
-  text_lacks "$line1" 'restore'
-  [ "${#line1}" -lt 400 ]
-  run bash -c 'printf "%s\n" "$1" | bash "$2"' _ "$text" "$MATCHERS"
-  [ "$status" -eq 1 ]
-  [ -z "$output" ]
+  line1=$(line_one "$text")
+  [ "$line1" = "$(writable_lead /r/x) $(generic_clause)" ]
+  assert_quiet "$text"
+
+  text=$(readonly_path_text writable path=/r/x merge=1 target=main match=/r/alpha.txt)
+  line1=$(line_one "$text")
+  [ "$line1" = "$(writable_lead /r/x) $(generic_clause)" ]
+  text_lacks "$line1" 'alpha'
+  assert_quiet "$text"
 }
 
-@test "readonly-path merge clause leads lowercase into whichever act the facts select" {
-  # The no-target restore clause needs partial=1 beside merge=1.
+@test "readonly-path merge with neither partial=1 nor match states the act alone" {
+  # Each fact set equals the no-facts baseline: no clause fires.
+  local text baseline1 facts
+  baseline1=$(line_one "$(readonly_path_text writable path=/r/x)")
+  [ "$baseline1" = "$(writable_lead /r/x)$(readonly_path_tail)" ]
+  for facts in 'merge=1' 'merge=1 target=main' \
+    'merge=1 recover=checkout target=main'; do
+    # shellcheck disable=SC2086 # facts hold no blank within a fact
+    text=$(readonly_path_text writable path=/r/x $facts)
+    [ "$(line_one "$text")" = "$baseline1" ]
+    assert_quiet "$text"
+  done
+}
+
+@test "readonly-path clause facts without merge=1 leave the act alone" {
+  local text baseline1
+  baseline1=$(line_one "$(readonly_path_text writable path=/r/x)")
+  text=$(readonly_path_text writable path=/r/x partial=1 recover=checkout \
+    target=main match=/r/alpha.txt)
+  [ "$(line_one "$text")" = "$baseline1" ]
+  assert_quiet "$text"
+}
+
+@test "readonly-path settings.json draws update-config only without merge=1" {
   local text line1
-  text=$(readonly_path_text writable path=/r/x merge=1 partial=1 readfile=/w/b.log)
-  line1=$(printf '%s\n' "$text" | sed -n '1p')
+  # positive control: without merge=1, even beside clause facts.
+  text=$(readonly_path_text writable path=/r/.claude/settings.json \
+    partial=1 recover=checkout target=main)
+  line1=$(line_one "$text")
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  [ "$line1" = '`/r/x` is writable outside the sandbox, whose allowlist refused it. The merge or checkout left the files it wrote with HEAD unmoved, blocking a re-run: restore them from HEAD, then re-run the command that wrote `/w/b.log`.' ]
-  [ "${#line1}" -lt 400 ]
-  run bash -c 'printf "%s\n" "$1" | bash "$2"' _ "$text" "$MATCHERS"
-  [ "$status" -eq 1 ]
-  [ -z "$output" ]
+  [ "$line1" = "$(writable_lead /r/.claude/settings.json)"' Write `.claude/settings.json` through the `update-config` skill.' ]
 
-  text=$(readonly_path_text writable path=/r/.claude/settings.json merge=1 target=t match=a)
-  line1=$(printf '%s\n' "$text" | sed -n '1p')
-  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  [ "$line1" = '`/r/.claude/settings.json` is writable outside the sandbox, whose allowlist refused it. The merge or checkout left files at the target with HEAD unmoved, blocking a re-run: restore `a` from HEAD — they match `t` —, then write `.claude/settings.json` through the `update-config` skill.' ]
-  [ "${#line1}" -lt 400 ]
-  run bash -c 'printf "%s\n" "$1" | bash "$2"' _ "$text" "$MATCHERS"
-  [ "$status" -eq 1 ]
-  [ -z "$output" ]
+  # merge=1 and no clause: the plain re-run act.
+  text=$(readonly_path_text writable path=/r/.claude/settings.json merge=1)
+  line1=$(line_one "$text")
+  [ "$line1" = "$(writable_lead /r/.claude/settings.json)$(readonly_path_tail)" ]
+  text_lacks "$line1" 'update-config'
+  assert_quiet "$text"
 
-  text=$(readonly_path_text nopath merge=1 target=t match=a)
-  line1=$(printf '%s\n' "$text" | sed -n '1p')
-  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  [ "$line1" = "The sandbox's write allowlist most likely refused this write. The merge or checkout left files at the target with HEAD unmoved, blocking a re-run: restore \`a\` from HEAD — they match \`t\` —, then re-run the whole call with \`dangerouslyDisableSandbox: true\`." ]
-  [ "${#line1}" -lt 400 ]
-  run bash -c 'printf "%s\n" "$1" | bash "$2"' _ "$text" "$MATCHERS"
-  [ "$status" -eq 1 ]
-  [ -z "$output" ]
+  # merge=1 with clause facts: the script clause replaces the act.
+  text=$(readonly_path_text writable path=/r/.claude/settings.json merge=1 \
+    partial=1 recover=checkout target=main match=/r/alpha.txt)
+  line1=$(line_one "$text")
+  [ "$line1" = "$(writable_lead /r/.claude/settings.json) $(script_clause checkout main)" ]
+  text_lacks "$line1" 'update-config'
+  assert_quiet "$text"
+
+  # the generic clause too, and nopath over a settings path.
+  text=$(readonly_path_text writable path=/r/.claude/settings.json merge=1 partial=1)
+  text_lacks "$text" 'update-config'
 }
 
-@test "readonly-path merge with target and no match states the act alone" {
-  local text baseline line1 baseline1
-  text=$(readonly_path_text writable path=/r/x merge=1 target=main)
-  baseline=$(readonly_path_text writable path=/r/x)
-  line1=$(printf '%s\n' "$text" | sed -n '1p')
-  baseline1=$(printf '%s\n' "$baseline" | sed -n '1p')
-  [ "$line1" = "$baseline1" ]
-  text_lacks "$line1" 'restore'
-  [ "${#line1}" -lt 400 ]
-  run bash -c 'printf "%s\n" "$1" | bash "$2"' _ "$text" "$MATCHERS"
-  [ "$status" -eq 1 ]
-  [ -z "$output" ]
+@test "readonly-path nopath carries the clause after its own lead" {
+  local text line1 lead
+  lead="The sandbox's write allowlist most likely refused this write."
+  text=$(readonly_path_text nopath merge=1 partial=1 recover=checkout target=main)
+  line1=$(line_one "$text")
+  [ "$line1" = "$lead $(script_clause checkout main)" ]
+  assert_quiet "$text"
+
+  text=$(readonly_path_text nopath merge=1 match=/r/alpha.txt)
+  line1=$(line_one "$text")
+  [ "$line1" = "$lead $(generic_clause)" ]
+  assert_quiet "$text"
 }
 
-@test "readonly-path merge match list caps at five names then and N more" {
-  # readonly-path.md fixes the five names, `and N more` after them and the rest
-  # of the clause, but not whether a comma precedes `and`: both joins pass.
-  local text line1 head tail
+@test "readonly-path clause is followed by the read act as its own sentence" {
+  local text line1
+  text=$(readonly_path_text writable path=/r/x merge=1 partial=1 \
+    readfile=/w/b.log)
+  line1=$(line_one "$text")
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  head='`/r/x` is writable outside the sandbox, whose allowlist refused it. The merge or checkout left files at the target with HEAD unmoved, blocking a re-run: restore `a`, `b`, `c`, `d`, `e`'
+  [ "$line1" = "$(writable_lead /r/x) $(generic_clause)"' Re-run the command that wrote `/w/b.log`.' ]
+  assert_quiet "$text"
+
+  text=$(readonly_path_text writable path=/r/x merge=1 partial=1 \
+    recover=merge target=dev readfile=/w/b.log)
+  line1=$(line_one "$text")
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  tail='from HEAD — they match `main` —, then re-run the whole call with `dangerouslyDisableSandbox: true`.'
+  [ "$line1" = "$(writable_lead /r/x) $(script_clause merge dev)"' Re-run the command that wrote `/w/b.log`.' ]
+  assert_quiet "$text"
+}
 
-  text=$(readonly_path_text writable path=/r/x merge=1 target=main \
-    match=a match=b match=c match=d match=e match=f match=g)
-  line1=$(printf '%s\n' "$text" | sed -n '1p')
-  [ "$line1" = "$head and 2 more $tail" ] || [ "$line1" = "$head, and 2 more $tail" ]
-  [ "${#line1}" -lt 400 ]
-  run bash -c 'printf "%s\n" "$1" | bash "$2"' _ "$text" "$MATCHERS"
-  [ "$status" -eq 1 ]
-  [ -z "$output" ]
-
-  # Exactly five: every name, and no `and N more`.
-  text=$(readonly_path_text writable path=/r/x merge=1 target=main \
-    match=a match=b match=c match=d match=e)
-  line1=$(printf '%s\n' "$text" | sed -n '1p')
-  [ "$line1" = "$head $tail" ]
-  text_lacks "$line1" 'more'
+@test "readonly-path never names the match= files, however many" {
+  local text line1
+  text=$(readonly_path_text writable path=/r/x merge=1 recover=checkout \
+    target=main match=/r/f1.txt match=/r/f2.txt match=/r/f3.txt \
+    match=/r/f4.txt match=/r/f5.txt match=/r/f6.txt match=/r/f7.txt)
+  line1=$(line_one "$text")
+  [ "$line1" = "$(writable_lead /r/x) $(script_clause checkout main)" ]
+  text_lacks "$text" 'f1.txt'
+  text_lacks "$text" 'f7.txt'
+  text_lacks "$text" 'more'
+  assert_quiet "$text"
 }
 
 @test "readonly-path longest composition stays under 400 with one-character values" {
-  # The longest act (update-config) behind the longest clause (a capped
-  # match list): the prose's own length, values at one character.
+  # The script clause with a readfile act behind a settings.json lead: the
+  # prose's own length, values at one character.
   local line1
   line1=$(readonly_path_text writable path=/.claude/settings.json merge=1 \
-    target=t match=a match=b match=c match=d match=e match=f match=g \
-    | sed -n '1p')
-  printf '%s' "$line1" | grep -qF 'and 2 more'
-  printf '%s' "$line1" | grep -qF 'update-config'
+    partial=1 recover=checkout target=t readfile=/w | sed -n '1p')
+  printf '%s' "$line1" | grep -qF 'sandbox-lies-recover checkout t'
+  printf '%s' "$line1" | grep -qF 'Re-run the command that wrote'
   [ "${#line1}" -lt 400 ]
 }
 
 @test "readonly-path readonly ignores the probe's facts" {
   local text baseline line1
   text=$(readonly_path_text readonly path=/r/x readfile=/w/build.log \
-    merge=1 target=main match=a)
+    merge=1 partial=1 recover=checkout target=main match=a)
   baseline=$(readonly_path_text readonly path=/r/x)
   [ "$text" = "$baseline" ]
-  line1=$(printf '%s\n' "$text" | sed -n '1p')
+  line1=$(line_one "$text")
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   [ "$line1" = '`/r/x` is not writable outside the sandbox either; this is not a sandbox effect. Unsandboxing will not help: write somewhere writable, or ask before changing its permissions.' ]
-  [ "${#line1}" -lt 400 ]
-  run bash -c 'printf "%s\n" "$1" | bash "$2"' _ "$text" "$MATCHERS"
-  [ "$status" -eq 1 ]
-  [ -z "$output" ]
+  assert_quiet "$text"
 }
 
-@test "readonly-path compositions drop the old tail wording and remove nothing" {
+@test "readonly-path compositions drop the old restore wording and remove nothing" {
   # Each old phrase is paired with the phrase that replaces it over the same
   # text, so an empty or failed composition cannot pass as clean.
   local combined
   combined="$(readonly_path_text writable path=/r/x)
 $(readonly_path_text writable path=/r/x readfile=/w/build.log)
 $(readonly_path_text writable path=/r/.claude/settings.json)
-$(readonly_path_text writable path=/r/x merge=1 target=main match=a match=b)
+$(readonly_path_text writable path=/r/x merge=1 partial=1 recover=checkout target=main match=a match=b)
 $(readonly_path_text writable path=/r/x merge=1 partial=1)
-$(readonly_path_text nopath)
-$(readonly_path_text nopath merge=1 target=main match=a)"
-  printf '%s' "$combined" | grep -qF 'The merge or checkout left'
-  text_lacks "$combined" 'If a merge'
-  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  printf '%s' "$combined" | grep -qF '— they match `main` —'
-  text_lacks "$combined" 'once they match'
+$(readonly_path_text nopath merge=1 partial=1 recover=merge target=main)"
+  printf '%s' "$combined" | grep -qF 'Before any re-run'
+  text_lacks "$combined" 'The merge or checkout left'
+  text_lacks "$combined" 'HEAD unmoved'
+  text_lacks "$combined" 'restore'
+  text_lacks "$combined" 'they match'
   printf '%s' "$combined" | grep -qF 'Re-run the command that wrote'
-  text_lacks "$combined" 'if it only read'
-  # D-7 over the merge clauses, which restore and never remove: status 1
-  # exactly, so an erroring grep cannot read as "no match".
-  printf '%s' "$combined" | grep -qF 'restore them from HEAD'
+  # Status 1 exactly, so an erroring grep cannot read as "no match".
   run bash -c 'printf "%s" "$1" | grep -qiE "(^|[^[:alpha:]])rm |remove|delete"' \
     _ "$combined"
   [ "$status" -eq 1 ]

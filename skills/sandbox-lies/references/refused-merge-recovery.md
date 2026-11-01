@@ -2,9 +2,8 @@
 
 A sandboxed `git merge --ff-only` or `git checkout <branch>` can die on a file
 the sandbox will not let git write, leaving some files at the target and HEAD
-either moved or not. Neither the exit status nor the command says which, and the
-hook's verdict may say "HEAD unmoved" either way. One script covers every case
-observed (below); run it unsandboxed:
+either moved or not. Neither the exit status nor the command says which. One
+script covers every case observed (below); run it unsandboxed:
 
 1. **Read the plan.** Run `sandbox-lies-recover checkout <branch>` (or
    `sandbox-lies-recover merge <commit-ish>`) without `--apply`. It changes
@@ -29,6 +28,15 @@ observed (below); run it unsandboxed:
    `keep` line; otherwise it drops HEAD's own commits or the uncommitted work
    the plan kept, so do not use it: report instead. Where it does apply it
    discards every uncommitted change, so it follows normal confirmation.
+
+When the verdict sends you here with no ref named, find the ref yourself:
+
+- After `git checkout -`: the branch is `git symbolic-ref --short HEAD`, and
+  `git reflog -1` shows whether HEAD moved (`checkout: moving from X to Y`). Run
+  the script for that branch.
+- After `pull`, `rebase`, `cherry-pick` or a checkout that restores paths
+  (`git checkout main -- f`) the script does not apply. Read `git status` and
+  `git log -1` before any re-run, and report rather than guess.
 
 Auto mode's classifier has refused `git checkout HEAD -- <file>` as destructive
 (seen 2026-10-31). The dry-run plan is what lets a refused `--apply` be asked

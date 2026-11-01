@@ -132,6 +132,12 @@ SPEC = [
     ("fire-readonly-path-git-mkdir", "-Users-david-code-sandbox-lies",
      "2026-09-27", "git -C /tmp/sl8c-wt checkout feat2 2>&1",
      "cannot create directory at", "short", 40, 4000),
+    # a checkout that exited 0 with HEAD moved after only an unlink failure on
+    # the settings file, then an ff-only merge the stranded copy blocked
+    # (plans/2026-10-31-brief-sandboxed-checkout-moves-head.md)
+    ("fire-readonly-path-checkout-moved", "-Users-david-code-handoff",
+     "2026-10-31", "git checkout main && git merge --ff-only dev",
+     "unable to unlink old", "short", 40, 4000),
     # the memory index line naming the message mid-line
     ("quiet-readonly-path-index-line", "-Users-david-code-gitlore",
      "2026-08-13", 'grep -n "claude-plugin-dev" memory/ddaanet/MEMORY.md',
