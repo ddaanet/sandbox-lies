@@ -28,7 +28,7 @@ main() {
   resolve_target
   if reached; then
     REACHED=1
-    find_pre || usage "cannot tell where the command stopped: no move onto $ARG in the HEAD reflog. Nothing changed."
+    find_pre || usage "cannot tell where the command stopped: the newest HEAD reflog entry is not the move onto $ARG. Nothing changed."
   else
     REACHED=0
     PRE=$(git -C "$top" rev-parse HEAD)
@@ -52,14 +52,17 @@ parse_args() {
     esac
   done
   [ $# -eq 2 ] || usage
-  case $1 in
-    checkout|merge) SUB=$1 ;;
-    *) usage "unknown subcommand: $1" ;;
-  esac
   case $2 in
     ''|-*) usage "missing or invalid ref: '$2'" ;;
   esac
   ARG=$2
+  # REFPFX and NOUN resolve the target; CMD is the refused command, printed
+  # and re-run from the one array.
+  case $1 in
+    checkout) SUB=$1; REFPFX=refs/heads/; NOUN=branch; CMD=(checkout "$ARG") ;;
+    merge) SUB=$1; REFPFX=; NOUN=commit; CMD=(merge --ff-only "$ARG") ;;
+    *) usage "unknown subcommand: $1" ;;
+  esac
 }
 
 usage() {
@@ -70,13 +73,8 @@ usage() {
 
 # TARGET is the commit the refused command was going to reach.
 resolve_target() {
-  if [ "$SUB" = checkout ]; then
-    TARGET=$(git -C "$top" rev-parse --verify -q "refs/heads/$ARG^{commit}")
-    [ -n "$TARGET" ] || usage "no such branch: $ARG"
-  else
-    TARGET=$(git -C "$top" rev-parse --verify -q "$ARG^{commit}")
-    [ -n "$TARGET" ] || usage "no such commit: $ARG"
-  fi
+  TARGET=$(git -C "$top" rev-parse --verify -q "$REFPFX$ARG^{commit}") ||
+    usage "no such $NOUN: $ARG"
 }
 
 # Reached: a checkout has switched HEAD to the branch, a merge has moved HEAD
@@ -89,9 +87,15 @@ reached() {
   fi
 }
 
-# Sets PRE to the old value of the newest HEAD reflog entry that moved onto
-# the target from elsewhere. The old value of an entry is the new value of
-# the entry after it. Returns 1 when no such entry exists.
+# Sets PRE to the old value of the refused command's move: the newest HEAD
+# reflog entry once the same-branch entries a re-run writes are skipped. Any
+# other entry above the move (a commit, a reset, another checkout) means the
+# move is not the refused command's, and it returns 1. The old value of an
+# entry is the new value of the entry after it.
+#
+# Residual bound: a refused same-branch checkout writes no entry, so with no
+# entry since an older move onto the branch, that move is taken for the
+# refused one. The dry-run plan, read before --apply, is the guard.
 find_pre() {
   local reflog line sha msg want=
   reflog=$(git -C "$top" log -g --format='%H %gs' HEAD) || return 1
@@ -102,25 +106,29 @@ find_pre() {
       PRE=$sha
       return 0
     fi
-    if moved_onto "$sha" "$msg"; then
-      want=1
-    fi
+    ! same_branch "$msg" || continue
+    moved_onto "$sha" "$msg" || return 1
+    want=1
   done <<<"$reflog"
   return 1
 }
 
-# Whether a HEAD reflog entry (new value $1, message $2) is the move the
-# refused command made. A re-run's same-branch entry is not a move.
-moved_onto() {
+# Whether a reflog message is a checkout of the branch already checked out.
+# Branch names hold no space, so the first " to " splits the two names.
+same_branch() {
   local rest
+  rest=${1#checkout: moving from }
+  [ "$rest" != "$1" ] && [ "${rest%% to *}" = "${rest#* to }" ]
+}
+
+# Whether a HEAD reflog entry (new value $1, message $2) is the move the
+# refused command made.
+moved_onto() {
   if [ "$SUB" = checkout ]; then
-    rest=${2#checkout: moving from }
-    [ "$rest" != "$2" ] || return 1
-    case $rest in
-      *" to $ARG") ;;
-      *) return 1 ;;
+    case $2 in
+      "checkout: moving from "*" to $ARG") return 0 ;;
     esac
-    [ "${rest%" to $ARG"}" != "$ARG" ]
+    return 1
   else
     case $2 in
       "merge "*": Fast-forward") [ "$1" = "$TARGET" ] ;;
@@ -131,20 +139,34 @@ moved_onto() {
 
 # Every path the refused command changed, read NUL-delimited. No status filter:
 # a path git did not get to may still match neither version and must be kept.
+# A path is never empty, so an empty record ends the list and carries git
+# diff's exit status, which process substitution would otherwise lose.
 walk_paths() {
-  local p
+  local p rc=
   while IFS= read -r -d '' p; do
+    if [ -z "$p" ]; then
+      IFS= read -r -d '' rc
+      break
+    fi
     classify "$p"
-  done < <(git -C "$top" diff --no-renames --name-only -z "$PRE" "$TARGET")
+  done < <(
+    git -C "$top" diff --no-renames --name-only -z "$PRE" "$TARGET"
+    printf '\0%s\0' "$?"
+  )
+  [ "$rc" = 0 ] || usage "git diff $PRE $TARGET exited ${rc:-?}: cannot list the paths."
 }
 
-# The working copy's version of a path: restore it, remove it, or keep it.
+# The working copy's version of a path: restore it, remove it, or keep it. A
+# directory there (a submodule, or a file/directory swap) is never restored
+# or removed: it is compared as presence only, so its content is unknown.
 classify() {
   local p=$1
   if same_as HEAD "$p"; then
     return 0
   fi
-  if same_as "$PRE" "$p" || same_as "$TARGET" "$p"; then
+  if [ -d "$top/$p" ] && [ ! -L "$top/$p" ]; then
+    act keep "$p"
+  elif same_as "$PRE" "$p" || same_as "$TARGET" "$p"; then
     if has_path HEAD "$p"; then
       act restore "$p"
     else
@@ -156,8 +178,13 @@ classify() {
 }
 
 # act <restore|remove|keep> <path>: print the act, and carry it out with --apply.
+# A path holding a newline or another control character is printed with %q,
+# so one act stays one line.
 act() {
-  printf '%s %s\n' "$1" "$2"
+  case $2 in
+    *[[:cntrl:]]*) printf '%s %q\n' "$1" "$2" ;;
+    *) printf '%s %s\n' "$1" "$2" ;;
+  esac
   [ "$1" != keep ] || return 0
   ACTS=$((ACTS + 1))
   [ -n "$APPLY" ] || return 0
@@ -175,29 +202,15 @@ fail() {
 # Re-run the original command once, when the target was not reached. Its
 # refusal is reported and exits 1; it is never replaced by a reset.
 rerun() {
-  local rc=0
-  if [ "$SUB" = checkout ]; then
-    printf 'git checkout %s\n' "$ARG"
-  else
-    printf 'git merge --ff-only %s\n' "$ARG"
-  fi
+  printf 'git %s\n' "${CMD[*]}"
   [ -n "$APPLY" ] || return 0
-  rerun_cmd || rc=$?
-  [ "$rc" -eq 0 ] || fail "re-run exited $rc"
-}
-
-rerun_cmd() {
-  if [ "$SUB" = checkout ]; then
-    git -C "$top" checkout "$ARG" </dev/null
-  else
-    git -C "$top" merge --ff-only "$ARG" </dev/null
-  fi
+  git -C "$top" "${CMD[@]}" </dev/null || fail "re-run exited $?"
 }
 
 # Working copy state of a path: absent, file (a regular file), or other
 # (a symlink, a directory or another non-regular entry).
 wstate() {
-  if [ -L "$top/$1" ] || [ -d "$top/$1" ]; then
+  if [ -L "$top/$1" ]; then
     echo other
   elif [ -f "$top/$1" ]; then
     echo file
@@ -208,11 +221,23 @@ wstate() {
   fi
 }
 
-# Whether <rev> has an entry at <path> that is a blob or a submodule commit.
+# Whether <rev> has an entry at <path> that is a blob or a submodule commit;
+# sets ENTRY_TYPE (blob or commit) and ENTRY_ID. Read from the tree with
+# ls-tree, which takes the path literally and never dereferences a gitlink,
+# whose commit may be absent from this repository.
 has_path() {
-  local kind
-  kind=$(git -C "$top" cat-file -t "$1:$2" 2>/dev/null) || return 1
-  [ "$kind" != tree ]
+  local entry meta
+  # One "<mode> <type> <id>\t<path>" record, its NUL dropped; the x keeps a
+  # trailing newline in the path from being stripped. Only the entry for
+  # this exact path counts.
+  entry=$(git -C "$top" ls-tree -z "$1" -- "$2" | tr -d '\0'; printf x)
+  entry=${entry%x}
+  meta=${entry%%$'\t'*}
+  [ "$meta" != "$entry" ] && [ "${entry#*$'\t'}" = "$2" ] || return 1
+  ENTRY_TYPE=${meta#* }
+  ENTRY_TYPE=${ENTRY_TYPE%% *}
+  ENTRY_ID=${meta##* }
+  [ "$ENTRY_TYPE" != tree ]
 }
 
 # Whether the working copy of <path> matches <rev>'s version: absent where the
@@ -226,9 +251,8 @@ same_as() {
     case $st in
       absent) return 1 ;;
       file)
-        [ "$(git -C "$top" cat-file -t "$1:$2")" = blob ] || return 1
-        [ "$(git -C "$top" hash-object --path="$2" "$top/$2")" = \
-          "$(git -C "$top" rev-parse "$1:$2")" ]
+        [ "$ENTRY_TYPE" = blob ] || return 1
+        [ "$(git -C "$top" hash-object --path="$2" "$top/$2")" = "$ENTRY_ID" ]
         ;;
       *) return 0 ;;
     esac

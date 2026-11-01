@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Loaded by tests/recover.bats: builds the scratch repos, runs the refused
-# command and the script, and asserts the end state. REPO, VERB, KIND, PRE,
-# TARGET, BASEBR and the optional UNRELATED, STUBS and USE_C are set by the
-# suite's setup and @test bodies.
+# Loaded by tests/recover.bats and tests/recover-cli.bats: builds the scratch
+# repos, runs the refused command and the script, and asserts the end state.
+# REPO, VERB, KIND, PRE, TARGET, BASEBR and the optional UNRELATED and USE_C
+# are set by the suites' setup and @test bodies.
 
 # shellcheck disable=SC2030,SC2031,SC2154 # state set in a @test body is read here
 
@@ -66,7 +66,7 @@ refusal_expect() {
   case "$1/$2" in
     checkout/adddir | merge/adddir) echo "128 unmoved" ;;
     checkout/*) echo "0 moved" ;;
-    merge/change | merge/add | merge/m1 | merge/odd) echo "1 unmoved" ;;
+    merge/change | merge/add | merge/m1 | merge/odd | merge/gitlink_add) echo "1 unmoved" ;;
     merge/delete | merge/deldir | merge/rename) echo "0 moved" ;;
   esac
 }
@@ -93,6 +93,12 @@ build_repo() {
   fi
   g init -q -b main
   g add -A
+  # A submodule entry whose commit this repository does not have, as with a
+  # submodule never fetched; sub is its empty directory.
+  if [ "$kind" = gitlink ]; then
+    g update-index --add --cacheinfo "160000,1111111111111111111111111111111111111111,sub"
+    mkdir "$REPO/sub"
+  fi
   g commit -q -m base
   case $kind in
     plain) return 0 ;;
@@ -113,6 +119,11 @@ build_repo() {
     deldir) g rm -q -r d ;;
     rename) mkdir "$REPO/e"; g mv d/f e/f ;;
     crlf) printf 'f v2\r\n' >"$REPO/d/f" ;;
+    gitlink | gitlink_add)
+      printf 'f v2\n' >"$REPO/d/f"
+      mkdir -p "$REPO/sub"
+      g update-index --add --cacheinfo "160000,2222222222222222222222222222222222222222,sub"
+      ;;
     odd)
       printf 'sp v2\n' >"$REPO/d/sp ace.txt"
       printf 'nl v2\n' >"$REPO/d/nl"$'\n'"file.txt"
@@ -155,10 +166,9 @@ in_repo() {
   cd "$REPO" && "$RECOVER" "$@"
 }
 
-# --apply for the scenario's verb, exit 0 required. A STUBS dir goes first on
-# PATH for the script only.
+# --apply for the scenario's verb, exit 0 required.
 apply_ok() {
-  PATH="${STUBS:+$STUBS:}$PATH" run rec apply "$VERB" feat
+  run rec apply "$VERB" feat
   [ "$status" -eq 0 ] || { printf '%s\n' "$output" >&2; return 1; }
 }
 
