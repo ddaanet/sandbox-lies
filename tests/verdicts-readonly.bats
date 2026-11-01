@@ -96,7 +96,7 @@ writable_lead() {
 # script_clause <sub> <ref> — the clause that sends the agent to the recovery
 # script, built here from the contract's wording, not read off lib/.
 script_clause() {
-  printf '%s' "Before any re-run, run \`sandbox-lies-recover $1 $2\` with \`dangerouslyDisableSandbox: true\` and read its plan: the git command may have stopped part-way. The \`sandbox-lies:sandbox-lies\` skill says how to carry the plan out."
+  printf '%s' "Before any re-run, run \`sandbox-lies-recover -C /r $1 $2\` with \`dangerouslyDisableSandbox: true\` and read its plan: the git command may have stopped part-way. The \`sandbox-lies:sandbox-lies\` skill says how to carry the plan out."
 }
 
 # generic_clause — the clause when no script invocation can be named.
@@ -123,7 +123,7 @@ assert_quiet() {
 
 @test "readonly-path merge with recover, target and match sends the agent to the script" {
   local text line1
-  text=$(readonly_path_text writable path=/r/x merge=1 recover=checkout \
+  text=$(readonly_path_text writable path=/r/x merge=1 recover=checkout repo=/r \
     target=main match=/r/alpha.txt match=/r/beta.txt)
   line1=$(line_one "$text")
   [ "$line1" = "$(writable_lead /r/x) $(script_clause checkout main)" ]
@@ -140,7 +140,7 @@ assert_quiet() {
   # target any more, and the clause must not say HEAD stayed.
   local text line1
   text=$(readonly_path_text writable path=/r/x merge=1 partial=1 \
-    recover=checkout target=main)
+    recover=checkout repo=/r target=main)
   line1=$(line_one "$text")
   [ "$line1" = "$(writable_lead /r/x) $(script_clause checkout main)" ]
   text_lacks "$line1" 'HEAD unmoved'
@@ -148,10 +148,10 @@ assert_quiet() {
   assert_quiet "$text"
 }
 
-@test "readonly-path merge with recover=merge names the merge subcommand and its ref" {
+@test "readonly-path merge with recover=merge repo=/r names the merge subcommand and its ref" {
   local text line1
   text=$(readonly_path_text writable path=/r/x merge=1 partial=1 \
-    recover=merge target=dev match=/r/alpha.txt)
+    recover=merge repo=/r target=dev match=/r/alpha.txt)
   line1=$(line_one "$text")
   [ "$line1" = "$(writable_lead /r/x) $(script_clause merge dev)" ]
   assert_quiet "$text"
@@ -165,10 +165,25 @@ assert_quiet() {
   assert_quiet "$text"
 
   # recover= without target= cannot name the invocation either.
-  text=$(readonly_path_text writable path=/r/x merge=1 partial=1 recover=checkout)
+  text=$(readonly_path_text writable path=/r/x merge=1 partial=1 recover=checkout repo=/r)
   line1=$(line_one "$text")
   [ "$line1" = "$(writable_lead /r/x) $(generic_clause)" ]
   assert_quiet "$text"
+}
+
+@test "readonly-path merge with recover and target but no repo gives the generic clause" {
+  local text line1
+  text=$(readonly_path_text writable path=/r/x merge=1 partial=1 recover=checkout target=main)
+  line1=$(line_one "$text")
+  [ "$line1" = "$(writable_lead /r/x) $(generic_clause)" ]
+  assert_quiet "$text"
+}
+
+@test "readonly-path prints a %q repo verbatim in the script clause" {
+  local line1
+  line1=$(line_one "$(readonly_path_text writable path=/r/x merge=1 partial=1 \
+    recover=merge target=dev 'repo=/a\ b')")
+  printf '%s' "$line1" | grep -qF 'sandbox-lies-recover -C /a\ b merge dev'
 }
 
 @test "readonly-path merge with a target but no recover gives the generic clause" {
@@ -191,7 +206,7 @@ assert_quiet() {
   baseline1=$(line_one "$(readonly_path_text writable path=/r/x)")
   [ "$baseline1" = "$(writable_lead /r/x)$(readonly_path_tail)" ]
   for facts in 'merge=1' 'merge=1 target=main' \
-    'merge=1 recover=checkout target=main'; do
+    'merge=1 recover=checkout repo=/r target=main'; do
     # shellcheck disable=SC2086 # facts hold no blank within a fact
     text=$(readonly_path_text writable path=/r/x $facts)
     [ "$(line_one "$text")" = "$baseline1" ]
@@ -202,7 +217,7 @@ assert_quiet() {
 @test "readonly-path clause facts without merge=1 leave the act alone" {
   local text baseline1
   baseline1=$(line_one "$(readonly_path_text writable path=/r/x)")
-  text=$(readonly_path_text writable path=/r/x partial=1 recover=checkout \
+  text=$(readonly_path_text writable path=/r/x partial=1 recover=checkout repo=/r \
     target=main match=/r/alpha.txt)
   [ "$(line_one "$text")" = "$baseline1" ]
   assert_quiet "$text"
@@ -212,7 +227,7 @@ assert_quiet() {
   local text line1
   # positive control: without merge=1, even beside clause facts.
   text=$(readonly_path_text writable path=/r/.claude/settings.json \
-    partial=1 recover=checkout target=main)
+    partial=1 recover=checkout repo=/r target=main)
   line1=$(line_one "$text")
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   [ "$line1" = "$(writable_lead /r/.claude/settings.json)"' Write `.claude/settings.json` through the `update-config` skill.' ]
@@ -226,7 +241,7 @@ assert_quiet() {
 
   # merge=1 with clause facts: the script clause replaces the act.
   text=$(readonly_path_text writable path=/r/.claude/settings.json merge=1 \
-    partial=1 recover=checkout target=main match=/r/alpha.txt)
+    partial=1 recover=checkout repo=/r target=main match=/r/alpha.txt)
   line1=$(line_one "$text")
   [ "$line1" = "$(writable_lead /r/.claude/settings.json) $(script_clause checkout main)" ]
   text_lacks "$line1" 'update-config'
@@ -240,7 +255,7 @@ assert_quiet() {
 @test "readonly-path nopath carries the clause after its own lead" {
   local text line1 lead
   lead="The sandbox's write allowlist most likely refused this write."
-  text=$(readonly_path_text nopath merge=1 partial=1 recover=checkout target=main)
+  text=$(readonly_path_text nopath merge=1 partial=1 recover=checkout repo=/r target=main)
   line1=$(line_one "$text")
   [ "$line1" = "$lead $(script_clause checkout main)" ]
   assert_quiet "$text"
@@ -261,7 +276,7 @@ assert_quiet() {
   assert_quiet "$text"
 
   text=$(readonly_path_text writable path=/r/x merge=1 partial=1 \
-    recover=merge target=dev readfile=/w/b.log)
+    recover=merge repo=/r target=dev readfile=/w/b.log)
   line1=$(line_one "$text")
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   [ "$line1" = "$(writable_lead /r/x) $(script_clause merge dev)"' Re-run the command that wrote `/w/b.log`.' ]
@@ -270,7 +285,7 @@ assert_quiet() {
 
 @test "readonly-path never names the match= files, however many" {
   local text line1
-  text=$(readonly_path_text writable path=/r/x merge=1 recover=checkout \
+  text=$(readonly_path_text writable path=/r/x merge=1 recover=checkout repo=/r \
     target=main match=/r/f1.txt match=/r/f2.txt match=/r/f3.txt \
     match=/r/f4.txt match=/r/f5.txt match=/r/f6.txt match=/r/f7.txt)
   line1=$(line_one "$text")
@@ -286,8 +301,8 @@ assert_quiet() {
   # prose's own length, values at one character.
   local line1
   line1=$(readonly_path_text writable path=/.claude/settings.json merge=1 \
-    partial=1 recover=checkout target=t readfile=/w | sed -n '1p')
-  printf '%s' "$line1" | grep -qF 'sandbox-lies-recover checkout t'
+    partial=1 recover=checkout repo=/r target=t readfile=/w | sed -n '1p')
+  printf '%s' "$line1" | grep -qF 'sandbox-lies-recover -C /r checkout t'
   printf '%s' "$line1" | grep -qF 'Re-run the command that wrote'
   [ "${#line1}" -lt 400 ]
 }
@@ -295,7 +310,7 @@ assert_quiet() {
 @test "readonly-path readonly ignores the probe's facts" {
   local text baseline line1
   text=$(readonly_path_text readonly path=/r/x readfile=/w/build.log \
-    merge=1 partial=1 recover=checkout target=main match=a)
+    merge=1 partial=1 recover=checkout repo=/r target=main match=a)
   baseline=$(readonly_path_text readonly path=/r/x)
   [ "$text" = "$baseline" ]
   line1=$(line_one "$text")
@@ -311,9 +326,9 @@ assert_quiet() {
   combined="$(readonly_path_text writable path=/r/x)
 $(readonly_path_text writable path=/r/x readfile=/w/build.log)
 $(readonly_path_text writable path=/r/.claude/settings.json)
-$(readonly_path_text writable path=/r/x merge=1 partial=1 recover=checkout target=main match=a match=b)
+$(readonly_path_text writable path=/r/x merge=1 partial=1 recover=checkout repo=/r target=main match=a match=b)
 $(readonly_path_text writable path=/r/x merge=1 partial=1)
-$(readonly_path_text nopath merge=1 partial=1 recover=merge target=main)"
+$(readonly_path_text nopath merge=1 partial=1 recover=merge repo=/r target=main)"
   printf '%s' "$combined" | grep -qF 'Before any re-run'
   text_lacks "$combined" 'The merge or checkout left'
   text_lacks "$combined" 'HEAD unmoved'

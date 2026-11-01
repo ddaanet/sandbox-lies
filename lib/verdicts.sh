@@ -267,13 +267,13 @@ _verdict_has_control() {
 #
 # writable and nopath then carry the tail readonly-path.md's readonly-path
 # Verdicts compose from the probe's other stdin facts (readfile=, merge=1,
-# partial=1, target=, recover=, match=): one act; a merge clause replaces it,
+# partial=1, target=, recover=, repo=, match=): one act; a merge clause replaces it,
 # and a read act follows the clause as its own sentence. readonly ignores
 # every fact but path=. An outcome with no text here prints nothing, as an
 # unmatched lock outcome does.
 verdict_readonly_path() {
   local outcome="$1" line path='' readfile='' merge='' partial='' target=''
-  local recover='' matches=() subject act clause rest
+  local recover='' repo='' matches=() subject act clause rest
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in
       path=*) path=${line#path=} ;;
@@ -282,6 +282,7 @@ verdict_readonly_path() {
       partial=*) partial=${line#partial=} ;;
       target=*) target=${line#target=} ;;
       recover=*) recover=${line#recover=} ;;
+      repo=*) repo=${line#repo=} ;;
       match=*) matches+=("${line#match=}") ;;
     esac
   done
@@ -309,8 +310,8 @@ verdict_readonly_path() {
       fi
       rest=" $act"
       if [ -n "$merge" ] && { [ -n "$partial" ] || [ "${#matches[@]}" -gt 0 ]; }; then
-        if [ -n "$recover" ] && [ -n "$target" ]; then
-          clause="Before any re-run, run \`sandbox-lies-recover $recover $target\` with \`dangerouslyDisableSandbox: true\` and read its plan: the git command may have stopped part-way. The \`sandbox-lies:sandbox-lies\` skill says how to carry the plan out."
+        if [ -n "$recover" ] && [ -n "$target" ] && [ -n "$repo" ]; then
+          clause="Before any re-run, run \`sandbox-lies-recover -C $repo $recover $target\` with \`dangerouslyDisableSandbox: true\` and read its plan: the git command may have stopped part-way. The \`sandbox-lies:sandbox-lies\` skill says how to carry the plan out."
         else
           # shellcheck disable=SC2016 # backticks are literal prose, not expansion
           clause='Before any re-run, follow the `sandbox-lies:sandbox-lies` skill'"'"'s recovery of a refused merge or checkout: the git command may have stopped part-way.'

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # lib/probes-readonly-facts.sh — the readfile=/merge=1/partial=1/target=/
-# recover=/match= facts _readonly_print_facts derives for probe_readonly_path under
+# recover=/repo=/match= facts _readonly_print_facts derives for probe_readonly_path under
 # writable and nopath (readonly-path.md's readonly-path Probe facts table),
 # reading the command through lib/probes-readonly-command.sh's scan. Split
 # out of lib/probes-readonly.sh to keep that file under the line cap;
@@ -16,7 +16,7 @@ set -u
 
 # _readonly_print_facts <text> <command> <path> <cwd> — the writable/nopath
 # tail of the A-3 contract (readonly-path.md's readonly-path Probe facts table):
-# readfile=, merge=1, partial=1, target= and match= lines, derived from
+# readfile=, merge=1, partial=1, target=, recover=, repo= and match= lines, derived from
 # <text> and <command> only — never from the outcome (D-1). <path> is the
 # extracted refusal path, empty under nopath; the repository search starts
 # there, or at <cwd> when there is none (readonly-path.md: "the path's nearest
@@ -25,8 +25,8 @@ set -u
 # directory can never succeed, so no separate existence walk is needed).
 # _readonly_tokens and _readonly_tokens_cut are _readonly_tokenize's output.
 _readonly_print_facts() {
-    local text="$1" command="$2" path="$3" cwd="$4" readfile word sub=''
-    local start repo recover _readonly_tokens_cut=0 partial=0 pathspec=0
+    local text="$1" command="$2" path="$3" cwd="$4" readfile word sub='' sole=''
+    local start repo recover='' _readonly_tokens_cut=0 partial=0 pathspec=0
     local -a _readonly_tokens=() cands=()
 
     _readonly_tokenize "$command"
@@ -37,6 +37,8 @@ _readonly_print_facts() {
     while IFS= read -r -d '' word; do
         if [ -z "$sub" ]; then
             sub="$word"
+        elif [ -z "$sole" ]; then
+            sole="$word"
         elif [ "$word" = -- ]; then
             pathspec=1
         else
@@ -59,20 +61,42 @@ _readonly_print_facts() {
         merge | checkout | switch) ;;
         *) return 0 ;;
     esac
-    # recover= names the ref sandbox-lies-recover takes; a pathspec after --
-    # is a checkout of files, which it does not take.
-    recover=''
-    if [ "$pathspec" -eq 0 ]; then
-        case "$sub" in
-            merge) recover=merge ;;
-            checkout | switch) recover=checkout ;;
-        esac
-    fi
     [ "${#cands[@]}" -gt 0 ] || return 0
+    if [ "$sole" = 1 ] && [ "$pathspec" -eq 0 ] \
+        && [ "$_readonly_tokens_cut" -eq 0 ]; then
+        recover=$(_readonly_recover_kind "$sub" "${cands[@]}")
+    fi
     start="$path"
     [ -n "$start" ] || start="$cwd"
     repo=$(_readonly_git_dir "$start") || return 0
     _readonly_repo_facts "$repo" "$recover" "${cands[@]}"
+}
+
+# _readonly_recover_kind <sub> <word...> — the script's subcommand for a segment
+# whose words name exactly what it can repeat, else nothing. recover= prints only
+# when all of these hold, the script's own invocation being then the command the
+# call ran: the call holds one merge-style segment and its scan was not cut; git
+# runs where the probe looks, with no -C, --git-dir or --work-tree and no earlier
+# cd or pushd, since git's partial-checkout paths are relative and the probe joins
+# them onto the cwd; no literal --; (these three checked by the caller) exactly one
+# non-option word, the target, a word holding > or < being a redirection and not
+# counted; the only options are -q, --quiet and --ff-only; for a checkout or
+# switch, refs/heads/<target> exists (_readonly_repo_facts).
+_readonly_recover_kind() {
+    local sub="$1" word n=0
+    shift
+    for word in "$@"; do
+        case "$word" in
+            *[\<\>]* | -q | --quiet | --ff-only) ;;
+            -*) return 0 ;;
+            *) n=$((n + 1)) ;;
+        esac
+    done
+    [ "$n" -eq 1 ] || return 0
+    case "$sub" in
+        merge) printf merge ;;
+        checkout | switch) printf checkout ;;
+    esac
 }
 
 # _readonly_git_dir <dir> — the nearest ancestor of <dir>, <dir> included,
@@ -105,9 +129,10 @@ _readonly_git_dir() {
 }
 
 # _readonly_repo_facts <repo> <recover> <candidate...> — target= for the first
-# <candidate> naming a commit in <repo>, then recover=<recover> when <recover>
-# names a ref sandbox-lies-recover can take (a checkout or switch onto a local
-# branch, or a merge), then match=<repo>/<file> for each
+# <candidate> naming a commit in <repo>, then recover=<recover> and repo=<repo>
+# in printf %q form when <recover> names a ref sandbox-lies-recover can take (a
+# checkout or switch onto a local branch, or a merge; _readonly_recover_kind
+# holds the rule), then match=<repo>/<file> for each
 # regular file differing from HEAD in the working tree, staged or not, whose
 # bytes equal the target's blob (readonly-path.md's target= and match=), named
 # by absolute path so the verdict's clause reads from any cwd; nothing when no
@@ -135,7 +160,7 @@ _readonly_git_dir() {
 # cat-file; ^{/re} walks history).
 _readonly_repo_facts() (
     local repo="$1" recover="$2" cand type target='' meta file rec n=0 complete=0
-    local wt i=0 j=0 out=''
+    local wt i=0 j=0 out='' quoted
     local -a names=() files=() heads=() shas=() tpaths=() tshas=()
     shift 2
     # Every match= line opens with <repo>: a newline in it would split the
@@ -253,12 +278,17 @@ _readonly_repo_facts() (
     # A checkout's recover= is kept only for a local branch, which
     # sandbox-lies-recover can take. target=, then recover=, then match= is
     # printing order alone: target= no longer means no clause is possible,
-    # since recover= with target= sets one, and the verdict reads them whole.
+    # since recover=, repo= and target= set one, and the verdict reads them whole.
     if [ "$recover" = checkout ] \
         && ! git -C "$repo" show-ref -q --verify "refs/heads/$target" 2>/dev/null; then
         recover=''
     fi
     printf 'target=%s\n' "$target"
-    [ -z "$recover" ] || printf 'recover=%s\n' "$recover"
+    if [ -n "$recover" ]; then
+        # LC_ALL=C from above, as _probe_path_line pins it: a non-ASCII byte
+        # takes the $'...' form, which stays runnable in the verdict's command.
+        printf -v quoted %q "$repo"
+        printf 'recover=%s\nrepo=%s\n' "$recover" "$quoted"
+    fi
     printf '%s' "$out"
 )

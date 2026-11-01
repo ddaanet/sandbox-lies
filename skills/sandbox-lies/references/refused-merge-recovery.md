@@ -10,9 +10,9 @@ script covers every case observed (below); run it unsandboxed:
    nothing and prints one line per path. `restore` and `remove` bring a path the
    command touched back to HEAD; `keep` is uncommitted work git carried over,
    left untouched. A last line is the command to re-run, when it did not reach
-   the target. An exit 2 that printed a `usage:` line is an argument error:
-   correct the arguments and re-run. Any other exit 2 means the script cannot
-   tell the state: act on nothing and report.
+   the target. An exit 2 saying `cannot tell` means the state is unknown: act on
+   nothing and report. Any other exit 2 is an argument error: correct the
+   arguments and re-run.
 2. **Carry it out.** Run the same command again with `--apply`. It does the
    restores and removals, then re-runs the original command once, in one call,
    if the target was not reached. Under the sandbox's strict mode, where a call
@@ -29,14 +29,16 @@ script covers every case observed (below); run it unsandboxed:
    the plan kept, so do not use it: report instead. Where it does apply it
    discards every uncommitted change, so it follows normal confirmation.
 
-When the verdict sends you here with no ref named, find the ref yourself:
+The script applies to a `checkout` or `switch` of a local branch you can name
+from the command, and to a `merge`. When the verdict names no ref, take it from
+the command if the command names one. If that command ran elsewhere
+(`git -C <dir>`, `cd <dir> &&`), pass that directory to the script as
+`-C <dir>`, or the plan reads the wrong repository. Otherwise read `git status`
+and `git log -1` before any re-run and report rather than guess.
 
-- After `git checkout -`: the branch is `git symbolic-ref --short HEAD`, and
-  `git reflog -1` shows whether HEAD moved (`checkout: moving from X to Y`). Run
-  the script for that branch.
-- After `pull`, `rebase`, `cherry-pick` or a checkout that restores paths
-  (`git checkout main -- f`) the script does not apply. Read `git status` and
-  `git log -1` before any re-run, and report rather than guess.
+In a call that ran several of these commands, read the plan for each in order.
+The script re-runs only the one command it names, so the rest of the call stays
+yours to run, unsandboxed.
 
 Auto mode's classifier has refused `git checkout HEAD -- <file>` as destructive
 (seen 2026-10-31). The dry-run plan is what lets a refused `--apply` be asked

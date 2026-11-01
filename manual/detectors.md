@@ -167,23 +167,31 @@ The act is the first of these that applies:
 - every command in the call only reads files, and one file it reads has a
   command-output name (`*.log`, `*.output`, `*.out`, `*.err`) — re-run the
   command that wrote that file, since the refusal in it came from that call;
-- the path is a `.claude/settings.json` (`writable` only) and the call ran no
-  git `merge`, `pull`, `checkout`, `switch`, `rebase` or `cherry-pick` — write
-  `.claude/settings.json` through the `update-config` skill;
+- the path is a `.claude/settings.json` (`writable` only), the call ran no git
+  `merge`, `pull`, `checkout`, `switch`, `rebase` or `cherry-pick`, and the text
+  holds no git partial-checkout error — write `.claude/settings.json` through
+  the `update-config` skill;
 - otherwise — re-run the whole call with `dangerouslyDisableSandbox: true`.
 
-When the call ran one of those git commands and git reported a partially written
-checkout, or modified files already match the target the command was moving to,
-a recovery clause replaces the act. For a `merge`, or a `checkout` or `switch`
-of a local branch, it tells you to run `sandbox-lies-recover` for that command
-with `dangerouslyDisableSandbox: true` and read its plan; the
-`sandbox-lies:sandbox-lies` skill says how to carry the plan out. For any other
-case it points at the skill's recovery of a refused merge or checkout. The
-clause does not say where HEAD is, since a checkout can move HEAD although git
-reported an error and exited 0. It removes nothing and never asks for the
+A recovery clause replaces the act when the text holds git's partial-checkout
+error, whatever command printed it, or when the call ran one of those git
+commands and modified files already match the target it was moving to.
+
+The clause tells you to run `sandbox-lies-recover -C <repo> <kind> <ref>` with
+`dangerouslyDisableSandbox: true` and read its plan when the script's invocation
+is exactly what the call ran; the `sandbox-lies:sandbox-lies` skill says how to
+carry the plan out. That takes one such git command in the call, running where
+the hook looks (no `-C`, `--git-dir` or `--work-tree`, no `cd` or `pushd` before
+it), with one target and no `--`, no option but `-q`, `--quiet` and `--ff-only`,
+and for a `checkout` or `switch` a local branch. Otherwise the clause points at
+the skill's recovery of a refused merge or checkout.
+
+The clause does not say where HEAD is, since a checkout can move HEAD although
+git reported an error and exited 0. It removes nothing and never asks for the
 script's `--apply`. If the refusal came from a file the call read, the re-run of
 the command that wrote that file follows the clause as its own sentence. With no
-partial checkout and no matching file, there is no clause and the act applies.
+partial-checkout error and no matching file, there is no clause and the act
+applies.
 
 ## tmpdir-unset
 

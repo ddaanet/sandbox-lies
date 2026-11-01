@@ -118,7 +118,7 @@ setup() {
   run_probe_command probe_readonly_path false "$good" 'git merge feat' \
     "$text"
   expected=$(printf '%s\n' nopath merge=1 target=feat recover=merge \
-    "match=$good/a" "match=$good/b" "match=$good/e f")
+    "repo=$(LC_ALL=C printf %q "$good")" "match=$good/a" "match=$good/b" "match=$good/e f")
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
   [ "$output" = "$expected" ]

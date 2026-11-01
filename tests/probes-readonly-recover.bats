@@ -5,6 +5,7 @@
 # tests/probes-readonly-facts.bats sits near the line cap. Every case runs the
 # real probe over a scratch repository (helpers/probes make_scratch_repo).
 
+# shellcheck disable=SC2030,SC2031 # $output set by run in a @test body is read by a helper
 ROOT="${BATS_TEST_DIRNAME}/.."
 
 bats_require_minimum_version 1.5.0
@@ -96,6 +97,90 @@ probe_facts() {
     probe_facts "$cmd"
     run ! grep -q '^recover=' <<<"$output"
   done
+}
+
+# no_recover <command> — the probe keeps target= for <command> when <target> is
+# given, and prints neither recover= nor repo=.
+no_recover() {
+  probe_facts "$1"
+  [ -z "${2:-}" ] || printf '%s\n' "$output" | grep -qxF "target=$2"
+  run ! grep -qE '^(recover|repo)=' <<<"$output"
+}
+
+@test "recover= prints repo= in %q form beside it" {
+  probe_facts 'git checkout feat'
+  # shellcheck disable=SC2016 # the backslash is the %q form, built here
+  printf '%s\n' "$output" | grep -qxF "repo=${REPO% *}\\ repo"
+}
+
+@test "repo= stays runnable for a non-ASCII root" {
+  local root="$BATS_TEST_TMPDIR/d\303\251p\303\264t" line
+  root=$(printf '%b' "$root")
+  make_scratch_repo "$root"
+  run_probe_command probe_readonly_path false "$root" 'git checkout feat' \
+    "$(readonly_path_text fire-readonly-path-cp-tmp "'$root'")"
+  [ "$status" -eq 0 ]
+  line=$(printf '%s\n' "$output" | grep '^repo=')
+  # All-ASCII on the wire, and the shell reads it back as the root.
+  [ "$(printf '%s' "$line" | LC_ALL=C tr -d '\200-\377')" = "$line" ]
+  [ "$(eval "printf %s ${line#repo=}")" = "$root" ]
+}
+
+@test "an option other than -q, --quiet and --ff-only withholds recover=" {
+  no_recover 'git checkout -b new feat' feat
+  no_recover 'git switch -c new feat' feat
+  no_recover 'git switch --detach feat' feat
+  no_recover 'git merge --no-ff feat' feat
+  no_recover 'git merge -m main feat' main
+}
+
+@test "-q, --quiet and --ff-only keep recover=" {
+  local cmd
+  for cmd in 'git checkout -q feat' 'git switch --quiet feat' \
+    'git merge --ff-only feat' 'git merge -q --ff-only feat'; do
+    probe_facts "$cmd"
+    printf '%s\n' "$output" | grep -qxF 'target=feat'
+    printf '%s\n' "$output" | grep -q '^recover='
+    printf '%s\n' "$output" | grep -q '^repo='
+  done
+}
+
+@test "two non-option words withhold recover=" {
+  no_recover 'git checkout feat a' feat
+}
+
+@test "a redirection word is not counted as a second word" {
+  probe_facts 'git checkout feat 2>&1'
+  printf '%s\n' "$output" | grep -qxF 'recover=checkout'
+}
+
+@test "two merge-style segments withhold recover=, target= from the first" {
+  no_recover 'git checkout main && git merge --ff-only feat' main
+  no_recover 'git merge feat; git pull' feat
+}
+
+@test "another git command beside the one segment keeps recover=" {
+  probe_facts 'git status && git checkout feat && git log -1'
+  printf '%s\n' "$output" | grep -qxF 'recover=checkout'
+}
+
+@test "git running elsewhere withholds recover=" {
+  no_recover "git -C '$REPO' checkout feat" feat
+  no_recover "cd '$REPO' && git checkout feat" feat
+  no_recover "pushd '$REPO' && git checkout feat" feat
+  no_recover "git --git-dir='$REPO/.git' checkout feat" feat
+  no_recover "git --work-tree '$REPO' checkout feat" feat
+}
+
+@test "a -C on an earlier segment, or a cd after the segment, keeps recover=" {
+  probe_facts "git -C '$REPO' status && git checkout feat"
+  printf '%s\n' "$output" | grep -qxF 'recover=checkout'
+  probe_facts 'git checkout feat && cd /'
+  printf '%s\n' "$output" | grep -qxF 'recover=checkout'
+}
+
+@test "a cut command withholds recover=" {
+  no_recover $'git checkout feat <<EOF\nbody\nEOF' feat
 }
 
 @test "recover= survives BSD grep, sed, stat and wc" {

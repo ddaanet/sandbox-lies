@@ -124,7 +124,7 @@ run_spied() {
   [ "$status" -eq 0 ]
   ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  [ "$ctx" = "\`$repo/a\`"' is writable outside the sandbox, whose allowlist refused it. Before any re-run, run `sandbox-lies-recover merge feat` with `dangerouslyDisableSandbox: true` and read its plan: the git command may have stopped part-way. The `sandbox-lies:sandbox-lies` skill says how to carry the plan out.' ]
+  [ "$ctx" = "\`$repo/a\`"' is writable outside the sandbox, whose allowlist refused it. Before any re-run, run `sandbox-lies-recover -C '"$repo"' merge feat` with `dangerouslyDisableSandbox: true` and read its plan: the git command may have stopped part-way. The `sandbox-lies:sandbox-lies` skill says how to carry the plan out.' ]
   run ! grep -qF "$repo/b" <<<"$ctx"
 }
 
