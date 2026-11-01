@@ -11,16 +11,24 @@ observed (below); run it unsandboxed:
    nothing and prints one line per path. `restore` and `remove` bring a path the
    command touched back to HEAD; `keep` is uncommitted work git carried over,
    left untouched. A last line is the command to re-run, when it did not reach
-   the target. Exit 2 means the script cannot tell the state: act on nothing and
-   report.
+   the target. An exit 2 that printed a `usage:` line is an argument error:
+   correct the arguments and re-run. Any other exit 2 means the script cannot
+   tell the state: act on nothing and report.
 2. **Carry it out.** Run the same command again with `--apply`. It does the
    restores and removals, then re-runs the original command once, in one call,
-   if the target was not reached.
+   if the target was not reached. Under the sandbox's strict mode, where a call
+   cannot run unsandboxed, the `--apply` run cannot work from the agent: ask the
+   human partner to run it as `! sandbox-lies-recover --apply checkout <branch>`
+   (or `merge <commit-ish>`).
 3. **Never finish a checkout with `git reset --hard <target>`**: it moves the
    current branch to the target instead of switching to it, and drops the
    commits the target lacks. For a `merge --ff-only` that still refuses after
-   step 2 it completes the fast-forward; it discards every uncommitted change,
-   so it follows normal confirmation.
+   step 2, read the re-run's own error first. `git reset --hard <target>`
+   completes the fast-forward only when
+   `git merge-base --is-ancestor HEAD <target>` holds and the plan printed no
+   `keep` line; otherwise it drops HEAD's own commits or the uncommitted work
+   the plan kept, so do not use it: report instead. Where it does apply it
+   discards every uncommitted change, so it follows normal confirmation.
 
 Auto mode's classifier has refused `git checkout HEAD -- <file>` as destructive
 (seen 2026-10-31). The dry-run plan is what lets a refused `--apply` be asked
