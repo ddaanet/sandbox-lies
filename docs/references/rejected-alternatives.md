@@ -1,9 +1,10 @@
 # Rejected alternatives
 
 The arguments for the rejected alternatives `docs/design.md` names: each option
-considered for this plugin and not taken, and why. The hub keeps every name with
-a one-line conclusion, under D-9 where an alternative protects that decision and
-in its §Rejected alternatives list otherwise.
+considered for this plugin and not taken, and why. The hub keeps every name:
+under D-9 where an alternative protects that decision, with its conclusion
+argued in this node, and with a one-line conclusion in its §Rejected
+alternatives list otherwise.
 
 **A `PreToolUse` matcher that unsandboxes the call.** The retired
 `unsandbox-git-status` plugin pre-approved anything chained beside the

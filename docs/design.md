@@ -158,8 +158,8 @@ assertions are about: a library it only runs to build its input
 suites. Done.
 
 **NFR-3 — Cost.** No verdict, no output: the hook exits 0 silently, and that
-path runs after every Bash call. With a verdict and no probe, under 100 ms.
-Probes are bounded: no recursive `du`, no network, hook timeout 10 s, the
+path runs after every Bash call. With a verdict and no probe, a mean under 100
+ms. Probes are bounded: no recursive `du`, no network, hook timeout 10 s, the
 `SessionStart` check's too. Done (not gated).
 
 **NFR-4 — Hermetic.** The hook writes nothing (it runs outside the sandbox,
@@ -261,8 +261,8 @@ knowledge is maintained here, not in `craft`; as the plugin's only skill it is
 
 **D-10 — Self-reference is handled at the document, not the matcher.** The
 repository's live documents never fire a detector (FR-11), and the matchers do
-not special-case self-reading. Accepted tradeoff: a read of a fixture or of the
-dated pilot evidence from inside this repo annotates itself. Argued in
+not special-case self-reading. Accepted tradeoff: a read of a `fire-*` fixture
+or of the dated pilot evidence from inside this repo annotates itself. Argued in
 [references/self-quiet.md](references/self-quiet.md).
 
 **D-11 — Retire each section the moment its translation lands.** A memory
