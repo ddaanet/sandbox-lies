@@ -67,6 +67,12 @@ break a cleanliness gate. The `sandbox-lies:sandbox-lies` skill carries that
 knowledge and triggers while an agent is writing an exclusion, a recipe, a
 cleanliness gate or a directive with a scratch path, before any output exists.
 
+The plugin also puts one script on the agent's `PATH`, `sandbox-lies-recover`,
+for a `git checkout` or `git merge --ff-only` a sandbox refusal left half-done.
+Run unsandboxed, it prints which paths to restore, remove or keep as uncommitted
+work, and whether the command still needs re-running; with `--apply` it carries
+that out. It never runs `git reset --hard`.
+
 ## Development
 
 The
