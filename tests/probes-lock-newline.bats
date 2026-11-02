@@ -101,7 +101,7 @@ orphan_twins() {
 
 # The middle half names <g> absolutely from cwd <b>, so a guard keyed on the
 # cwd rather than the resolved path fails it: its path= line is <g>'s, not <b>'s.
-@test "config-lock: a resolved lock path holding a newline gives mask and one encoded path= line" {
+@test "config-lock: a resolved lock path holding a newline gives gone and one encoded path= line" {
   local good="$BATS_TEST_TMPDIR/r age=99999 x"
   local bad="$BATS_TEST_TMPDIR/r"$'\n'"age=99999"$'\n'"x"
   mkdir -p "$good/.git" "$bad/.git"
@@ -109,18 +109,18 @@ orphan_twins() {
   run_probe probe_config_lock false "$bad" "$(config_lock_error .git/config)"
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  assert_lines "$(bad_wire /.git/config.lock)" mask
+  assert_lines "$(bad_wire /.git/config.lock)" gone
 
   run_probe probe_config_lock false "$bad" \
     "$(config_lock_error "$good/.git/config")"
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  assert_lines "$(good_wire /.git/config.lock)" mask
+  assert_lines "$(good_wire /.git/config.lock)" gone
 
   run_probe probe_config_lock false "$good" "$(config_lock_error .git/config)"
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  assert_lines "$(good_wire /.git/config.lock)" mask
+  assert_lines "$(good_wire /.git/config.lock)" gone
 }
 
 @test "git-lock orphan: a resolved lock path holding a newline gives one encoded path= line" {
@@ -160,9 +160,8 @@ orphan_twins() {
   assert_lines "$(good_wire /.git/index.lock)" held "pid=$_probe_holder_pid"
 }
 
-# Flag true, so an absent lock reads gone: mask can only come from the
-# character-device rule (a symlink to /dev/null), not from the absent-lock
-# print under flag false.
+# An absent lock reads gone under either flag, so mask can only come from the
+# character-device rule (a symlink to /dev/null).
 @test "git-lock character device: a newline-bearing path gives mask and one encoded path= line" {
   local good="$BATS_TEST_TMPDIR/r age=99999 x"
   local bad="$BATS_TEST_TMPDIR/r"$'\n'"age=99999"$'\n'"x"
@@ -206,9 +205,10 @@ orphan_twins() {
 }
 
 # The lock is present at the presence test, and the stat stub removes it
-# while failing, as git does when its holder exits. Flag false, so an absent
-# lock at the presence test would read mask: gone can only come from the
-# vanish print after the stat reads.
+# while failing, as git does when its holder exits. An absent lock at the
+# presence test reads gone as well, so the stub also logs its call: the log is
+# what shows the probe got past the presence test to the vanish print after
+# the stat reads.
 @test "git-lock vanishing mid-probe: a newline-bearing path gives gone and one encoded path= line" {
   local bad="$BATS_TEST_TMPDIR/r"$'\n'"age=99999"$'\n'"x"
   local stubs="$BATS_TEST_TMPDIR/vanish"
@@ -218,6 +218,7 @@ orphan_twins() {
 #!/bin/sh
 for last; do :; done
 rm -f -- "$last"
+echo called >>"$(dirname "$0")/stat-called"
 echo "stat: cannot statx '$last': No such file or directory" >&2
 exit 1
 STUB
@@ -227,6 +228,7 @@ STUB
     "$(git_lock_error .git/index.lock)"
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
+  [ -s "$stubs/stat-called" ]
   [ ! -e "$bad/.git/index.lock" ]
   assert_lines "$(bad_wire /.git/index.lock)" gone
 }

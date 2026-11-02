@@ -30,6 +30,7 @@ expected_for() {
     fire-lock-rebase-inline)       printf 'git-lock\n' ;;
     fire-lock-piped-tail)          printf 'git-lock\n' ;;
     fire-lock-add-commit)          printf 'git-lock\n' ;;
+    fire-lock-release-excluded)    printf 'git-lock\n' ;;
     fire-configlock-remote-add)    printf 'config-lock\n' ;;
     fire-configlock-fetch)         printf 'config-lock\n' ;;
     fire-masks-porcelain)          printf 'phantom-untracked\n' ;;
@@ -141,6 +142,10 @@ assert_fixture() {
 
 @test "git-lock fires on the stranded-lock add+commit pair" {
   assert_fixture fire-lock-add-commit
+}
+
+@test "git-lock fires on a release recipe's lock refusal" {
+  assert_fixture fire-lock-release-excluded
 }
 
 @test "config-lock fires on git remote add" {

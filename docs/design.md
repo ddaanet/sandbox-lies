@@ -185,6 +185,7 @@ lib/matchers.sh         matchers + detect          (promoted from the pilot)
 lib/probes.sh           probe_<verdict> functions   (layer 3)
 lib/probes-readonly*.sh probe_readonly_path, its D-17 facts and command scan
 lib/verdicts.sh         agent paragraph + human line per verdict
+lib/verdicts-locks.sh   the same, for git-lock and config-lock
 skills/sandbox-lies/    the symptom-less knowledge
 manual/                 user documentation: the detectors, the hook
 tests/                  matchers, hook, probes, verdicts, docs; fixtures/
@@ -249,8 +250,9 @@ correct there. Argued in
 `tool_input.dangerouslyDisableSandbox` and either change wording or stay silent.
 `resume-lost` ignores it: its probe tests the transcript itself. Accepted
 tradeoff: a call an exclusion unsandboxed carries no flag, so a covered `git`
-whose lock was gone by probe time reads `mask`, whose re-run is harmless. Argued
-in [references/sandbox-state.md](references/sandbox-state.md).
+whose lock was gone by probe time reads `gone`, which with the flag absent names
+both causes and whose retry is harmless. Argued in
+[references/sandbox-state.md](references/sandbox-state.md).
 
 **D-9 — The skill lives here and carries the plugin's name.** The escapes
 knowledge is maintained here, not in `craft`; as the plugin's only skill it is

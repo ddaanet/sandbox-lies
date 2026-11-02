@@ -31,17 +31,20 @@ piped into `tail` still fires.
 **Check.** The hook looks at the lock path outside the sandbox, then asks which
 process holds it, with `lsof`, else `fuser`:
 
-- `mask` — the call was sandboxed and the lock is absent outside the sandbox,
-  or, either way, the path is a character device.
-- `gone` — an unsandboxed call, and the lock is absent.
+- `mask` — the path is a character device, whichever way the call ran.
+- `gone` — the lock is absent, whichever way the call ran.
 - `held` — the lock exists and a process holds it.
 - `orphan` — the lock exists and the holder check found no holder.
 - `unknown` — the lock exists and no holder check was possible: neither tool is
   on `PATH`, or the check failed. A lock with no holder check is never reported
   as `orphan`, since a process may still hold it.
 
-**Unsandboxed calls.** Fires either way; the flag decides between `mask` and
-`gone` and words the re-run. *Re-run* and *Retry* below stand for:
+**Unsandboxed calls.** Fires either way. The flag no longer picks between `mask`
+and `gone`: it words the re-run and the retry, `gone`'s included. The cause of a
+missing lock is hedged when the flag is absent because nothing in the payload
+records an `excludedCommands` exclusion, and a lock its holder has released
+leaves nothing at the path, as a sandbox mask does. *Re-run* and *Retry* below
+stand for:
 
 - sandboxed call — "Re-run the same command with
   `dangerouslyDisableSandbox: true`" and "Retry the command with
@@ -55,9 +58,15 @@ process holds it, with `lsof`, else `fuser`:
   healthy. *Re-run*. A repeat failure on a commit whose hook stages files is
   that hook leaking `GIT_INDEX_FILE`, not the sandbox. ·
   `index.lock — sandbox mask, not a real lock`
-- `gone` — No lock exists now; git cleaned it after the failure. Retry once. A
-  repeat failure on a commit whose hook stages files is that hook leaking
-  `GIT_INDEX_FILE`, not the sandbox. · `index.lock — cleared after failure`
+- `gone`, unsandboxed call — No lock exists now; git cleaned it after the
+  failure. Retry once. A repeat failure on a commit whose hook stages files is
+  that hook leaking `GIT_INDEX_FILE`, not the sandbox. ·
+  `index.lock — cleared after failure`
+- `gone`, flag absent or false — No lock exists now: this refusal came from a
+  sandbox mask or from a lock its holder has since released. *Retry*. A repeat
+  failure on a commit whose hook stages files is that hook leaking
+  `GIT_INDEX_FILE`, not the sandbox. ·
+  `index.lock — absent now, mask or released`
 - `held` — A process (pid N) holds the lock. Wait for it, then retry. ·
   `index.lock — held by pid N`
 - `orphan` — The lock exists outside the sandbox (N bytes, age Ns) and no
@@ -78,14 +87,18 @@ start of a line: `git config`, `git remote add` and the toolkit's
 
 **What it says.** `git-lock`'s outcomes, naming `config.lock`, without the
 `GIT_INDEX_FILE` clause. When the lock is a `.claude/settings.json.lock`, the
-`mask` paragraph says to write `.claude/settings.json` through the
-`update-config` skill instead of *Re-run*, under either flag.
+`mask` paragraph, under either flag, and the `gone` paragraph, when the flag is
+absent or false, say to write `.claude/settings.json` through the
+`update-config` skill instead of *Re-run* or *Retry*.
 
 - `mask` — The `config.lock` behind this error is a sandbox artefact and the
   repository is healthy. *Re-run*. ·
   `config.lock — sandbox mask, not a real lock`
-- `gone` — No lock exists now; git cleaned it after the failure. Retry once. ·
-  `config.lock — cleared after failure`
+- `gone`, unsandboxed call — No lock exists now; git cleaned it after the
+  failure. Retry once. · `config.lock — cleared after failure`
+- `gone`, flag absent or false — No lock exists now: this refusal came from a
+  sandbox mask or from a lock its holder has since released. *Retry*. ·
+  `config.lock — absent now, mask or released`
 - `held` — A process (pid N) holds the lock. Wait for it, then retry. ·
   `config.lock — held by pid N`
 - `orphan` — The lock exists outside the sandbox (N bytes, age Ns) and no

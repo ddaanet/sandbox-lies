@@ -81,7 +81,7 @@ run_spied() {
   expected="$output"
   printf '%s' "$expected" | jq -e . >/dev/null
   [ "$(printf '%s' "$expected" | jq -r .systemMessage)" = \
-    'index.lock — sandbox mask, not a real lock' ]
+    'index.lock — absent now, mask or released' ]
 
   run_spied -
   [ "$status" -eq 0 ]

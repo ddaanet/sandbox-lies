@@ -35,7 +35,9 @@ baseline excludes `claude` as well as `git`. What it costs, per detector:
   policy that kept the detector silent on it is gone
   ([detectors.md](detectors.md#resume-lost), Corpus).
 - **What is left is a lock gone by probe time.** The probe reads a missing lock
-  as `mask` when the flag is absent and `gone` when it is true, so a covered
-  `git` whose lock git had already cleaned reads `mask`. Its act, a re-run, is
-  harmless: the lock is gone either way
+  as `gone` under either flag, and the flag words the verdict. With the flag
+  absent the paragraph names both causes, a sandbox mask or a lock its holder
+  has since released, because nothing in the payload records an exclusion and a
+  released lock leaves nothing at the path. Its act, a retry with
+  `dangerouslyDisableSandbox: true`, is harmless on a covered call
   ([lock-detectors.md](lock-detectors.md)).

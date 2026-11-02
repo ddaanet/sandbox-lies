@@ -47,7 +47,8 @@ future_mtime_case() {
 # window git's own lock cleanup can land in, between the presence test and
 # the mtime read. Recreates the lock between the two flag runs so the second
 # run also has something for the stub to remove, rather than hitting the
-# probe's earlier, already-absent-at-entry path.
+# probe's earlier, already-absent-at-entry path. That path also reads
+# gone now, so the stub logs its call and the log shows the stat was reached.
 @test "vanished lock is gone" {
   local repo="$BATS_TEST_TMPDIR/r" cwd="$BATS_TEST_TMPDIR/elsewhere" lock
   local stubdir="$BATS_TEST_TMPDIR/stat-stub" realstat
@@ -58,6 +59,7 @@ future_mtime_case() {
 #!/bin/sh
 for a; do path=\$a; done
 rm -f "\$path"
+echo called >>"$stubdir/stat-called"
 exec "$realstat" "\$@"
 STUB
   chmod 755 "$stubdir/stat"
@@ -67,6 +69,7 @@ STUB
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
+  [ -s "$stubdir/stat-called" ]
   [ "$output" = "$(printf 'gone\npath=%s' "$lock")" ]
 
   printf '1234567' >"$lock"
@@ -134,6 +137,7 @@ STUB
 #!/bin/sh
 "$realrm" -f "\$1"
 printf 'Specified filename %s does not exist.\n' "\$1" >&2
+echo called >>"$toolsdir/fuser-called"
 exit 1
 STUB
   chmod 755 "$toolsdir/fuser"
@@ -143,6 +147,7 @@ STUB
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
+  [ -s "$toolsdir/fuser-called" ]
   [ "$output" = "$(printf 'gone\npath=%s' "$lock")" ]
 
   printf '1234567' >"$lock"
@@ -293,7 +298,7 @@ STUB
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  [ "${output%%$'\n'*}" = mask ]
+  [ "${output%%$'\n'*}" = gone ]
   [ ! -e "$calls" ]
   [ "$(find "$repo" "$cwd" | LC_ALL=C sort)" = "$before" ]
 

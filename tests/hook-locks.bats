@@ -24,10 +24,10 @@ run_hook() {
 }
 
 # stub_probe is shared, in helpers/hook.bash: this fixture's lock path also
-# answers mask under the real probe when the path is absent, so a stub the
+# answers under the real probe (gone when the path is absent), so a stub the
 # hook never reached would otherwise pass while the real probe stats the
-# host path, and so would a verdict defaulting to mask with no probe call at
-# all.
+# host path, and so would a verdict defaulting to an outcome with no probe
+# call at all.
 
 @test "mask outcome through the hook" {
   stub_probe git_lock mask
@@ -283,7 +283,7 @@ run_hook() {
   # tool_response.stdout. Misses collect across every fixture and flag value
   # into one string asserted empty at the end, so one red names every broken
   # fixture instead of stopping at the first. Each run must reach its own
-  # detector's stub: the real probes also answer mask for a lock path absent
+  # detector's stub: the real probes also answer for a lock path absent
   # here, so a sweep the stubs never reached would pass while statting the
   # fixtures' host paths.
   local lock_called config_called called

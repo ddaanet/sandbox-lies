@@ -11,12 +11,12 @@ load helpers/verdicts
 
 @test "lock verdict text matches lock-detectors.md" {
   # Transcribed from docs/references/lock-detectors.md's git-lock and
-  # config-lock Verdicts lists — mask (both flag values, D-17) and gone
-  # (flag-neutral) here; held/orphan/unknown interpolate probe values and are
+  # config-lock Verdicts lists — mask and gone, each worded by both flag
+  # values (D-17) here; held/orphan/unknown interpolate probe values and are
   # checked in the dedicated interpolation tests below. mask's *Re-run* wording
   # comes from the *Re-run*/*Retry* flag table and never carries the old
   # flag-neutral "if it already ran" clause this replaces.
-  local line1 line2
+  local line1 line2 text
 
   line1=$(verdict_text git_lock mask false | sed -n '1p')
   line2=$(verdict_text git_lock mask false | sed -n '2p')
@@ -33,11 +33,22 @@ load helpers/verdicts
   # Absent $2 reads false (D-17).
   [ "$(verdict_text git_lock mask - | sed -n '1p')" = "$(verdict_text git_lock mask false | sed -n '1p')" ]
 
-  line1=$(verdict_text git_lock gone | sed -n '1p')
-  line2=$(verdict_text git_lock gone | sed -n '2p')
+  # gone is flag-worded: true keeps the git-cleaned-it text; false (and an
+  # absent $2) cannot say why the lock is gone, so it names both causes.
+  line1=$(verdict_text git_lock gone true | sed -n '1p')
+  line2=$(verdict_text git_lock gone true | sed -n '2p')
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   [ "$line1" = 'No lock exists now; git cleaned it after the failure. Retry once. A repeat failure on a commit whose hook stages files is that hook leaking `GIT_INDEX_FILE`, not the sandbox.' ]
   [ "$line2" = 'index.lock — cleared after failure' ]
+
+  line1=$(verdict_text git_lock gone false | sed -n '1p')
+  line2=$(verdict_text git_lock gone false | sed -n '2p')
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  [ "$line1" = 'No lock exists now: this refusal came from a sandbox mask or from a lock its holder has since released. Retry the command with `dangerouslyDisableSandbox: true`. A repeat failure on a commit whose hook stages files is that hook leaking `GIT_INDEX_FILE`, not the sandbox.' ]
+  [ "$line2" = 'index.lock — absent now, mask or released' ]
+  text_lacks "$line1" 'sandbox artefact'
+  [ "$(verdict_text git_lock gone - | sed -n '1p')" = "$line1" ]
+  [ "$(verdict_text git_lock gone - | sed -n '2p')" = "$line2" ]
 
   line1=$(verdict_text config_lock mask false | sed -n '1p')
   line2=$(verdict_text config_lock mask false | sed -n '2p')
@@ -70,8 +81,36 @@ load helpers/verdicts
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   [ "$line1" = 'The `config.lock` behind this error is a sandbox artefact and the repository is healthy. Write `.claude/settings.json` through the `update-config` skill.' ]
 
-  line1=$(verdict_text config_lock gone | sed -n '1p')
-  line2=$(verdict_text config_lock gone | sed -n '2p')
+  line1=$(verdict_text config_lock gone true | sed -n '1p')
+  line2=$(verdict_text config_lock gone true | sed -n '2p')
+  [ "$line1" = 'No lock exists now; git cleaned it after the failure. Retry once.' ]
+  [ "$line2" = 'config.lock — cleared after failure' ]
+
+  line1=$(verdict_text config_lock gone false | sed -n '1p')
+  line2=$(verdict_text config_lock gone false | sed -n '2p')
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  [ "$line1" = 'No lock exists now: this refusal came from a sandbox mask or from a lock its holder has since released. Retry the command with `dangerouslyDisableSandbox: true`.' ]
+  [ "$line2" = 'config.lock — absent now, mask or released' ]
+  text_lacks "$line1" 'sandbox artefact'
+  [ "$(verdict_text config_lock gone - | sed -n '1p')" = "$line1" ]
+
+  # gone false on a `.claude/settings.json.lock` path: the same first
+  # sentence, then the update-config act in place of the retry.
+  # shellcheck disable=SC1090
+  settings_text=$(printf '%s\n' 'path=/r/.claude/settings.json.lock' \
+    | ( . "$VERDICTS"; verdict_config_lock gone false ))
+  line1=$(printf '%s\n' "$settings_text" | sed -n '1p')
+  line2=$(printf '%s\n' "$settings_text" | sed -n '2p')
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  [ "$line1" = 'No lock exists now: this refusal came from a sandbox mask or from a lock its holder has since released. Write `.claude/settings.json` through the `update-config` skill.' ]
+  [ "$line2" = 'config.lock — absent now, mask or released' ]
+
+  # gone true keeps its text whatever the path: no update-config act.
+  # shellcheck disable=SC1090
+  settings_text=$(printf '%s\n' 'path=/r/.claude/settings.json.lock' \
+    | ( . "$VERDICTS"; verdict_config_lock gone true ))
+  line1=$(printf '%s\n' "$settings_text" | sed -n '1p')
+  line2=$(printf '%s\n' "$settings_text" | sed -n '2p')
   [ "$line1" = 'No lock exists now; git cleaned it after the failure. Retry once.' ]
   [ "$line2" = 'config.lock — cleared after failure' ]
 }
@@ -203,10 +242,26 @@ load helpers/verdicts
     done
   done
 
+  # gone words the retry by the flag as well: false names both causes and
+  # carries the dangerouslyDisableSandbox retry, true keeps the git-cleaned-it
+  # text; neither asserts a sandbox artefact.
+  for name in git_lock config_lock; do
+    text=$(verdict_text "$name" gone false)
+    printf '%s' "$text" | grep -qF 'dangerouslyDisableSandbox: true'
+    printf '%s' "$text" | grep -qF 'a lock its holder has since released'
+    text_lacks "$text" 'sandbox artefact'
+    [ "$(verdict_text "$name" gone -)" = "$text" ]
+
+    text=$(verdict_text "$name" gone true)
+    printf '%s' "$text" | grep -qF 'git cleaned it after the failure'
+    text_lacks "$text" 'dangerouslyDisableSandbox: true'
+    text_lacks "$text" 'holder has since released'
+  done
+
   # The config-lock settings act: a `.claude/settings.json.lock` path
   # replaces *Re-run* with the update-config act, under either flag; any
   # other path (e.g. `.git/config.lock`) keeps *Re-run* and never mentions
-  # update-config.
+  # update-config. gone false takes the act the same way, and gone true never.
   local flag
   for flag in false true; do
     # shellcheck disable=SC1090 # $VERDICTS is lib/verdicts.sh, resolved above
@@ -220,6 +275,21 @@ load helpers/verdicts
       | ( . "$VERDICTS"; verdict_config_lock mask "$flag" ))
     text_lacks "$text" 'update-config'
   done
+
+  # shellcheck disable=SC1090
+  text=$(printf '%s\n' 'path=/r/.claude/settings.json.lock' \
+    | ( . "$VERDICTS"; verdict_config_lock gone false ))
+  printf '%s' "$text" | grep -qF 'update-config'
+  text_lacks "$text" 'dangerouslyDisableSandbox'
+  # shellcheck disable=SC1090
+  text=$(printf '%s\n' 'path=/r/.git/config.lock' \
+    | ( . "$VERDICTS"; verdict_config_lock gone false ))
+  text_lacks "$text" 'update-config'
+  printf '%s' "$text" | grep -qF 'dangerouslyDisableSandbox: true'
+  # shellcheck disable=SC1090
+  text=$(printf '%s\n' 'path=/r/.claude/settings.json.lock' \
+    | ( . "$VERDICTS"; verdict_config_lock gone true ))
+  text_lacks "$text" 'update-config'
 }
 
 @test "verdict_config_lock matches the settings.json.lock suffix on the decoded path" {

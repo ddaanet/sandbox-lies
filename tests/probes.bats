@@ -26,7 +26,7 @@ teardown() {
 # $2 names an unrelated directory, so the path= line can only come from the
 # error text. The lock is never created; absence is guarded rather than
 # probed, so no tool error reaches stderr.
-@test "absent lock, sandboxed, is mask" {
+@test "absent lock, sandboxed, is gone" {
   local repo="$BATS_TEST_TMPDIR/r" cwd="$BATS_TEST_TMPDIR/elsewhere" lock
   mkdir -p "$repo/.git" "$cwd"
   lock="$repo/.git/index.lock"
@@ -35,11 +35,11 @@ teardown() {
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  [ "${output%%$'\n'*}" = mask ]
+  [ "${output%%$'\n'*}" = gone ]
   printf '%s\n' "$output" | grep -qxF "path=$lock"
 }
 
-@test "absent lock, unsandboxed, is gone" {
+@test "absent lock, unsandboxed, is gone too" {
   local repo="$BATS_TEST_TMPDIR/r" cwd="$BATS_TEST_TMPDIR/elsewhere" lock
   mkdir -p "$repo/.git" "$cwd"
   lock="$repo/.git/index.lock"
@@ -112,21 +112,21 @@ teardown() {
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  [ "${output%%$'\n'*}" = mask ]
+  [ "${output%%$'\n'*}" = gone ]
   [ "$(printf '%s\n' "$output" | grep '^path=')" \
     = "path=$BATS_TEST_TMPDIR/r\\ b/.git/index.lock" ]
 }
 
-# Text with no config-lock line names no path, so the probe answers mask
+# Text with no config-lock line names no path, so the probe answers gone
 # alone: an empty path prints no path= line, where it used to print a bare
 # `path=`.
-@test "probe_config_lock with no config-lock line prints mask and no path=" {
+@test "probe_config_lock with no config-lock line prints gone and no path=" {
   run_probe probe_config_lock false "$BATS_TEST_TMPDIR" \
     "$(printf 'quiet preamble text\n')"
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  [ "$output" = mask ]
+  [ "$output" = gone ]
 }
 
 # The directory name holds e-acute as its two UTF-8 bytes, run under a UTF-8
@@ -143,7 +143,7 @@ teardown() {
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  [ "${output%%$'\n'*}" = mask ]
+  [ "${output%%$'\n'*}" = gone ]
   [ "$(printf '%s\n' "$output" | grep '^path=')" \
     = "path=\$'$BATS_TEST_TMPDIR/caf\\303\\251/.git/index.lock'" ]
 }
@@ -183,9 +183,10 @@ teardown() {
   printf '%s\n' "$output" | grep -qxF "path=$lock"
 }
 
-# Only the literal true reads as unsandboxed (slice 2's code review): an
-# empty flag and a wrong-case TRUE must both still read as sandboxed.
-@test "unexpected flag reads as sandboxed" {
+# The flag no longer picks an outcome for an absent lock: an empty flag and a
+# wrong-case TRUE read gone, as true and false do. Their value reaches only
+# the verdict wording.
+@test "unexpected flag values read an absent lock as gone" {
   local repo="$BATS_TEST_TMPDIR/r" cwd="$BATS_TEST_TMPDIR/elsewhere" lock
   mkdir -p "$repo/.git" "$cwd"
   lock="$repo/.git/index.lock"
@@ -194,14 +195,14 @@ teardown() {
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  [ "${output%%$'\n'*}" = mask ]
+  [ "${output%%$'\n'*}" = gone ]
   printf '%s\n' "$output" | grep -qxF "path=$lock"
 
   run_probe probe_git_lock TRUE "$cwd" "$(git_lock_error "$lock")"
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  [ "${output%%$'\n'*}" = mask ]
+  [ "${output%%$'\n'*}" = gone ]
   printf '%s\n' "$output" | grep -qxF "path=$lock"
 }
 
@@ -231,7 +232,7 @@ teardown() {
 
 # Exactly one pid= line: a holder query wider than the lock (a whole mount,
 # the directory) would list the holder among other pids. The flag only
-# selects mask or gone for an absent lock, so both flags read held.
+# does not touch a present lock, so both flags read held.
 @test "held lock names the holder" {
   local repo="$BATS_TEST_TMPDIR/r" cwd="$BATS_TEST_TMPDIR/elsewhere" lock
   mkdir -p "$repo/.git" "$cwd"

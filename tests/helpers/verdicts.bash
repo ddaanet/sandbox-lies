@@ -25,6 +25,7 @@ git_lock held
 git_lock orphan
 git_lock unknown
 git_lock mask true
+git_lock gone true
 git_lock orphan true
 git_lock unknown true
 config_lock mask
@@ -33,6 +34,7 @@ config_lock held
 config_lock orphan
 config_lock unknown
 config_lock mask true
+config_lock gone true
 config_lock orphan true
 config_lock unknown true
 tmpdir_unset -

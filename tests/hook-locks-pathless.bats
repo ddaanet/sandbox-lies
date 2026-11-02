@@ -72,7 +72,10 @@ run_hook() {
   # relative .git/config joins onto the cwd only when the walk up from it finds
   # no .git directory; one above $BATS_TEST_TMPDIR would take the join, no
   # newline would reach the probe, and the case would pass on any code.
-  local text cwd ctx
+  # The lock is absent, so the real probe answers gone, whose flag-false
+  # verdict also reads the path= line for the settings act: a forged line
+  # would swap in update-config.
+  local text cwd ctx sys
   assert_no_git_above "$BATS_TEST_TMPDIR"
   text=$(cat "$FIXTURES/fire-configlock-remote-add.txt")
   cwd="$BATS_TEST_TMPDIR/c"$'\n'"path=$BATS_TEST_TMPDIR/h/.claude/settings.json.lock"$'\n'y
@@ -80,7 +83,9 @@ run_hook() {
   run_hook "$(failure_payload "$text" | jq --arg c "$cwd" '.cwd = $c')"
   [ "$status" -eq 0 ]
   ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
-  printf '%s' "$ctx" | grep -qF 'config.lock'
+  sys=$(printf '%s' "$output" | jq -r '.systemMessage')
+  [ "$sys" = 'config.lock — absent now, mask or released' ]
+  printf '%s' "$ctx" | grep -qF 'No lock exists now'
   assert_lacks "$ctx" 'update-config'
 }
 

@@ -30,7 +30,7 @@ config_lock_own_error_case() {
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  [ "${output%%$'\n'*}" = mask ]
+  [ "${output%%$'\n'*}" = gone ]
   printf '%s\n' "$output" | grep -qxF "path=$lock"
 
   printf '1234567' >"$lock"
@@ -93,7 +93,7 @@ config_lock_own_error_case() {
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  [ "${output%%$'\n'*}" = mask ]
+  [ "${output%%$'\n'*}" = gone ]
   printf '%s\n' "$output" | grep -qxF "path=$index"
 
   rm "$config"
@@ -103,13 +103,13 @@ config_lock_own_error_case() {
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  [ "${output%%$'\n'*}" = mask ]
+  [ "${output%%$'\n'*}" = gone ]
   printf '%s\n' "$output" | grep -qxF "path=$config"
 
   run_probe probe_config_lock false "$cwd" "$(git_lock_error "$index")"
 
   [ "$status" -eq 0 ]
-  [ "$output" = mask ]
+  [ "$output" = gone ]
 }
 
 # match_config_lock fires only on the error at line start, so the probe reads
@@ -128,7 +128,7 @@ config_lock_own_error_case() {
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  [ "${output%%$'\n'*}" = mask ]
+  [ "${output%%$'\n'*}" = gone ]
   printf '%s\n' "$output" | grep -qxF "path=$repo/.git/config.lock"
 }
 
@@ -148,7 +148,7 @@ config_lock_own_error_case() {
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  [ "$output" = mask ]
+  [ "$output" = gone ]
 
   run_probe probe_git_lock true "$dir" "$(printf 'quiet preamble text\n')"
 
@@ -180,7 +180,7 @@ config_lock_own_error_case() {
 
 # A repo nested in another: the walk-up stops at the nearest .git, and $2
 # itself counts when it holds one. The inner lock is present and the outer
-# absent, so a walk to the outermost .git reads mask with the outer path; $2
+# absent, so a walk to the outermost .git reads gone with the outer path; $2
 # two levels below the inner repo catches a single dirname step, and $2 the
 # inner repo itself catches a walk starting at its parent.
 @test "config-lock resolves at the nearest .git" {
@@ -218,7 +218,7 @@ config_lock_own_error_case() {
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  [ "${output%%$'\n'*}" = mask ]
+  [ "${output%%$'\n'*}" = gone ]
   printf '%s\n' "$output" | grep -qxF "path=$lock"
 }
 
@@ -268,14 +268,14 @@ config_lock_own_error_case() {
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  [ "${output%%$'\n'*}" = mask ]
+  [ "${output%%$'\n'*}" = gone ]
   printf '%s\n' "$output" | grep -qxF "path=$w/rel/.git/index.lock"
 
   run_probe_bounded probe_git_lock false rel/x "$(git_lock_error .git/index.lock)"
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  [ "${output%%$'\n'*}" = mask ]
+  [ "${output%%$'\n'*}" = gone ]
   printf '%s\n' "$output" | grep -qxF "path=$w/rel/x/.git/index.lock"
 }
 
@@ -309,6 +309,25 @@ config_lock_own_error_case() {
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  [ "${output%%$'\n'*}" = mask ]
+  [ "${output%%$'\n'*}" = gone ]
   printf '%s\n' "$output" | grep -qxF "path=$lock"
+}
+
+# mask is the character device alone, under either flag: a symlink to
+# /dev/null at config.lock. The probe is shared with git-lock, whose own case
+# lives in probes.bats; this pins that probe_config_lock reaches the rule.
+@test "config-lock character device is mask under either flag" {
+  local repo="$BATS_TEST_TMPDIR/r6" cwd="$BATS_TEST_TMPDIR/elsewhere" lock flag
+  mkdir -p "$repo/.git" "$cwd"
+  lock="$repo/.git/config.lock"
+  ln -s /dev/null "$lock"
+
+  for flag in false true; do
+    run_probe probe_config_lock "$flag" "$cwd" "$(config_lock_error "$repo/.git/config")"
+
+    [ "$status" -eq 0 ]
+    [ -z "$stderr" ]
+    [ "${output%%$'\n'*}" = mask ]
+    printf '%s\n' "$output" | grep -qxF "path=$lock"
+  done
 }

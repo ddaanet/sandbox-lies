@@ -44,6 +44,10 @@ SPEC = [
      "git remote add origin", "could not lock config file", "short", 60, 4000),
     ("fire-configlock-fetch", "-Users-david-code-onekeys", "2026-08-13",
      "git config fetch.recurseSubmodules no", "could not lock config file", "short", 60, 4000),
+    # flag absent, yet unsandboxed: `excludedCommands` covers the recipe, whose
+    # preflight refuses a sandbox, and the lock was gone a moment later
+    ("fire-lock-release-excluded", "-Users-david-code-sandbox-lies", "2026-11-01",
+     "just release minor", "Unable to create", "short", 60, 4000),
 
     # --- detector B: phantom dotfiles, must fire ---
     ("fire-masks-porcelain", "-Users-david-code-gitlore", "2026-08-13",
