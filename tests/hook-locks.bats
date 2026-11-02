@@ -40,7 +40,7 @@ run_hook() {
   [ -f "$PROBE_CALLED" ]
   ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
   sys=$(printf '%s' "$output" | jq -r '.systemMessage')
-  printf '%s' "$ctx" | grep -qF 'Re-run the same command with'
+  printf '%s' "$ctx" | grep -qF 'Once no sandboxed command is running, re-run the same command with'
   printf '%s' "$ctx" | grep -qF 'GIT_INDEX_FILE'
   [ "$sys" = 'index.lock — sandbox mask, not a real lock' ]
 }
@@ -71,7 +71,7 @@ run_hook() {
   sys_true=$(printf '%s' "$output" | jq -r '.systemMessage')
 
   printf '%s' "$ctx_false" | grep -qF 'dangerouslyDisableSandbox: true'
-  assert_lacks "$ctx_false" 'once no sandboxed'
+  assert_lacks "$ctx_false" 'same command once no sandboxed'
   assert_lacks "$ctx_false" 'if it already ran'
 
   printf '%s' "$ctx_true" | grep -qF 'once no sandboxed command is running'
@@ -199,8 +199,8 @@ run_hook() {
   for flag in false true; do
     if [ "$flag" = false ]; then
       # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-      rerun='Re-run the same command with `dangerouslyDisableSandbox: true`'
-      other='once no sandboxed'
+      rerun='Once no sandboxed command is running, re-run the same command with `dangerouslyDisableSandbox: true`'
+      other='same command once no sandboxed'
     else
       rerun='Re-run the same command once no sandboxed command is running'
       other='dangerouslyDisableSandbox: true'
@@ -229,7 +229,7 @@ run_hook() {
     ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
     printf '%s' "$ctx" | grep -qF 'config.lock'
     printf '%s' "$ctx" | grep -qF 'update-config'
-    assert_lacks "$ctx" 'Re-run'
+    assert_lacks "$ctx" 'the same command'
   done
 }
 

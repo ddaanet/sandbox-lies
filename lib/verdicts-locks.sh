@@ -16,7 +16,7 @@ set -u
 _lock_rerun() {
   case "$1" in
     true) printf 'Re-run the same command once no sandboxed command is running.' ;;
-    *) printf 'Re-run the same command with `dangerouslyDisableSandbox: true`.' ;;
+    *) printf 'Once no sandboxed command is running, re-run the same command with `dangerouslyDisableSandbox: true`.' ;;
   esac
 }
 

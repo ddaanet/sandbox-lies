@@ -21,7 +21,7 @@ load helpers/verdicts
   line1=$(verdict_text git_lock mask false | sed -n '1p')
   line2=$(verdict_text git_lock mask false | sed -n '2p')
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  [ "$line1" = 'The lock in this error is a sandbox artefact and the repository is healthy. Re-run the same command with `dangerouslyDisableSandbox: true`. A repeat failure on a commit whose hook stages files is that hook leaking `GIT_INDEX_FILE`, not the sandbox.' ]
+  [ "$line1" = 'The lock in this error is a sandbox artefact and the repository is healthy. Once no sandboxed command is running, re-run the same command with `dangerouslyDisableSandbox: true`. A repeat failure on a commit whose hook stages files is that hook leaking `GIT_INDEX_FILE`, not the sandbox.' ]
   [ "$line2" = 'index.lock — sandbox mask, not a real lock' ]
 
   line1=$(verdict_text git_lock mask true | sed -n '1p')
@@ -53,7 +53,7 @@ load helpers/verdicts
   line1=$(verdict_text config_lock mask false | sed -n '1p')
   line2=$(verdict_text config_lock mask false | sed -n '2p')
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  [ "$line1" = 'The `config.lock` behind this error is a sandbox artefact and the repository is healthy. Re-run the same command with `dangerouslyDisableSandbox: true`.' ]
+  [ "$line1" = 'The `config.lock` behind this error is a sandbox artefact and the repository is healthy. Once no sandboxed command is running, re-run the same command with `dangerouslyDisableSandbox: true`.' ]
   [ "$line2" = 'config.lock — sandbox mask, not a real lock' ]
 
   line1=$(verdict_text config_lock mask true | sed -n '1p')
@@ -223,7 +223,7 @@ load helpers/verdicts
     for outcome in mask orphan unknown; do
       text=$(verdict_text "$name" "$outcome" false)
       printf '%s' "$text" | grep -qF 'dangerouslyDisableSandbox: true'
-      text_lacks "$text" 'once no sandboxed'
+      text_lacks "$text" 'same command once no sandboxed'
       text_lacks "$text" 'if it already ran'
 
       # Absent $2 reads false: the same text as the explicit false just
@@ -268,7 +268,7 @@ load helpers/verdicts
     text=$(printf '%s\n' 'path=/r/.claude/settings.json.lock' \
       | ( . "$VERDICTS"; verdict_config_lock mask "$flag" ))
     printf '%s' "$text" | grep -qF 'update-config'
-    text_lacks "$text" 'Re-run'
+    text_lacks "$text" 'the same command'
 
     # shellcheck disable=SC1090
     text=$(printf '%s\n' 'path=/r/.git/config.lock' \
@@ -299,14 +299,14 @@ load helpers/verdicts
     text=$(printf '%s\n' "path=\$'/h/jos\\303\\251/.claude/settings.json.lock'" \
       | ( . "$VERDICTS"; verdict_config_lock mask "$flag" ))
     printf '%s' "$text" | grep -qF 'update-config'
-    text_lacks "$text" 'Re-run'
+    text_lacks "$text" 'the same command'
 
     # The same $'...' form under another lock file keeps the flag-worded act.
     # shellcheck disable=SC1090
     text=$(printf '%s\n' "path=\$'/h/jos\\303\\251/.git/config.lock'" \
       | ( . "$VERDICTS"; verdict_config_lock mask "$flag" ))
     text_lacks "$text" 'update-config'
-    printf '%s' "$text" | grep -qF 'Re-run'
+    printf '%s' "$text" | grep -qF 'the same command'
 
     # A value that reads as no path keeps the flag-worded act even when its
     # wire text ends in the suffix, and so does a near-miss file name.
@@ -316,7 +316,7 @@ load helpers/verdicts
       text=$(printf '%s\n' "path=$value" \
         | ( . "$VERDICTS"; verdict_config_lock mask "$flag" ))
       text_lacks "$text" 'update-config'
-      printf '%s' "$text" | grep -qF 'Re-run' \
+      printf '%s' "$text" | grep -qF 'the same command' \
         || { printf 'value %s gave: %s\n' "$value" "$text" >&2; return 1; }
     done
     # A newline in the directory: the decoded value still selects the act.

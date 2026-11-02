@@ -33,8 +33,8 @@ run_hook() {
   for flag in false true; do
     if [ "$flag" = false ]; then
       # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-      rerun='Re-run the same command with `dangerouslyDisableSandbox: true`'
-      other='once no sandboxed'
+      rerun='Once no sandboxed command is running, re-run the same command with `dangerouslyDisableSandbox: true`'
+      other='same command once no sandboxed'
     else
       rerun='Re-run the same command once no sandboxed command is running'
       other='dangerouslyDisableSandbox: true'
