@@ -7,7 +7,9 @@ import 'plugin-dev/gates.just'
 # - the tracked set, by name: the hash lists tracked and untracked files alike,
 #   while check-line-limits, check-links and tests/docs.bats walk tracked files
 #   only, so without it a pass taken before `git add` of a new file stays
-#   cached after it;
+#   cached after it. Those checks keep to tracked files, against
+#   plugin-dev/manual/gates.md's advice: walking untracked ones would let an
+#   unrelated draft block a commit it is not part of;
 # - the memory file tests/matchers.bats sweeps, inside the memory gitlink the
 #   hash sees by name only ("absent" while the tier is not mounted).
 export PLUGIN_DEV_GATE_TOOLS := "bats --version\nshellcheck --version\njq --version\npython3 --version\ngit --version\nbash --version\n" + "set -o pipefail; git ls-files -z | cksum\n" + "f=memory/ddaanet/sandbox-effects.md; if [ -f \"$f\" ]; then git hash-object -- \"$f\"; else echo absent; fi"
