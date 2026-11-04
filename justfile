@@ -86,8 +86,16 @@ format-docs:
     rumdl fmt -q --no-cache
 
 # The bats suites, failures only (the full TAP log path is kept on a failure).
+# In parallel where GNU parallel is what `parallel` runs, since bats -j without
+# it runs no test and exits non-zero.
 test:
-    plugin-dev/run-bats.sh tests/
+    #!/usr/bin/env bash
+    set -euo pipefail
+    version=$(parallel --version 2>/dev/null) || version=
+    case "$version" in
+        'GNU parallel'*) set -- -j "$(( $(getconf _NPROCESSORS_ONLN) * 2 ))" ;;
+    esac
+    plugin-dev/run-bats.sh "$@" tests/
 
 # The bats suites under /bin/bash: Apple's 3.2.57 on a Mac, where `env bash`
 # usually finds Homebrew's.
