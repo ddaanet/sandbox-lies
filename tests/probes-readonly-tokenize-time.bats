@@ -4,7 +4,8 @@
 # characters on bash 5.2 and 35 s on 3.2.0, against 1.3 to 3 s for a plain
 # word (plans/sandbox-lies-review-fixes-3/reports/deliverable-review.md,
 # finding 6). The pattern is tests/verdicts-readonly-path.bats's timing case.
-# Its own file: the timings are slow and worth running alone.
+# Its own file: the timings are slow. Under bats -j, setup_file below keeps this
+# file's cases from racing one another; other files still run alongside them.
 #
 # Why the bound is on dense time over plain time at the SAME size, not on
 # t(4N)/t(N): the scan stops at 16384 characters, so 4N tops out near 16000,
@@ -15,7 +16,9 @@
 # plain word, timed in the same run and locale, is 3.0 to 5.2 on the unchanged
 # code and 1.0 to 1.2 on a tokenizer that appends without copying; the bound
 # is 1.9, about the geometric mean, 1.6 times the worst fixed value and 1.6
-# under the best defective one. The plain word is also the control for load.
+# under the best defective one. The plain word is timed once, in setup_file, so
+# it cancels only load that holds steady: other files' jobs under bats -j can
+# still move a ratio.
 
 ROOT="${BATS_TEST_DIRNAME}/.."
 
@@ -28,6 +31,9 @@ N=16000
 
 setup_file() {
   local loc
+  # Read by bats after setup_file returns. Concurrent dense cases would be timed
+  # against a plain word that ran without them.
+  export BATS_NO_PARALLELIZE_WITHIN_FILE=true
   loc=$(utf8_locale)
   # The plain word's timing, shared by the three cases.
   tokenize_seconds "$loc" plain "$N" >"$BATS_FILE_TMPDIR/plain"
