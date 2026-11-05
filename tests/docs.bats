@@ -3,7 +3,9 @@
 #
 # Every tracked regular file is piped through lib/matchers.sh. Fixtures are
 # recorded tool results and fire by design; the exemptions below are dated
-# pilot evidence that quotes live diagnostics whole and is frozen.
+# pilot evidence that quotes live diagnostics whole and is frozen. The root
+# TASK.md and TODO.md are skipped: `just task-files` runs the matchers over
+# them, so an edit to either does not discard the cached precommit pass.
 
 ROOT="${BATS_TEST_DIRNAME}/.."
 MATCHERS="$ROOT/lib/matchers.sh"
@@ -42,7 +44,7 @@ is_exempt() {
     path=${meta#*$'\t'}
     mode=${meta%% *}
     case "$mode" in 120000|160000) continue ;; esac
-    case "$path" in tests/fixtures/*) continue ;; esac
+    case "$path" in tests/fixtures/* | TASK.md | TODO.md) continue ;; esac
     is_exempt "$path" && continue
     status=0
     verdicts=$(bash "$MATCHERS" <"$ROOT/$path") || status=$?

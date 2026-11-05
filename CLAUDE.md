@@ -9,13 +9,17 @@ does updates it there.
 - **Run `just precommit` before every commit** and read its own exit status. It
   parses the two JSON manifests, then runs shellcheck, `bash -n`, the rumdl wrap
   check, the line caps, the link check, a Python compile check and the bats
-  suites. `just format-docs` re-wraps markdown. After an `.envrc` edit, run it
-  as `direnv exec . just precommit` until direnv is re-allowed.
+  suites. `just task-files`, which `precommit` depends on and never caches, runs
+  the matchers, the line cap and the link check over `TASK.md` and `TODO.md`
+  alone; the main gate does not read them, so editing either leaves its cached
+  pass standing. `just format-docs` re-wraps markdown. After an `.envrc` edit,
+  run it as `direnv exec . just precommit` until direnv is re-allowed.
 - **No live file may fire a detector.** `tests/docs.bats` runs the matchers over
   every tracked file except two exemptions: `tests/fixtures/`, and three dated
-  pilot files under `plans/`. Describe a diagnostic instead of quoting it with
-  its follow-on text; a test that needs the text builds it from fragments at run
-  time.
+  pilot files under `plans/`. `TASK.md` and `TODO.md` are skipped there because
+  `just task-files` covers them. Describe a diagnostic instead of quoting it
+  with its follow-on text; a test that needs the text builds it from fragments
+  at run time.
 - **Fixtures come from the cutter, never by hand.** Every `fire-*` and `quiet-*`
   file under `tests/fixtures/` is a recorded tool result cut by
   `tests/extract-fixtures.py` from the transcript corpus; add a `SPEC` entry and

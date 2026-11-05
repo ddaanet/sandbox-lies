@@ -3,10 +3,13 @@
 # markdown scope resolves to an existing path, relative to the linking file.
 # Inline only: a reference definition (`[r]: path`) is not checked at all.
 #
-# Usage: check-links.sh [ROOT]
+# Usage: check-links.sh [--task-files] [ROOT]
 #
 # ROOT is a git work tree, default `.`. Scope is `markdown_in_scope`
-# (scripts/lib/tracked.sh), shared with scripts/check-line-limits.sh.
+# (scripts/lib/tracked.sh), shared with scripts/check-line-limits.sh, which
+# leaves out the root TASK.md and TODO.md: with `--task-files` the run checks
+# those two alone, tracked ones only. `just task-files` runs the flag, so an
+# edit to either does not discard the cached precommit pass.
 #
 # Exit codes: 0 clean, 1 on any broken link, 2 on a failure to run.
 
@@ -116,7 +119,7 @@ handle_file() {
     # Not `markdown_in_scope "$1" && check_links_in "$1"`: that form
     # returns 1 for an out-of-scope file, and walk_tracked_files calls its
     # handler under `set -e`, so the run would end 1 at the first one.
-    if markdown_in_scope "$1"; then
+    if [ "$TASK_FILES" -eq 1 ] || markdown_in_scope "$1"; then
         check_links_in "$1"
     fi
 }

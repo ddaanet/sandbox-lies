@@ -19,7 +19,7 @@ export PLUGIN_DEV_GATE_TOOLS := "bats --version\nshellcheck --version\njq --vers
 # with the check's own output. The gate skips itself, printing "cached", while
 # no input it reads has changed (sentinel-guard; plugin-dev/manual/gates.md).
 [doc('Checks that run before every commit.')]
-precommit: check-refs
+precommit: check-refs task-files
     #!{{ plugin_dev_gate_prolog }}
     # gate_dirs: every tracked top-level directory except the memory gitlink,
     # which the hash sees by name only: the one memory file a check reads
@@ -30,7 +30,8 @@ precommit: check-refs
     gate_dirs=(.claude .claude-plugin .gitlore bin docs hooks inbox lib manual
         plans plugin-dev scripts skills tests)
     sentinel-guard precommit "${gate_dirs[@]}" .envrc .gitignore .gitmodules \
-        .rumdl.toml LICENSE dist.include pyproject.toml uv.lock ':(glob)*.md'
+        .rumdl.toml LICENSE dist.include pyproject.toml uv.lock ':(glob)*.md' \
+        ':(exclude)TASK.md' ':(exclude)TODO.md'
     passed=""
     report() {
         local name="$1"
@@ -80,6 +81,56 @@ precommit: check-refs
     report tests just test
     printf 'precommit passed: %s\n' "$passed"
     record-sentinel
+
+# The checks that read TASK.md and TODO.md, and nothing else does: the detector
+# matchers, the line cap and the link check. Never cached, and a dependency of
+# precommit, so editing either file reruns this and leaves the cached main gate
+# standing (the main gate's hash excludes both). The matchers walk the files
+# `git ls-files` reports, as the scripts do, and skip one gone from the work
+# tree. lib/matchers.sh exits 1 when quiet, 0 with verdict names when firing
+# and above 1 when bash itself failed; the file reaches it on fd 3, opened
+# apart, because a failed redirection inside the command substitution would
+# exit 1 and read as quiet.
+[doc('Detector matchers, line cap and link check over TASK.md and TODO.md.')]
+task-files:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    passed=""
+    report() {
+        local name="$1"
+        shift
+        "$@"
+        passed="${passed:+$passed, }$name"
+    }
+    matchers() {
+        local tracked file status verdicts bad=0
+        tracked=$(git ls-files -- TASK.md TODO.md)
+        while IFS= read -r file; do
+            { [ -n "$file" ] && [ -f "$file" ]; } || continue
+            if ! exec 3<"$file"; then
+                printf 'task-files: cannot read %s\n' "$file" >&2
+                bad=1
+                continue
+            fi
+            status=0
+            verdicts=$(bash lib/matchers.sh <&3) || status=$?
+            exec 3<&-
+            if [ "$status" -gt 1 ]; then
+                printf 'task-files: matchers exited %s on %s\n' \
+                    "$status" "$file" >&2
+                bad=1
+            elif [ -n "$verdicts" ]; then
+                printf 'task-files: %s fires a detector: %s\n' \
+                    "$file" "${verdicts//$'\n'/, }" >&2
+                bad=1
+            fi
+        done <<<"$tracked"
+        return "$bad"
+    }
+    report matchers matchers
+    report 'line limits' scripts/check-line-limits.sh --task-files
+    report links scripts/check-links.sh --task-files
+    printf 'task-files passed: %s\n' "$passed"
 
 # Hard-wrap the markdown in scope (.rumdl.toml) at 80 columns.
 format-docs:

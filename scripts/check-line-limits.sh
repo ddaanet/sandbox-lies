@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # Line-count cap gate for tracked source and markdown.
 #
-# Usage: check-line-limits.sh [ROOT]
+# Usage: check-line-limits.sh [--task-files] [ROOT]
 #
-# ROOT is a git work tree, default `.`. Ported from edify's
+# ROOT is a git work tree, default `.`. With `--task-files` the run checks the
+# tracked root TASK.md and TODO.md alone, cap 400, and the main scope below
+# leaves them out: `just task-files` runs the flag, so an edit to either does
+# not discard the cached precommit pass. Ported from edify's
 # scripts/check_line_limits.sh (Item 2.1), without its allowlist, walking
 # `git ls-files -z` instead of `find` so `.venv/` and gitlinks stay out.
 #
@@ -63,7 +66,9 @@ check_cap() {
 # Dispatch one tracked file to its cap, or leave it out of scope. Root-level
 # plans/ and plugin-dev/ are excluded for every file type; the arm must
 # precede the script arm below, which would otherwise cap a script there.
-# Markdown there is already outside `markdown_in_scope`.
+# Markdown there is already outside `markdown_in_scope`, as are the root
+# TASK.md and TODO.md, which only `--task-files` reaches (the walk then
+# passes those two and nothing else).
 # SKILL.md's own 200 cap must precede the markdown fallback below: both
 # would otherwise match a SKILL.md, and `case` takes the first. The shipped
 # manual/ is capped here rather than in `markdown_in_scope`, which the link
@@ -72,6 +77,10 @@ check_cap() {
 # walk_tracked_files's $handler
 handle_file() {
     local file="$1"
+    if [ "$TASK_FILES" -eq 1 ]; then
+        check_cap "$file" 400
+        return 0
+    fi
     case "$file" in
     plans/* | plugin-dev/*) ;;
     skills/*/SKILL.md) check_cap "$file" 200 ;;
