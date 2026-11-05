@@ -198,6 +198,35 @@ setup() {
   expect_ran 0 1
 }
 
+@test "a tracked shell file outside the code dirs fails gate-docs; untracked, or in a code dir, it does not" {
+  local f
+  # Run the way a person runs it, one gate, the way `run_gates` does not.
+  gate_docs() {
+    cd "$GATE_TREE" && PATH="$STUBS:$PATH" run env -u PLUGIN_DEV_GATE_FORCE \
+      -u PLUGIN_DEV_GATE_DIR just gate-docs
+  }
+  mkdir -p "$GATE_TREE/skills/a b"
+  printf 'echo hi\n' >"$GATE_TREE/skills/a b/x y.sh"
+  printf 'echo hi\n' >"$GATE_TREE/skills/a b/t u.bats"
+  printf 'echo hi\n' >"$GATE_TREE/root script.sh"
+  printf 'echo hi\n' >"$GATE_TREE/tests/new.sh"
+  gate_docs
+  [ "$status" -eq 0 ] || { echo "$output" >&2; return 1; }
+  git -C "$GATE_TREE" add -- "tests/new.sh"
+  gate_docs
+  [ "$status" -eq 0 ] || { echo "$output" >&2; return 1; }
+  for f in "skills/a b/x y.sh" "skills/a b/t u.bats" "root script.sh"; do
+    git -C "$GATE_TREE" add -- "$f"
+    gate_docs
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"shell-outside-code-dirs: $f"* ]]
+    [[ "$output" != *"gate-docs passed"* ]]
+    git -C "$GATE_TREE" rm -q --cached -- "$f"
+    gate_docs
+    [ "$status" -eq 0 ] || { echo "$output" >&2; return 1; }
+  done
+}
+
 @test "both gates pass with BSD sed, grep, mktemp, stat and wc ahead on PATH" {
   local bsd="$BATS_TEST_TMPDIR/bsdtools"
   make_bsd_stubs "$bsd" sed grep mktemp stat wc

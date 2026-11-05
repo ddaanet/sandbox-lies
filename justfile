@@ -18,7 +18,8 @@ code_dirs := "lib hooks scripts bin tests plugin-dev"
 precommit: check-refs check-size check-frontmatter task-files gate-docs gate-code
     @printf 'precommit passed: check-refs, check-size, check-frontmatter, task-files, gate-docs, gate-code\n'
 
-# Everything that is not code: the manifest, the wrap check, the link check and
+# Everything that is not code: the manifest, the wrap check, the link check, the
+# refusal of a tracked shell file outside the code dirs (no gate lints one) and
 # the FR-11 sweep over the docs side (tests/docs.bats).
 #
 # Inputs. Every tracked top-level entry that is not a code dir, not a gitlink
@@ -83,6 +84,29 @@ gate-docs:
     report plugin.json jq empty .claude-plugin/plugin.json
     report rumdl rumdl fmt --check -q --no-cache
     report links scripts/check-links.sh
+    # A tracked shell file outside the code dirs is linted by no gate, so it
+    # fails here. Tracked only, as the checks above: an untracked draft must not
+    # block a commit it is not part of. The match is by name, so an extensionless
+    # script (`.gitlore/bin/claude`) is not seen.
+    shell_location() {
+        local f bad=0
+        if [ "${#docs_inputs[@]}" -gt 0 ]; then
+            git ls-files -z -- "${docs_inputs[@]}" >"$index"
+            while IFS= read -r -d '' f; do
+                case "$f" in
+                    *.sh | *.bash | *.bats)
+                        printf 'shell-outside-code-dirs: %s\n' "$f"
+                        bad=1
+                        ;;
+                esac
+            done <"$index"
+        fi
+        if [ "$bad" -ne 0 ]; then
+            echo "No gate lints these: move them under a code dir." >&2
+            return 1
+        fi
+    }
+    report 'shell location' shell_location
     report docs.bats plugin-dev/run-bats.sh tests/docs.bats
     printf 'gate-docs passed: %s\n' "$passed"
     record-sentinel
