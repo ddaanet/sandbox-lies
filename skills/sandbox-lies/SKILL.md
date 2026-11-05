@@ -19,13 +19,11 @@ the recipe, the gate or the directive, before any output exists.
   `dangerouslyDisableSandbox: true` or an `excludedCommands` entry covers every
   command in it.** Any uncovered command, or a forfeiting shape listed below —
   git's absolute, `~`-led or `..`-bearing path arguments among them — keeps the
-  call sandboxed. Observed on CC 2.1.289 and again on CC 2.1.293: a bare covered
-  `git status` from the project root listed no masks, while the uncovered form,
-  the same status behind `true && command`, ran sandboxed and listed them.
-  Before relying on an exclusion, re-probe with
+  call sandboxed. Before relying on an exclusion, re-probe with
   `git status --porcelain --ignored` alone in its call: without `--ignored`, a
-  sandboxed listing leaves out every mask name the repository ignores. Earlier
-  "not honoured" probes were confounded.
+  sandboxed listing leaves out every mask name the repository ignores. The
+  probes, and why earlier "not honoured" ones prove nothing:
+  [references/excluded-commands.md](references/excluded-commands.md).
 - **A visible mask proves nothing about the call that saw it.** Mask paths are
   visible from every process while any sandboxed command runs, this session's or
   a parallel agent's. The evidence runs one way: no mask in a listing of the
@@ -34,7 +32,8 @@ the recipe, the gate or the directive, before any output exists.
 - **The mask-free test is a write only the sandbox refuses.**
   `touch /tmp/<name>` fails with the read-only-filesystem error only inside the
   sandbox. `${TMPDIR-UNSET}` also discriminates: `/tmp/claude-<uid>` sandboxed,
-  `/tmp` unsandboxed on CC 2.1.281 (unset on CC 2.1.233).
+  `/tmp` unsandboxed, unset on older versions
+  ([references/masks-and-gates.md](references/masks-and-gates.md)).
 - **Nothing records that a call ran unsandboxed** — not the tool result, not the
   transcript, not the hook payload. A clean unsandboxed `git status` is not
   evidence that the sandbox is clean.
@@ -49,9 +48,9 @@ every command in the call. Before writing one:
 - A covered call still stays sandboxed with a `sudo`, `eval` or `xargs` head, a
   `cd`, `pushd` or `popd` anywhere, a subshell, a command substitution, an `if`
   or `for` block, a redirection (a descriptor duplication such as `2>&1` is
-  documented as fine, but was seen to keep a call sandboxed on CC 2.1.289), or a
-  command name from a variable. Nested commands never match: `sh -c '…'` and a
-  git inside a recipe or script.
+  documented as fine, but was seen to keep a call sandboxed), or a command name
+  from a variable. Nested commands never match: `sh -c '…'` and a git inside a
+  recipe or script.
 - Git stays sandboxed under any entry with `-C <dir>`, and with an absolute,
   `~`-led or `..`-bearing path argument (`git init`, `git clone`,
   `git worktree add`, among others).
@@ -61,9 +60,8 @@ every command in the call. Before writing one:
   the original working directory, except where the session has server-side
   review.
 
-The full list of forfeiting shapes, what was observed beyond the documented
-ones, the confounded probes, wrapper unwrapping, the read-only validator's
-refusals and why an exclusion beats a rewriting hook:
+The full list of forfeiting shapes, wrapper unwrapping, the read-only
+validator's refusals and the rewriting-hook alternative:
 [references/excluded-commands.md](references/excluded-commands.md).
 
 ## Leaving the sandbox for one call
@@ -91,38 +89,33 @@ Detail and observed refusals:
 
 ## Keeping the working directory at the project root
 
-Masks sit under the sandboxed call's working directory. In the main session the
-Bash tool keeps a top-level `cd` between calls (CC 2.1.281), so one `cd` into a
-submodule leaves every later sandboxed call masking inside it; a subagent's
-working directory resets per call. In order of preference:
+Masks sit under the sandboxed call's working directory, and in the main session
+a top-level `cd` persists between calls, so one `cd` into a submodule leaves
+every later sandboxed call masking inside it. In order of preference:
 
 - Give a command absolute paths; give git `-C <dir>`.
 - Otherwise use a subshell, `(cd <dir> && …)`, whose `cd` cannot persist.
 - Or end the call with a `cd <root>` line.
 
 `git -C`, a git absolute-path argument, a `cd` and a subshell each keep the call
-sandboxed under any `excludedCommands` entry. Run with
-`dangerouslyDisableSandbox`, `git -C`, a subshell and a `cd` beside git each
-forfeit the read-only auto-allow and, absent an allow rule, cost a classifier
-call:
+sandboxed under any `excludedCommands` entry; the classifier cost of each:
 [references/excluded-commands.md](references/excluded-commands.md).
 
 ## Writing a recipe or script that must run unsandboxed
 
 - **Run it entirely unsandboxed.** An environment variable passing through the
-  sandbox does not make the path it names writable, and a recipe that dies late
-  has usually done its irreversible steps already. An exclusion never reaches a
+  sandbox does not make the path it names writable. An exclusion never reaches a
   `git` or `claude` inside the recipe: the top-level segment is the recipe
   runner.
 - **A multi-turn `claude --resume` flow must run unsandboxed.** A sandboxed
   `claude --print` turn never persists: a new session cannot be resumed, and a
-  turn on a persisted one answers but is dropped (CC 2.1.292). A single-turn
-  connectivity probe passes sandboxed and cannot detect this.
+  turn on a persisted one answers but is dropped.
 - **A sandboxed `claude -p` skips every `SessionStart` hook** of every plugin,
   silently. Unsandbox the whole call whenever its point is a hook's side effect.
 
-The release half-landing, the eval-harness signatures and the `SessionStart`
-evidence: [references/recipes-and-claude.md](references/recipes-and-claude.md).
+Why the recipe runs whole, the release half-landing, the eval-harness signatures
+and the `SessionStart` evidence:
+[references/recipes-and-claude.md](references/recipes-and-claude.md).
 
 ## A scratch path that must survive the call
 
@@ -130,12 +123,11 @@ evidence: [references/recipes-and-claude.md](references/recipes-and-claude.md).
 every use as scoped to the single command that expands it. For a backup a
 *later* call restores, and for any path written into a subagent directive,
 hardcode the literal scratch path (`/tmp/claude/<job>/…`, created with
-`mkdir -p`). A subagent shell inherits neither the environment nor the working
-directory, so a `$TMPDIR` in a handed-over command resolves to whatever the
-receiving call's `$TMPDIR` is, and a restore path that silently resolves
-elsewhere is the expensive case.
+`mkdir -p`), since a subagent shell inherits neither the environment nor the
+working directory.
 
-The observed collapse:
+Why a restore path that resolves elsewhere is the expensive case, and the
+observed collapse:
 [references/escapes-and-costs.md](references/escapes-and-costs.md).
 
 ## Writing a cleanliness gate

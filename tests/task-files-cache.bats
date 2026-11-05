@@ -1,6 +1,8 @@
 #!/usr/bin/env bats
 # Editing TASK.md or TODO.md leaves the main gate's cached pass standing, and
-# `precommit` still refuses a firing one through `task-files`. The real
+# `precommit` still refuses a firing one through `task-files`, a file over the
+# byte cap through `check-size` and a skill without a description through
+# `check-frontmatter`. The real
 # `precommit` runs in a scratch repository holding what the working tree holds,
 # so uncommitted work is what is tested and no commit of this repository is an
 # input, with its own quiet TODO.md and TASK.md, so the real ones' content does
@@ -124,6 +126,32 @@ spy_runs() {
   [ "$status" -ne 0 ]
   [[ "$output" == *TODO.md* ]]
   [[ "$output" == *phantom-chardev* ]]
+  [[ "$output" != *"precommit passed"* ]]
+  [ "$(spy_runs)" -eq 0 ]
+}
+
+@test "precommit refuses a file over the byte cap, tracked or untracked, naming it" {
+  make_gate_tree
+  # Built at run time: this file stays under the cap itself.
+  head -c 20001 /dev/zero | tr '\0' x >"$GATE_TREE/untracked-big.txt"
+  head -c 20001 /dev/zero | tr '\0' x >>"$GATE_TREE/CLAUDE.md"
+  run_gate
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"oversized-file: untracked-big.txt"* ]]
+  [[ "$output" == *"oversized-file: CLAUDE.md"* ]]
+  [[ "$output" != *"precommit passed"* ]]
+  [ "$(spy_runs)" -eq 0 ]
+}
+
+@test "precommit refuses a skill whose frontmatter lacks a description" {
+  make_gate_tree
+  local skill="$GATE_TREE/skills/sandbox-lies/SKILL.md"
+  grep -v '^description:' "$skill" >"$skill.new"
+  mv "$skill.new" "$skill"
+  run_gate
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"skills/sandbox-lies/SKILL.md"* ]]
+  [[ "$output" == *description* ]]
   [[ "$output" != *"precommit passed"* ]]
   [ "$(spy_runs)" -eq 0 ]
 }

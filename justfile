@@ -5,9 +5,8 @@ import 'plugin-dev/gates.just'
 # Tool versions first: no lockfile pins them. rumdl is pinned by uv.lock, which
 # is an input. Then two inputs the hashed file list cannot carry:
 # - the tracked set, by name: the hash lists tracked and untracked files alike,
-#   while check-line-limits, check-links and tests/docs.bats walk tracked files
-#   only, so without it a pass taken before `git add` of a new file stays
-#   cached after it. Those checks keep to tracked files, against
+#   while check-links and tests/docs.bats walk tracked files only, so without it
+#   a pass taken before `git add` of a new file stays cached after it. Those checks keep to tracked files, against
 #   plugin-dev/manual/gates.md's advice: walking untracked ones would let an
 #   unrelated draft block a commit it is not part of;
 # - the memory file tests/matchers.bats sweeps, inside the memory gitlink the
@@ -19,7 +18,7 @@ export PLUGIN_DEV_GATE_TOOLS := "bats --version\nshellcheck --version\njq --vers
 # with the check's own output. The gate skips itself, printing "cached", while
 # no input it reads has changed (sentinel-guard; plugin-dev/manual/gates.md).
 [doc('Checks that run before every commit.')]
-precommit: check-refs task-files
+precommit: check-refs check-size check-frontmatter task-files
     #!{{ plugin_dev_gate_prolog }}
     # gate_dirs: every tracked top-level directory except the memory gitlink,
     # which the hash sees by name only: the one memory file a check reads
@@ -29,7 +28,7 @@ precommit: check-refs task-files
     # files are listed by name below, and a new one needs adding.
     gate_dirs=(.claude .claude-plugin .gitlore bin docs hooks inbox lib manual
         plans plugin-dev scripts skills tests)
-    sentinel-guard precommit "${gate_dirs[@]}" .envrc .gitignore .gitmodules \
+    sentinel-guard precommit "${gate_dirs[@]}" .envrc .gitattributes .gitignore .gitmodules \
         .rumdl.toml LICENSE dist.include pyproject.toml uv.lock ':(glob)*.md' \
         ':(exclude)TASK.md' ':(exclude)TODO.md'
     passed=""
@@ -69,7 +68,6 @@ precommit: check-refs task-files
     lint_paths sh
     report 'bash -n' each_bash_n "${files[@]}"
     report rumdl rumdl fmt --check -q --no-cache
-    report 'line limits' scripts/check-line-limits.sh
     report links scripts/check-links.sh
     # tests/corpus-eval.bats and tests/extract-fixtures.bats run the two Python
     # tools, but a syntax error would surface there as scattered case
@@ -83,7 +81,7 @@ precommit: check-refs task-files
     record-sentinel
 
 # The checks that read TASK.md and TODO.md, which the cached main gate does not
-# (uncached check-refs reads them too): the detector matchers, the line cap and
+# (uncached check-refs and check-size read them too): the detector matchers and
 # the link check. Never cached, and a dependency of precommit, so editing either
 # file reruns this and leaves the cached main gate standing (the main gate's
 # hash excludes both). The matchers walk the files
@@ -92,7 +90,7 @@ precommit: check-refs task-files
 # and above 1 when bash itself failed; the file reaches it on fd 3, opened
 # apart, because a failed redirection inside the command substitution would
 # exit 1 and read as quiet.
-[doc('Detector matchers, line cap and link check over TASK.md and TODO.md.')]
+[doc('Detector matchers and link check over TASK.md and TODO.md.')]
 task-files:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -129,7 +127,6 @@ task-files:
         return "$bad"
     }
     report matchers matchers
-    report 'line limits' scripts/check-line-limits.sh --task-files
     report links scripts/check-links.sh --task-files
     printf 'task-files passed: %s\n' "$passed"
 

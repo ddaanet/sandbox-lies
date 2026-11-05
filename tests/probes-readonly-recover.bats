@@ -1,8 +1,8 @@
 #!/usr/bin/env bats
 # lib/probes-readonly-facts.sh's recover= fact: printed beside target= when the
 # segment's subcommand lets the recovery script name an invocation
-# (checkout/switch onto a local branch, or merge), absent otherwise. New file:
-# tests/probes-readonly-facts.bats sits near the line cap. Every case runs the
+# (checkout/switch onto a local branch, or merge), absent otherwise. Complements
+# tests/probes-readonly-facts.bats. Every case runs the
 # real probe over a scratch repository (helpers/probes make_scratch_repo).
 
 # shellcheck disable=SC2030,SC2031 # $output set by run in a @test body is read by a helper

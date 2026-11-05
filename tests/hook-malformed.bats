@@ -3,8 +3,7 @@
 # (status 0, empty stdout, empty stderr) rather than leaking jq's parse or
 # index errors onto stderr, or reading a non-string field as text (Item 2.3
 # slice 6; plans/sandbox-lies/reports/item-2-3-s1-code-review.md finding 9,
-# item-2-3-s2-code-review.md finding 2). Split from hook.bats to keep that
-# file under the 400-line cap.
+# item-2-3-s2-code-review.md finding 2). Split from hook.bats.
 #
 # Each test collects every miss across its inputs and asserts the list empty
 # once at the end, so a red run names every broken input rather than the

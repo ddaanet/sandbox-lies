@@ -190,7 +190,7 @@ skills/sandbox-lies/    the symptom-less knowledge
 manual/                 user documentation: the detectors, the hook
 tests/                  matchers, hook, probes, verdicts, docs; fixtures/
 plugin-dev/run-bats.sh   failure-only bats wrapper (vendored toolkit)
-scripts/check-*.sh      line-limit and link gates, NFR-5
+scripts/check-*.sh      link gate, NFR-5
 ```
 
 The harness starts `annotate.sh` outside the command sandbox, so a probe's stat

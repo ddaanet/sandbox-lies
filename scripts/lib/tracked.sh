@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Shared tracked-file walk and markdown scope for the precommit gate
-# scripts (scripts/check-line-limits.sh, scripts/check-links.sh). Sourced,
-# not executed: no `set -e` of its own here — the sourcing script's options
+# script scripts/check-links.sh. Sourced, not executed: no `set -e` of its own here — the sourcing script's options
 # apply.
 
 # True (0) if $1 (root-relative) is in the tracked markdown scope: docs/ at
@@ -57,8 +56,7 @@ parse_root() {
 # clean tree instead of failing the run. Explicit mktemp template: BSD
 # mktemp has no default one, so a bare `mktemp` is a usage error on macOS. A
 # failed `mktemp` leaves the tree unchecked: exit 2, since a bare `set -e`
-# abort on the assignment would surface as 1 and read as an overage or a
-# broken link. The walk-list variable is deliberately not `local`: the EXIT
+# abort on the assignment would surface as 1 and read as a broken link. The walk-list variable is deliberately not `local`: the EXIT
 # trap that removes it fires after this function has returned, and a local
 # would already be unbound by then under `set -u`. That trap replaces any
 # EXIT trap the caller set. Exits 2 if `mktemp` or `git ls-files` fails.

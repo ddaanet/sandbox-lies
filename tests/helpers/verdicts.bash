@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared by tests/verdicts.bats and tests/verdicts-locks.bats: lib/verdicts.sh:
+# Shared by the verdicts*.bats suites: lib/verdicts.sh:
 # verdict_<name> [outcome] -> agent paragraph (line 1), human line (line 2). A
 # name/outcome row table, one row per verdict and outcome (`-` for none),
 # extended by Items 4.1, 4.2 and 6.1.

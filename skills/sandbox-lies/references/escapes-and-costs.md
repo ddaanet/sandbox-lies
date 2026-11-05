@@ -44,6 +44,10 @@ confirmation rules.
 
 ## The observed `$TMPDIR` collapse
 
+A subagent shell inherits neither the environment nor the working directory, so
+a `$TMPDIR` in a handed-over command resolves to whatever the receiving call's
+`$TMPDIR` is.
+
 Re-confirmed 2026-09-14 on CC 2.1.266, the call's sandbox state not recorded: a
 `cp … "$TMPDIR/checkpoint.py.bak"` died unable to create `/checkpoint.py.bak` in
 a session whose earlier calls had a working `$TMPDIR`. The cases that pay for it

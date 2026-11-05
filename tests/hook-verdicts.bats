@@ -2,8 +2,8 @@
 # A detected name with no verdict function contributes nothing to the
 # output; the other detected names still emit theirs (Item 2.3 paragraph:
 # "calls verdict_<name> for each name that has one -- a name with no verdict
-# function contributes nothing"). Split from hook.bats to keep that file
-# under the 400-line cap (Item 2.3 slice 9).
+# function contributes nothing"). Split from hook.bats
+# (Item 2.3 slice 9).
 #
 # item-2-3-s1-code-review.md finding 1 found the opposite: today a missing
 # verdict function makes the whole hook exit 0 silently, so a mixed set

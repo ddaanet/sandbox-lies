@@ -28,11 +28,11 @@ both flag values against that policy, and `tests/hook-resume.bats` pairs
 
 **FR-6** — Where · pinned by: `lib/verdicts.sh` · `tests/verdicts.bats` asserts
 length with no probe lines on stdin and runs `detect` over every verdict text
-expecting silence; `tests/verdicts-locks.bats` asserts the D-17 flag wording for
-the lock verdicts, `tests/verdicts-readonly.bats` each `readonly-path`
-composition and its length, `tests/verdicts-readonly-path.bats` the `path=`
-decode and display rule; `tests/hook-cap.bats` asserts the 2 KB cap with stub
-paragraphs.
+expecting silence; `tests/verdicts-locks-flags.bats` asserts the D-17 flag
+wording for the lock verdicts, `tests/verdicts-readonly.bats` each
+`readonly-path` composition and its length, `tests/verdicts-readonly-path.bats`
+the `path=` decode and display rule; `tests/hook-cap.bats` asserts the 2 KB cap
+with stub paragraphs.
 
 **FR-7** — Where · pinned by: the reference's per-detector table ·
 `tests/matchers.bats` has a `fire-*` and a `quiet-*` fixture per shipped
@@ -80,5 +80,5 @@ probe, `tests/probes-edges.bats` those two probes, `tests/check-jq.bats` the
 and `tests/probes-resume-tree.bats` its other half (no transcript opened). Done
 (read scope: `resume-lost`'s pinned, the rest review, not gated).
 
-**NFR-5** — Where · pinned by: `scripts/check-line-limits.sh`,
-`scripts/check-links.sh` · both run in `just precommit`.
+**NFR-5** — Where · pinned by: `just check-size`, `scripts/check-links.sh` ·
+both run in `just precommit`.

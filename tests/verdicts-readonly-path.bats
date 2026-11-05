@@ -4,7 +4,7 @@
 # shows the decoded bytes, or the wire form when they hold a control byte. The
 # wire values below are the probe's own forms (or forged ones, said so),
 # spelled with \$ and \\ in double quotes so the file holds them literally.
-# New file: tests/verdicts-readonly.bats sits near the 400-line cap.
+# Complements tests/verdicts-readonly.bats.
 # No BSD-stub case: lib/verdicts.sh forks no tool (the decoder is bash
 # builtins and parameter expansion, its $(...) subshells run only functions of
 # the library), so no sed, grep, mktemp, stat or wc differs under BSD there and

@@ -2,9 +2,8 @@
 # lib/probes-readonly.sh's probe_readonly_path: the readfile=/merge=1/
 # target=/match= facts it prints after path=, under writable and nopath only
 # (Item 8.0 slice 3, docs/references/readonly-path.md readonly-path Probe facts
-# table and the paragraph after it). tests/probes-readonly.bats already sits
-# at the line cap, so this is a new file; it reuses that file's fixtures and
-# helpers rather than duplicating them.
+# table and the paragraph after it). It reuses tests/probes-readonly.bats's
+# fixtures and helpers rather than duplicating them.
 #
 # The partial-checkout error lines come from helpers/probes.bash's
 # partial_checkout_*_error, built from two fragments each around erofs_message,

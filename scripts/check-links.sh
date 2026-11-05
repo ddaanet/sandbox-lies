@@ -6,7 +6,7 @@
 # Usage: check-links.sh [--task-files] [ROOT]
 #
 # ROOT is a git work tree, default `.`. Scope is `markdown_in_scope`
-# (scripts/lib/tracked.sh), shared with scripts/check-line-limits.sh, which
+# (scripts/lib/tracked.sh), which
 # leaves out the root TASK.md and TODO.md: with `--task-files` the run checks
 # those two alone, tracked ones only. `just task-files` runs the flag, so an
 # edit to either does not discard the cached precommit pass.

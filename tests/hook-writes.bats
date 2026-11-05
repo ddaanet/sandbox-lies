@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 # NFR-4 on the hook's probe path: the whole hook, run on a payload whose probe
 # reads a real scratch tree, creates no temp file. Split from tests/hook.bats
-# ("hook needs no temp dir"), which stays under the line cap and pins the
+# ("hook needs no temp dir"), which pins the
 # probe-free gitadd path only. Each payload's cwd is its own scratch tree and
 # its error text is built with helpers/probes, never a fixture's host path.
 # Proven by mutation: a mktemp call in annotate.sh's probe branch before the

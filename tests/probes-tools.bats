@@ -2,8 +2,8 @@
 # lib/probes.sh: probe_git_lock cases pinning what its external tools do or
 # fail to do — a holder check that errored rather than found nothing, and
 # the stat dialect selection's digit check. Opened by Item 2.4 slice 10
-# (slice 6's test review): tests/probes.bats and tests/probes-edges.bats are
-# both near the 400-line cap.
+# (slice 6's test review): tests/probes.bats and tests/probes-edges.bats cover the
+# rest of the probes.
 
 ROOT="${BATS_TEST_DIRNAME}/.."
 

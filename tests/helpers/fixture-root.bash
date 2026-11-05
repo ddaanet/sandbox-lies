@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Shared by the check-script suites (check-line-limits, check-links,
-# check-links-edges). Each fixture root is a `git init` temp repo under
+# Shared by the check-script suites (check-links, check-links-edges). Each
+# fixture root is a `git init` temp repo under
 # $BATS_TEST_TMPDIR with its files `git add`ed: the scripts walk
 # `git ls-files`, so a root with nothing staged would test an empty tree, not
 # the fixture.

@@ -7,10 +7,14 @@ User documentation, shipped: `manual/`; a change to what a detector or the hook
 does updates it there.
 
 - **Run `just precommit` before every commit** and read its own exit status. It
-  parses the two JSON manifests, then runs shellcheck, `bash -n`, the rumdl wrap
-  check, the line caps, the link check, a Python compile check and the bats
-  suites. `just task-files`, which `precommit` depends on and never caches, runs
-  the matchers, the line cap and the link check over `TASK.md` and `TODO.md`
+  first runs the toolkit's uncached `check-refs`, `check-size` (20000 bytes a
+  file, 10000 a `SKILL.md`; a file that cannot be split, such as a recorded
+  fixture, is marked `linguist-generated` in `.gitattributes`) and
+  `check-frontmatter`, which read every non-ignored file, `TASK.md` and
+  `TODO.md` included. It then parses the two JSON manifests and runs shellcheck,
+  `bash -n`, the rumdl wrap check, the link check, a Python compile check and
+  the bats suites. `just task-files`, which `precommit` depends on and never
+  caches, runs the matchers and the link check over `TASK.md` and `TODO.md`
   alone; the main gate does not read them, so editing either leaves its cached
   pass standing. `just format-docs` re-wraps markdown. After an `.envrc` edit,
   run it as `direnv exec . just precommit` until direnv is re-allowed.

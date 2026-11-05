@@ -2,8 +2,8 @@
 # lib/verdicts.sh: verdict_<name> [outcome] -> agent paragraph (line 1),
 # human line (line 2). Row-table length, quiet and no-removal properties
 # across every verdict, plus the phantom/candidate/readonly-path text
-# transcriptions. Lock-verdict tests live in tests/verdicts-locks.bats (split
-# from here, Item 8.0 slice 1, to keep this file under the 400-line cap).
+# transcriptions. Lock-verdict tests live in tests/verdicts-locks.bats and
+# tests/verdicts-locks-flags.bats.
 
 bats_require_minimum_version 1.5.0
 

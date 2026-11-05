@@ -3,9 +3,8 @@
 # _readonly_print_facts' readfile= and merge=1/target= facts (readonly-path.md's
 # readonly-path Probe facts table): _readonly_tokenize splits
 # tool_input.command into words and segments, _readonly_readfile_arg and
-# _readonly_merge_segment read them. Split out of
-# lib/probes-readonly-facts.sh to keep that file under the line cap;
-# lib/probes-readonly.sh sources both, so no other caller needs a source
+# _readonly_merge_segment read them. Sourced with
+# lib/probes-readonly-facts.sh by lib/probes-readonly.sh, so no other caller needs a source
 # line of its own for it.
 #
 # set -u as in lib/probes-readonly.sh; bats does not set it, so setting it

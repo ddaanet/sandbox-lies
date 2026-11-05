@@ -2,9 +2,8 @@
 # lib/probes-readonly-facts.sh — the readfile=/merge=1/partial=1/target=/
 # recover=/repo=/match= facts _readonly_print_facts derives for probe_readonly_path under
 # writable and nopath (readonly-path.md's readonly-path Probe facts table),
-# reading the command through lib/probes-readonly-command.sh's scan. Split
-# out of lib/probes-readonly.sh to keep that file under the line cap;
-# lib/probes-readonly.sh sources both, so no other caller needs a source
+# reading the command through lib/probes-readonly-command.sh's scan. Sourced
+# with lib/probes-readonly-command.sh by lib/probes-readonly.sh, which sources both, so no other caller needs a source
 # line of its own for them.
 #
 # set -u as in lib/probes-readonly.sh; bats does not set it, so setting it

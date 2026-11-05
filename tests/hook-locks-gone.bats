@@ -3,8 +3,7 @@
 # is a call `excludedCommands` ran unsandboxed, whose payload carries no flag,
 # and whose lock was released before the probe ran. An absent lock reads gone
 # under either flag, and the flag-absent verdict hedges the cause: a sandbox
-# mask or a lock its holder has since released. Split from tests/hook-locks.bats,
-# which sits at the 400-line cap.
+# mask or a lock its holder has since released. Split from tests/hook-locks.bats.
 #
 # The fixture's recorded lock path is a real path on the machine that cut it,
 # so the stub case never lets the real probe stat it; the real-probe case

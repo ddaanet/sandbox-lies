@@ -1,10 +1,9 @@
 # rumdl — hard-wrap markdown prose at 80 columns, and nothing else.
 #
 # MD013 alone: the line-length rule, in reflow mode. `reflow-mode =
-# "normalize"` re-fills every paragraph, which is what the line-count cap in
-# `scripts/check-line-limits.sh` has to be measured against — the default mode
+# "normalize"` re-fills every paragraph — the default mode
 # only breaks lines already over the column and leaves a paragraph hand-wrapped
-# narrower exactly as it is, so a doc wrapped at 60 passes a cap it should not.
+# narrower exactly as it is, so a doc wrapped at 60 would pass the check.
 #
 # `headings`, `code-blocks` and `tables` are off because rumdl cannot wrap
 # them; left on they report lines no `fmt` pass can fix.

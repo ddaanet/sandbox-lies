@@ -2,7 +2,7 @@
 # Context cap (docs/design.md FR-6): verdicts compose in catalogue order, and
 # a paragraph that would push additionalContext past 2 KB (2048 bytes) is
 # dropped while its human line is kept on systemMessage regardless. Split
-# from hook.bats to keep that file under the 400-line cap (Item 2.3 slice 7).
+# from hook.bats (Item 2.3 slice 7).
 #
 # Every two-paragraph case runs the porcelain+gitadd failure text, whose two
 # paragraphs (phantom-untracked, then phantom-gitadd) are the only pair the

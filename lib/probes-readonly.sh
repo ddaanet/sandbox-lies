@@ -6,8 +6,8 @@
 # a path= line (printf %q form) under writable and readonly only (nopath
 # prints none), then — under writable and nopath only — the
 # readfile=/merge=1/partial=1/target=/recover=/repo=/match= facts readonly-path.md's
-# readonly-path Probe facts table describes; exit 0. Split out of lib/probes.sh
-# to keep that file under the line cap; lib/probes.sh sources this file, so
+# readonly-path Probe facts table describes; exit 0. Sourced by
+# lib/probes.sh, so
 # hooks/annotate.sh needs no source line of its own for it.
 #
 # set -u as in lib/matchers.sh, lib/verdicts.sh and lib/probes.sh; bats does
@@ -19,8 +19,7 @@ set -u
 # discriminator (_readonly_path_line) rather than a second copy of the
 # pattern, and lib/probes-readonly-facts.sh's _readonly_print_facts, with
 # lib/probes-readonly-command.sh's command scan, for its writable/nopath
-# tail (each kept in its own file to hold this one, and each other, under
-# the line cap). hooks/annotate.sh already sources matchers.sh before
+# tail (each in its own file). hooks/annotate.sh already sources matchers.sh before
 # lib/probes.sh (which sources this file), so this re-source is only
 # load-bearing where a caller sources this file, or lib/probes.sh, on its
 # own; sourcing twice just redefines the same functions.

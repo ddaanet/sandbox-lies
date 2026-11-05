@@ -3,8 +3,7 @@
 # from the probe's key=value facts on stdin (readfile=, path=, merge=1,
 # target=, match=), transcribed from docs/references/readonly-path.md's
 # readonly-path Verdicts tail and merge-clause composition (Item 8.0 slice
-# 2). New file: tests/verdicts.bats and tests/hook-locks.bats already sit at
-# the 400-line cap.
+# 2). Complements tests/verdicts.bats and tests/hook-locks.bats.
 
 bats_require_minimum_version 1.5.0
 

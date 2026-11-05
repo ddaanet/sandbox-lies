@@ -3,7 +3,7 @@
 # `precommit` depends on and which is never cached. The main gate stops reading
 # them, so an edit to either leaves its cached pass standing.
 #
-# - `--task-files` on scripts/check-line-limits.sh and scripts/check-links.sh;
+# - `--task-files` on scripts/check-links.sh;
 # - the recipe, run over a scratch tree holding the justfile, scripts/ and lib/;
 # - the tests/docs.bats sweep skipping both, run over a scratch tree.
 #
@@ -13,7 +13,6 @@ load helpers/fixture-root
 load helpers/bsd-stubs
 load helpers/git-env
 
-LINES="$ROOT/scripts/check-line-limits.sh"
 LINKS="$ROOT/scripts/check-links.sh"
 
 # A line that fires the phantom-chardev detector, built from fragments so this
@@ -56,33 +55,6 @@ run_recipe() {
 
 # ---- --task-files on the two scripts ----
 
-@test "--task-files fails a 401-line TODO.md and TASK.md; the plain run passes them" {
-  local f dir
-  for f in TODO.md TASK.md; do
-    dir=$(make_root "cap-$f" "$f")
-    seq 401 >"$dir/$f"
-
-    run --separate-stderr "$LINES" --task-files "$dir"
-    [ "$status" -eq 1 ]
-    [ "$output" = "oversized-file: $f: 401 lines > 400" ]
-
-    run --separate-stderr "$LINES" "$dir"
-    [ "$status" -eq 0 ]
-    [ -z "$output" ]
-  done
-}
-
-@test "--task-files passes a 400-line file" {
-  local f dir
-  for f in TODO.md TASK.md; do
-    dir=$(make_root "edge-$f" "$f")
-    seq 400 >"$dir/$f"
-    run --separate-stderr "$LINES" --task-files "$dir"
-    [ "$status" -eq 0 ]
-    [ -z "$output" ]
-  done
-}
-
 @test "--task-files reports a broken link in TODO.md and TASK.md; the plain run passes them" {
   local f dir
   for f in TODO.md TASK.md; do
@@ -111,19 +83,12 @@ run_recipe() {
 @test "the plain runs still check other root markdown; --task-files leaves it alone" {
   local dir
   dir=$(make_root others TODO.md NOTES.md)
-  seq 401 >"$dir/NOTES.md"
-  printf '[m](missing.md)\n' >>"$dir/NOTES.md"
+  printf '[m](missing.md)\n' >"$dir/NOTES.md"
 
-  run --separate-stderr "$LINES" "$dir"
-  [ "$status" -eq 1 ]
-  [ "$output" = "oversized-file: NOTES.md: 402 lines > 400" ]
   run --separate-stderr "$LINKS" "$dir"
   [ "$status" -eq 1 ]
   [ "$output" = "broken-link: NOTES.md -> missing.md" ]
 
-  run --separate-stderr "$LINES" --task-files "$dir"
-  [ "$status" -eq 0 ]
-  [ -z "$output" ]
   run --separate-stderr "$LINKS" --task-files "$dir"
   [ "$status" -eq 0 ]
   [ -z "$output" ]
@@ -133,62 +98,50 @@ run_recipe() {
   local dir
   dir=$(make_root rootonly TASK.md)
   mkdir -p "$dir/docs"
-  seq 401 >"$dir/docs/TODO.md"
-  printf '[m](missing.md)\n' >>"$dir/docs/TODO.md"
-  seq 401 >"$dir/TODO.md"
-  printf '[m](missing.md)\n' >>"$dir/TODO.md"
+  printf '[m](missing.md)\n' >"$dir/docs/TODO.md"
+  printf '[m](missing.md)\n' >"$dir/TODO.md"
   git -C "$dir" add docs/TODO.md
 
   # docs/TODO.md is tracked and in the plain scope; the root TODO.md is
   # untracked. Neither is a task file the flag walks.
-  run --separate-stderr "$LINES" --task-files "$dir"
-  [ "$status" -eq 0 ]
-  [ -z "$output" ]
   run --separate-stderr "$LINKS" --task-files "$dir"
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 
   # Control: the plain run does read docs/TODO.md.
-  run --separate-stderr "$LINES" "$dir"
+  run --separate-stderr "$LINKS" "$dir"
   [ "$status" -eq 1 ]
-  [ "$output" = "oversized-file: docs/TODO.md: 402 lines > 400" ]
+  [ "$output" = "broken-link: docs/TODO.md -> missing.md" ]
 }
 
 @test "--task-files takes ROOT from the current directory when none follows" {
   local dir
   dir=$(make_root cwdroot TODO.md)
-  seq 401 >"$dir/TODO.md"
+  printf '[m](missing.md)\n' >"$dir/TODO.md"
   cd "$dir"
-  run --separate-stderr "$LINES" --task-files
+  run --separate-stderr "$LINKS" --task-files
   [ "$status" -eq 1 ]
-  [ "$output" = "oversized-file: TODO.md: 401 lines > 400" ]
+  [ "$output" = "broken-link: TODO.md -> missing.md" ]
 }
 
-@test "both scripts still refuse an extra argument, with or without the flag" {
-  local dir script prog
+@test "check-links still refuses an extra argument, with or without the flag" {
+  local dir
   dir=$(make_root extra TODO.md)
+  run --separate-stderr "$LINKS" "$dir" extra
+  [ "$status" -eq 2 ]
   # shellcheck disable=SC2154 # set by bats' run --separate-stderr
-  for script in "$LINES" "$LINKS"; do
-    prog=${script##*/}
-    prog=${prog%.sh}
-    run --separate-stderr "$script" "$dir" extra
-    [ "$status" -eq 2 ]
-    [ "$stderr" = "$prog: unexpected extra argument: extra" ]
-    run --separate-stderr "$script" --task-files "$dir" extra
-    [ "$status" -eq 2 ]
-    [ "$stderr" = "$prog: unexpected extra argument: extra" ]
-  done
+  [ "$stderr" = "check-links: unexpected extra argument: extra" ]
+  run --separate-stderr "$LINKS" --task-files "$dir" extra
+  [ "$status" -eq 2 ]
+  # shellcheck disable=SC2154
+  [ "$stderr" = "check-links: unexpected extra argument: extra" ]
 }
 
-@test "the flag cases hold with BSD sed, grep and mktemp ahead on PATH" {
+@test "the flag case holds with BSD sed, grep and mktemp ahead on PATH" {
   local bsd="$BATS_TEST_TMPDIR/bsdtools" dir
   make_bsd_stubs "$bsd" sed grep mktemp
   dir=$(make_root bsdroot TODO.md)
-  seq 401 >"$dir/TODO.md"
-  printf '[m](missing.md)\n' >>"$dir/TODO.md"
-  PATH="$bsd:$PATH" run --separate-stderr "$LINES" --task-files "$dir"
-  [ "$status" -eq 1 ]
-  [ "$output" = "oversized-file: TODO.md: 402 lines > 400" ]
+  printf '[m](missing.md)\n' >"$dir/TODO.md"
   PATH="$bsd:$PATH" run --separate-stderr "$LINKS" --task-files "$dir"
   [ "$status" -eq 1 ]
   [ "$output" = "broken-link: TODO.md -> missing.md" ]
@@ -201,7 +154,7 @@ run_recipe() {
   dir=$(make_recipe_tree quiet)
   run_recipe "$dir"
   [ "$status" -eq 0 ]
-  [ "$output" = "task-files passed: matchers, line limits, links" ]
+  [ "$output" = "task-files passed: matchers, links" ]
 }
 
 @test "task-files fails naming a file that fires a detector" {
@@ -217,15 +170,8 @@ run_recipe() {
   done
 }
 
-@test "task-files fails on an overage and on a broken link, with the check's output" {
+@test "task-files fails on a broken link, with the check's output" {
   local dir
-  dir=$(make_recipe_tree overage)
-  seq 401 >"$dir/TODO.md"
-  run_recipe "$dir"
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"oversized-file: TODO.md: 401 lines > 400"* ]]
-  [[ "$output" != *"task-files passed"* ]]
-
   dir=$(make_recipe_tree brokenlink)
   printf '[m](missing.md)\n' >"$dir/TASK.md"
   run_recipe "$dir"
@@ -253,7 +199,7 @@ run_recipe() {
   chmod 000 "$dir/TASK.md"
   run_recipe "$dir"
   [ "$status" -ne 0 ]
-  # The matchers step's own report: the line check would also stop on the
+  # The matchers step's own report: the link check would also stop on the
   # file, and a matchers step that read it as quiet would leave that one.
   [[ "$stderr" == *"task-files: cannot read TASK.md"* ]]
   [[ "$output" != *"task-files passed"* ]]
@@ -265,14 +211,14 @@ run_recipe() {
   git -C "$dir" rm -q -f TASK.md
   run_recipe "$dir"
   [ "$status" -eq 0 ]
-  [ "$output" = "task-files passed: matchers, line limits, links" ]
+  [ "$output" = "task-files passed: matchers, links" ]
 
   # Gone from the work tree but still in the index.
   dir=$(make_recipe_tree deleted)
   rm "$dir/TODO.md"
   run_recipe "$dir"
   [ "$status" -eq 0 ]
-  [ "$output" = "task-files passed: matchers, line limits, links" ]
+  [ "$output" = "task-files passed: matchers, links" ]
 
   # Untracked and firing: not walked.
   dir=$(make_recipe_tree untracked)
@@ -288,7 +234,7 @@ run_recipe() {
   dir=$(make_recipe_tree bsd)
   PATH="$bsd:$PATH" run_recipe "$dir"
   [ "$status" -eq 0 ]
-  [ "$output" = "task-files passed: matchers, line limits, links" ]
+  [ "$output" = "task-files passed: matchers, links" ]
   firing_line >"$dir/TODO.md"
   PATH="$bsd:$PATH" run_recipe "$dir"
   [ "$status" -ne 0 ]
