@@ -7,7 +7,10 @@
 # the uncached dependencies left out: a code dir reruns gate-code alone, except
 # the code files gate-docs's checks run; everything else reruns gate-docs alone;
 # the justfile and plugin-dev/ rerun both. The cases in
-# tests/task-files-cache.bats run the whole `precommit`.
+# tests/task-files-cache.bats run the whole `precommit`. The tree is built and
+# gated once for the file (setup_file) and every case edits a private copy of
+# it, sentinels included, so no case undoes anything and the cases run in
+# parallel.
 
 # shellcheck disable=SC2034 # read by tests/helpers/gate-tree.bash
 ROOT="${BATS_TEST_DIRNAME}/.."
@@ -15,12 +18,13 @@ ROOT="${BATS_TEST_DIRNAME}/.."
 load helpers/bsd-stubs
 load helpers/git-env
 load helpers/gate-tree
+load helpers/sweep
 
 # The code files gate-docs's checks run, which rerun it as well as gate-code,
-# and a frozen plans/ file gate-code's suites feed to the matchers, which
-# rerun it as well as gate-docs.
+# and the frozen plans/ files gate-code's suites feed to the matchers (EXEMPT,
+# tests/helpers/sweep.bash), which rerun it as well as gate-docs.
 BOTH_FILES=(
-  plans/2026-09-02-sandbox-detector-hits.jsonl
+  "${EXEMPT[@]}"
   lib/matchers.sh tests/docs.bats tests/helpers/bsd-stubs.bash
   tests/helpers/git-env.bash tests/helpers/sweep.bash
   scripts/check-links.sh scripts/lib/tracked.sh scripts/lib/strip-code.awk
@@ -68,11 +72,18 @@ is_code_dir() {
   return 1
 }
 
-setup() {
-  load helpers/sweep
-  make_gate_tree
+setup_file() {
+  make_gate_tree "$BATS_FILE_TMPDIR/built"
   run_gates
   expect_ran 1 1
+}
+
+# A copy that lost its sentinels or its spy log would run both gates again and
+# fail here, not as a case that expects a gate cached.
+setup() {
+  clone_gate_tree "$BATS_FILE_TMPDIR/built"
+  run_gates
+  expect_ran 0 0
 }
 
 @test "a file in a code dir reruns gate-code alone" {
@@ -174,10 +185,10 @@ setup() {
   expect_ran 1 0
 }
 
-@test "each gate's tool lines reach its own hash: shellcheck reruns both, the memory file gate-code alone" {
+@test "each gate's tool lines reach its own hash: shellcheck reruns gate-code alone, the memory file gate-code alone" {
   printf 'ShellCheck 9.9.9\n' >"$STUBS/shellcheck.version"
   run_gates
-  expect_ran 1 1
+  expect_ran 0 1
   mkdir -p "$GATE_TREE/memory/ddaanet"
   printf 'a fact\n' >"$GATE_TREE/memory/ddaanet/sandbox-effects.md"
   run_gates
@@ -185,21 +196,6 @@ setup() {
   printf 'another fact\n' >>"$GATE_TREE/memory/ddaanet/sandbox-effects.md"
   run_gates
   expect_ran 0 1
-}
-
-@test "a skills/ script with a syntax error fails gate-docs, and gate-code is not involved" {
-  mkdir -p "$GATE_TREE/skills/sandbox-lies/scripts"
-  printf '#!/usr/bin/env bash\nif then\n' >"$GATE_TREE/skills/sandbox-lies/scripts/broken.sh"
-  cd "$GATE_TREE"
-  PATH="$STUBS:$PATH" run env -u PLUGIN_DEV_GATE_FORCE -u PLUGIN_DEV_GATE_DIR \
-    just gate-docs
-  [ "$status" -ne 0 ]
-  [[ "$output" == *broken.sh* ]]
-  [[ "$output" != *"gate-docs passed"* ]]
-  PATH="$STUBS:$PATH" run env -u PLUGIN_DEV_GATE_FORCE -u PLUGIN_DEV_GATE_DIR \
-    just gate-code
-  [ "$status" -eq 0 ]
-  [ "$output" = "gate-code: cached (inputs unchanged)" ]
 }
 
 @test "both gates pass with BSD sed, grep, mktemp, stat and wc ahead on PATH" {

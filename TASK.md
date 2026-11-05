@@ -1,3 +1,3 @@
 ## Current task
 
-Making `just precommit` cheaper. Byte caps, the frontmatter check and the split into `gate-docs` and `gate-code` are committed. Measured: a prose-only edit about 49 s, `gate-code` 195 s, the pre-split gate 173 s. Next: triage the medium review of the fix commit for the split's review, then my human partner's call on trimming `tests/gate-coverage.bats`, in `TODO.md`.
+Making `just precommit` cheaper. Byte caps, the frontmatter check and the split into `gate-docs` and `gate-code` are in, and a prose edit now pays about 49 s against 173 s before, while a code edit pays 195 s. The last fix commit's review is triaged in `tmp/2026-11-05-gate-fix-review.md`: its M1 is accepted, its M2 to M4 hang on an open decision, and its lows are declined. First action: put the two open decisions in `TODO.md` to my human partner again, each with its stated default, and do no fix until they answer, because the answers land in one commit.

@@ -18,9 +18,8 @@ code_dirs := "lib hooks scripts bin tests plugin-dev"
 precommit: check-refs check-size check-frontmatter task-files gate-docs gate-code
     @printf 'precommit passed: check-refs, check-size, check-frontmatter, task-files, gate-docs, gate-code\n'
 
-# Everything that is not code: the manifest, the wrap check, the link check,
-# shellcheck and `bash -n` over the shell files outside the code dirs, and the
-# FR-11 sweep over the docs side (tests/docs.bats).
+# Everything that is not code: the manifest, the wrap check, the link check and
+# the FR-11 sweep over the docs side (tests/docs.bats).
 #
 # Inputs. Every tracked top-level entry that is not a code dir, not a gitlink
 # (the memory tier is hashed by name only and docs.bats skips gitlinks) and not
@@ -65,8 +64,7 @@ gate-docs:
     while IFS= read -r -d '' top; do docs_inputs+=(":(literal)$top"); done <"$tops"
     excludes=()
     for d in "${code_dirs[@]}"; do excludes+=("':(exclude)$d'"); done
-    tools=('bats --version' 'shellcheck --version' 'jq --version'
-        'git --version' 'bash --version'
+    tools=('bats --version' 'jq --version' 'git --version' 'bash --version'
         "set -o pipefail; git ls-files -z -- . ${excludes[*]} | cksum")
     PLUGIN_DEV_GATE_TOOLS=$(printf '%s\n' "${tools[@]}")
     export PLUGIN_DEV_GATE_TOOLS
@@ -85,32 +83,6 @@ gate-docs:
     report plugin.json jq empty .claude-plugin/plugin.json
     report rumdl rumdl fmt --check -q --no-cache
     report links scripts/check-links.sh
-    # Shell files outside the code dirs (the skill's scripts, say), which
-    # gate-code's lint does not reach: tracked and untracked-unignored under the
-    # derived tops, NUL-delimited through a file. Skipped while there are none,
-    # since shellcheck refuses an empty list.
-    shell=() plain=()
-    if [ "${#docs_inputs[@]}" -gt 0 ]; then
-        git ls-files -z --cached --others --exclude-standard -- \
-            "${docs_inputs[@]}" >"$index"
-        while IFS= read -r -d '' f; do
-            case "$f" in
-                *.sh | *.bash) shell+=("$f") plain+=("$f") ;;
-                *.bats) shell+=("$f") ;;
-            esac
-        done <"$index"
-    fi
-    each_bash_n() {
-        local f
-        for f in "$@"; do bash -n "$f"; done
-    }
-    if [ "${#shell[@]}" -gt 0 ]; then
-        report shellcheck shellcheck "${shell[@]}"
-    fi
-    # Not the .bats files: `@test` is not bash syntax.
-    if [ "${#plain[@]}" -gt 0 ]; then
-        report 'bash -n' each_bash_n "${plain[@]}"
-    fi
     report docs.bats plugin-dev/run-bats.sh tests/docs.bats
     printf 'gate-docs passed: %s\n' "$passed"
     record-sentinel

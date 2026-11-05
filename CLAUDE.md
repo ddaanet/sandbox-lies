@@ -19,7 +19,9 @@ does updates it there.
   over every tracked top-level entry that is not a code dir (derived from the
   index, so a new one needs no edit). `gate-code` parses `hooks.json`, runs
   shellcheck, `bash -n`, the Python compile check and every other bats suite
-  over `lib hooks scripts bin tests plugin-dev`. A prose-only commit pays for
+  over `lib hooks scripts bin tests plugin-dev`. A shell script outside the code
+  dirs goes unlinted until its directory joins `code_dirs`, whose copy in
+  `tests/helpers/sweep.bash` is kept in step. A prose-only commit pays for
   `gate-docs` alone and a code-only one for `gate-code` alone; a file one gate's
   checks run from a code dir (`lib/matchers.sh`, `scripts/check-links.sh`)
   reruns both. Neither reads `TASK.md` or `TODO.md`, so editing either leaves
