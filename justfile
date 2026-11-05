@@ -82,10 +82,11 @@ precommit: check-refs task-files
     printf 'precommit passed: %s\n' "$passed"
     record-sentinel
 
-# The checks that read TASK.md and TODO.md, and nothing else does: the detector
-# matchers, the line cap and the link check. Never cached, and a dependency of
-# precommit, so editing either file reruns this and leaves the cached main gate
-# standing (the main gate's hash excludes both). The matchers walk the files
+# The checks that read TASK.md and TODO.md, which the cached main gate does not
+# (uncached check-refs reads them too): the detector matchers, the line cap and
+# the link check. Never cached, and a dependency of precommit, so editing either
+# file reruns this and leaves the cached main gate standing (the main gate's
+# hash excludes both). The matchers walk the files
 # `git ls-files` reports, as the scripts do, and skip one gone from the work
 # tree. lib/matchers.sh exits 1 when quiet, 0 with verdict names when firing
 # and above 1 when bash itself failed; the file reaches it on fd 3, opened

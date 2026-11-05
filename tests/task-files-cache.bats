@@ -1,9 +1,10 @@
 #!/usr/bin/env bats
 # Editing TASK.md or TODO.md leaves the main gate's cached pass standing, and
 # `precommit` still refuses a firing one through `task-files`. The real
-# `precommit` runs in a scratch clone of this repository, with the working
-# tree's gate code copied over it so uncommitted work is what is tested. The
-# script and recipe cases are in tests/task-files.bats.
+# `precommit` runs in a scratch repository holding what the working tree holds,
+# so uncommitted work is what is tested and no commit of this repository is an
+# input, with its own quiet TODO.md and TASK.md, so the real ones do not reach
+# this suite. The script and recipe cases are in tests/task-files.bats.
 
 ROOT="${BATS_TEST_DIRNAME}/.."
 
@@ -16,33 +17,66 @@ firing_line() {
   printf '%s%s  1 root root 1, 3 Jan  1 00:00 %s\n' c rw-rw-rw- .bashrc
 }
 
-# A clone of this repository, with the working tree's gate code and these
-# suites copied over it so uncommitted work is what runs. shellcheck and rumdl
-# are stubs and the clone's bats runner a spy appending a line to $SPY_LOG: the
-# cases are about whether the gate runs, and the slow checks are not what they
-# assert.
-make_gate_clone() {
-  CLONE="$BATS_TEST_TMPDIR/clone"
+# Copy into $2 the tracked and untracked non-ignored files of the work tree $1:
+# regular files and symlinks only, so a gitlink's contents, a path deleted from
+# the work tree and a sandbox's char-device mask stay out. Through a
+# NUL-delimited list and an archive file, so names with whitespace survive and
+# a failure of git or tar stops the case, which a pipe would hide.
+copy_work_tree() {
+  local src="$1" dst="$2" scratch list index others meta path mode
+  scratch=$(mktemp -d "$BATS_TEST_TMPDIR/copy.XXXXXX")
+  list="$scratch/list" index="$scratch/index" others="$scratch/others"
+  git -C "$src" ls-files -z -s >"$index"
+  git -C "$src" ls-files -z --others --exclude-standard >"$others"
+  : >"$list"
+  # `-s` prefixes each path with `<mode> <object> <stage>` and a tab; 160000 is
+  # a gitlink.
+  while IFS= read -r -d '' meta; do
+    path=${meta#*$'\t'}
+    mode=${meta%% *}
+    [ "$mode" != 160000 ] || continue
+    if [ -f "$src/$path" ] || [ -L "$src/$path" ]; then
+      printf '%s\0' "$path" >>"$list"
+    fi
+  done <"$index"
+  while IFS= read -r -d '' path; do
+    if [ -f "$src/$path" ] || [ -L "$src/$path" ]; then
+      printf '%s\0' "$path" >>"$list"
+    fi
+  done <"$others"
+  tar -cf "$scratch/tree.tar" -C "$src" --null -T "$list"
+  mkdir -p "$dst"
+  tar -xf "$scratch/tree.tar" -C "$dst"
+}
+
+# A fresh repository holding what this working tree holds, every file committed
+# (a new file need not be committed here to be tested), TODO.md and TASK.md
+# replaced by a quiet line. shellcheck and rumdl are stubs and the tree's bats
+# runner a spy appending a line to $SPY_LOG: the cases are about whether the
+# gate runs, and the slow checks are not what they assert.
+make_gate_tree() {
+  GATE_TREE="$BATS_TEST_TMPDIR/gate-tree"
   STUBS="$BATS_TEST_TMPDIR/stubs"
   SPY_LOG="$BATS_TEST_TMPDIR/bats-runs"
-  git clone -q "$ROOT" "$CLONE"
-  cp "$ROOT/justfile" "$CLONE/"
-  cp -R "$ROOT/scripts/." "$CLONE/scripts/"
-  cp -R "$ROOT/lib/." "$CLONE/lib/"
-  cp "$ROOT/tests/docs.bats" "$ROOT"/tests/task-files*.bats "$CLONE/tests/"
+  copy_work_tree "$ROOT" "$GATE_TREE"
+  printf 'quiet\n' >"$GATE_TREE/TODO.md"
+  printf 'quiet\n' >"$GATE_TREE/TASK.md"
+  git -C "$GATE_TREE" init -q
+  git -C "$GATE_TREE" add -A -f
+  git -C "$GATE_TREE" commit -q -m scratch
   mkdir -p "$STUBS"
   printf '#!/bin/sh\nexit 0\n' >"$STUBS/shellcheck"
   cp "$STUBS/shellcheck" "$STUBS/rumdl"
   chmod 755 "$STUBS/shellcheck" "$STUBS/rumdl"
   printf '#!/bin/sh\necho run >>"%s"\nexit 0\n' "$SPY_LOG" \
-    >"$CLONE/plugin-dev/run-bats.sh"
+    >"$GATE_TREE/plugin-dev/run-bats.sh"
   : >"$SPY_LOG"
 }
 
-# The real `just precommit` in the clone, on a PATH with the stubs first and
+# The real `just precommit` in the gate tree, on a PATH with the stubs first and
 # a sentinel directory of its own.
 run_gate() {
-  cd "$CLONE" && PATH="$STUBS:$PATH" run env -u PLUGIN_DEV_GATE_FORCE \
+  cd "$GATE_TREE" && PATH="$STUBS:$PATH" run env -u PLUGIN_DEV_GATE_FORCE \
     -u PLUGIN_DEV_GATE_DIR just precommit
 }
 
@@ -51,15 +85,15 @@ spy_runs() {
 }
 
 @test "editing TODO.md or TASK.md leaves the main gate cached; another root input does not" {
-  make_gate_clone
+  make_gate_tree
   run_gate
-  [ "$status" -eq 0 ]
+  [ "$status" -eq 0 ] || { echo "$output" >&2; return 1; }
   [[ "$output" == *"precommit passed:"* ]]
   [ "$(spy_runs)" -eq 1 ]
 
   local f
   for f in TODO.md TASK.md; do
-    printf 'one more line\n' >>"$CLONE/$f"
+    printf 'one more line\n' >>"$GATE_TREE/$f"
     run_gate
     [ "$status" -eq 0 ]
     [[ "$output" == *"precommit: cached"* ]]
@@ -69,7 +103,7 @@ spy_runs() {
 
   # Control: an edit to another root markdown input is not cached, or the
   # assertions above would hold of a gate that never reruns.
-  printf 'one more line\n' >>"$CLONE/README.md"
+  printf 'one more line\n' >>"$GATE_TREE/README.md"
   run_gate
   [ "$status" -eq 0 ]
   [[ "$output" == *"precommit passed:"* ]]
@@ -78,12 +112,42 @@ spy_runs() {
 }
 
 @test "precommit refuses a firing TODO.md through task-files before the main gate runs" {
-  make_gate_clone
-  firing_line >"$CLONE/TODO.md"
+  make_gate_tree
+  firing_line >"$GATE_TREE/TODO.md"
   run_gate
   [ "$status" -ne 0 ]
   [[ "$output" == *TODO.md* ]]
   [[ "$output" == *phantom-chardev* ]]
   [[ "$output" != *"precommit passed"* ]]
   [ "$(spy_runs)" -eq 0 ]
+}
+
+@test "copy_work_tree takes tracked and untracked files, whitespace intact, and nothing else" {
+  local src="$BATS_TEST_TMPDIR/src" dst="$BATS_TEST_TMPDIR/dst" sha
+  mkdir -p "$src/sp ace/deep" "$src/link/inside"
+  git -C "$src" init -q
+  printf 'ignored.txt\n' >"$src/.gitignore"
+  printf 'tracked\n' >"$src/sp ace/deep/tra cked.txt"
+  printf 'x\ty\n' >"$src/ta"$'\t'"b.txt"
+  printf '#!/bin/sh\n' >"$src/run.sh"
+  chmod 755 "$src/run.sh"
+  printf 'gone\n' >"$src/gone.txt"
+  git -C "$src" add -A
+  git -C "$src" commit -q -m base
+  sha=$(git -C "$src" rev-parse HEAD)
+  git -C "$src" update-index --add --cacheinfo "160000,$sha,link"
+  printf 'inside the gitlink\n' >"$src/link/inside/file"
+  rm "$src/gone.txt"
+  printf 'untracked\n' >"$src/un tracked.txt"
+  printf 'ignored\n' >"$src/ignored.txt"
+
+  copy_work_tree "$src" "$dst"
+
+  [ -f "$dst/sp ace/deep/tra cked.txt" ]
+  [ -f "$dst/ta"$'\t'"b.txt" ]
+  [ -f "$dst/un tracked.txt" ]
+  [ -x "$dst/run.sh" ]
+  [ ! -e "$dst/link" ]
+  [ ! -e "$dst/gone.txt" ]
+  [ ! -e "$dst/ignored.txt" ]
 }

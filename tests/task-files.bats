@@ -7,7 +7,7 @@
 # - the recipe, run over a scratch tree holding the justfile, scripts/ and lib/;
 # - the tests/docs.bats sweep skipping both, run over a scratch tree.
 #
-# The real `precommit` in a scratch clone is in tests/task-files-cache.bats.
+# The real `precommit` in a scratch repository is in tests/task-files-cache.bats.
 
 load helpers/fixture-root
 load helpers/bsd-stubs
