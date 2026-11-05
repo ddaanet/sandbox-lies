@@ -170,8 +170,8 @@ whether each session id a `--resume` refusal names has a transcript, never
 opening one. Done (partly not gated).
 
 **NFR-5 — Size and links.** Every file `just check-size` reads is at most 20000
-bytes (a `SKILL.md` at most 10000), and every inline relative link resolves
-(reference style unchecked). Done.
+bytes (a `SKILL.md` at most 10000), and every relative link resolves, inline or
+reference style (`just check-refs`). Done.
 
 ## Architecture
 

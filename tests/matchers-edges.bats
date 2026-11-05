@@ -5,7 +5,7 @@
 # stdin. tests/matchers.bats holds the recorded fixtures.
 #
 # Every diagnostic here is assembled from fragments, so no source line reads
-# a firing line whole and the self-quiet sweep (FR-11, tests/docs.bats) stays
+# a firing line whole and the self-quiet sweep (FR-11, tests/sweep-code.bats) stays
 # quiet on this file.
 
 ROOT="${BATS_TEST_DIRNAME}/.."
@@ -183,7 +183,7 @@ tmpdir_unset_quoted_words_pair() {
   # item-2-3-s8-code-review.md F1: `read -r -d ''` stops at the first NUL, a
   # silent false negative for a firing line that arrives after one. The
   # firing line is assembled from two fragments at run time, never written
-  # whole to this file, so the self-quiet sweep (FR-11, tests/docs.bats)
+  # whole to this file, so the self-quiet sweep (FR-11, tests/sweep-code.bats)
   # stays quiet under this test too.
   local frag1 frag2 input_file
   frag1='could not lock config file .git/config: File'

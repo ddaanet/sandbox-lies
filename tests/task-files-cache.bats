@@ -17,7 +17,7 @@ load helpers/git-env
 load helpers/gate-tree
 
 # A line that fires the phantom-chardev detector, built from fragments so this
-# file stays quiet under the tests/docs.bats sweep.
+# file stays quiet under the tests/sweep-code.bats sweep.
 firing_line() {
   printf '%s%s  1 root root 1, 3 Jan  1 00:00 %s\n' c rw-rw-rw- .bashrc
 }
@@ -98,12 +98,17 @@ firing_line() {
 
 @test "precommit refuses a skill whose frontmatter lacks a description" {
   make_gate_tree
-  local skill="$GATE_TREE/skills/sandbox-lies/SKILL.md"
+  local skill rel="" f
+  # Whichever skill the tree holds, so a rename elsewhere cannot stale this case.
+  for f in "$GATE_TREE"/skills/*/SKILL.md; do
+    [ -f "$f" ] && { skill=$f; rel=${f#"$GATE_TREE"/}; break; }
+  done
+  [ -n "$rel" ] || { echo "no skills/*/SKILL.md in the gate tree" >&2; return 1; }
   grep -v '^description:' "$skill" >"$skill.new"
   mv "$skill.new" "$skill"
   run_gate
   [ "$status" -ne 0 ]
-  [[ "$output" == *"skills/sandbox-lies/SKILL.md"* ]]
+  [[ "$output" == *"$rel"* ]]
   [[ "$output" == *description* ]]
   [[ "$output" != *"precommit passed"* ]]
   [ "$(spy_runs)" -eq 0 ]

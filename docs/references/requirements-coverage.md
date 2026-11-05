@@ -81,5 +81,6 @@ probe, `tests/probes-edges.bats` those two probes, `tests/check-jq.bats` the
 and `tests/probes-resume-tree.bats` its other half (no transcript opened). Done
 (read scope: `resume-lost`'s pinned, the rest review, not gated).
 
-**NFR-5** — Where · pinned by: `just check-size`, `scripts/check-links.sh` ·
-both run in `just precommit`.
+**NFR-5** — Where · pinned by: `just check-size`, `scripts/check-links.sh`,
+`just check-refs` (which checks reference-style links too) · all run in
+`just precommit`.

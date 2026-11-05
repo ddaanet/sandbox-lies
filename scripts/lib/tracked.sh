@@ -10,7 +10,7 @@
 # their own: `*/*.md` turns them away before `*.md`, which a `case` `*`
 # crossing `/` would otherwise let match `plans/x.md`. The root TASK.md and
 # TODO.md are out too: the `task-files` recipe checks them through
-# `--task-files` (see parse_root), so the main gate does not read them.
+# `--task-files` (see parse_root), so the cached gates do not read them.
 markdown_in_scope() {
     case "$1" in
     docs/*.md) return 0 ;;

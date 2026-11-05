@@ -9,7 +9,7 @@
 # (scripts/lib/tracked.sh), which
 # leaves out the root TASK.md and TODO.md: with `--task-files` the run checks
 # those two alone, tracked ones only. `just task-files` runs the flag, so an
-# edit to either does not discard the cached precommit pass.
+# edit to either does not discard a cached gate pass.
 #
 # Exit codes: 0 clean, 1 on any broken link, 2 on a failure to run.
 

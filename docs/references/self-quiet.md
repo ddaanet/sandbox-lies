@@ -1,8 +1,8 @@
 # Self-quiet
 
 The argument behind `docs/design.md` D-10 and the files FR-11 exempts; read it
-before adding text that quotes a diagnostic, or when `tests/docs.bats` fires on
-a file.
+before adding text that quotes a diagnostic, or when `tests/docs.bats` or
+`tests/sweep-code.bats` fires on a file.
 
 ## D-10 — Self-reference is handled at the document, not the matcher
 

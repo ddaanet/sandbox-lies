@@ -2,7 +2,7 @@
 # Shared by tests/corpus-eval.bats and tests/extract-fixtures.bats: JSONL
 # transcript lines written at run time under a scratch HOME, so no case reads
 # the host's ~/.claude. Diagnostic text is joined from fragments here, never
-# spelled whole, so tests/docs.bats stays quiet over the suites.
+# spelled whole, so tests/sweep-code.bats stays quiet over the suites.
 
 # corpus_use <id> <ts> <command> — a Bash tool_use line
 corpus_use() {

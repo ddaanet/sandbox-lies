@@ -40,9 +40,17 @@ edit_expecting() {
   expect_ran "$2" "$3" || { echo "edited: $path" >&2; return 1; }
 }
 
-# A tracked file of the gate tree's top-level directory $1.
+# The first tracked file of the gate tree's top-level directory $1 that only
+# gate-docs hashes: one of BOTH_FILES would rerun gate-code too, and a deletion
+# in the real tree must not change which file a case samples.
 first_file_under() {
-  git -C "$GATE_TREE" ls-files -z -- "$1" | { IFS= read -r -d '' f && printf '%s' "$f"; }
+  local f b
+  while IFS= read -r -d '' f; do
+    for b in "${BOTH_FILES[@]}"; do [ "$f" != "$b" ] || continue 2; done
+    printf '%s' "$f"
+    return 0
+  done < <(git -C "$GATE_TREE" ls-files -z -- "$1")
+  return 1
 }
 
 # The gate tree's tracked top-level entries, NUL-delimited, gitlinks left out.
@@ -166,10 +174,10 @@ setup() {
   expect_ran 1 0
 }
 
-@test "each gate's tool lines reach its own hash: shellcheck and the memory file rerun gate-code alone" {
+@test "each gate's tool lines reach its own hash: shellcheck reruns both, the memory file gate-code alone" {
   printf 'ShellCheck 9.9.9\n' >"$STUBS/shellcheck.version"
   run_gates
-  expect_ran 0 1
+  expect_ran 1 1
   mkdir -p "$GATE_TREE/memory/ddaanet"
   printf 'a fact\n' >"$GATE_TREE/memory/ddaanet/sandbox-effects.md"
   run_gates
@@ -177,4 +185,29 @@ setup() {
   printf 'another fact\n' >>"$GATE_TREE/memory/ddaanet/sandbox-effects.md"
   run_gates
   expect_ran 0 1
+}
+
+@test "a skills/ script with a syntax error fails gate-docs, and gate-code is not involved" {
+  mkdir -p "$GATE_TREE/skills/sandbox-lies/scripts"
+  printf '#!/usr/bin/env bash\nif then\n' >"$GATE_TREE/skills/sandbox-lies/scripts/broken.sh"
+  cd "$GATE_TREE"
+  PATH="$STUBS:$PATH" run env -u PLUGIN_DEV_GATE_FORCE -u PLUGIN_DEV_GATE_DIR \
+    just gate-docs
+  [ "$status" -ne 0 ]
+  [[ "$output" == *broken.sh* ]]
+  [[ "$output" != *"gate-docs passed"* ]]
+  PATH="$STUBS:$PATH" run env -u PLUGIN_DEV_GATE_FORCE -u PLUGIN_DEV_GATE_DIR \
+    just gate-code
+  [ "$status" -eq 0 ]
+  [ "$output" = "gate-code: cached (inputs unchanged)" ]
+}
+
+@test "both gates pass with BSD sed, grep, mktemp, stat and wc ahead on PATH" {
+  local bsd="$BATS_TEST_TMPDIR/bsdtools"
+  make_bsd_stubs "$bsd" sed grep mktemp stat wc
+  PATH="$bsd:$PATH"
+  # Edits that rerun each gate, so both recipes run their bodies under the stubs.
+  touch_file justfile
+  run_gates
+  expect_ran 1 1
 }

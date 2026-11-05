@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 # TASK.md and TODO.md have a gate of their own: `just task-files`, which
-# `precommit` depends on and which is never cached. The main gate stops reading
-# them, so an edit to either leaves its cached pass standing.
+# `precommit` depends on and which is never cached. The cached gates stop reading
+# them, so an edit to either leaves their cached passes standing.
 #
 # - `--task-files` on scripts/check-links.sh;
 # - the recipe, run over a scratch tree holding the justfile, scripts/ and lib/;
@@ -16,7 +16,7 @@ load helpers/git-env
 LINKS="$ROOT/scripts/check-links.sh"
 
 # A line that fires the phantom-chardev detector, built from fragments so this
-# file stays quiet under the tests/docs.bats sweep.
+# file stays quiet under the tests/sweep-code.bats sweep.
 firing_line() {
   printf '%s%s  1 root root 1, 3 Jan  1 00:00 %s\n' c rw-rw-rw- .bashrc
 }
@@ -241,7 +241,7 @@ run_recipe() {
   [[ "$stderr$output" == *phantom-chardev* ]]
 }
 
-# ---- the main gate stops reading them ----
+# ---- the cached gates stop reading them ----
 
 @test "the docs.bats sweep ignores a firing TODO.md and TASK.md, and still catches other files" {
   # A scratch tree holding the real suite, its helpers and matchers, and the
