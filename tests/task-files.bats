@@ -5,8 +5,9 @@
 #
 # - `--task-files` on scripts/check-line-limits.sh and scripts/check-links.sh;
 # - the recipe, run over a scratch tree holding the justfile, scripts/ and lib/;
-# - the tests/docs.bats sweep skipping both, run over a scratch tree;
-# - the real `precommit`, run in a scratch clone with its slow parts stubbed.
+# - the tests/docs.bats sweep skipping both, run over a scratch tree.
+#
+# The real `precommit` in a scratch clone is in tests/task-files-cache.bats.
 
 load helpers/fixture-root
 load helpers/bsd-stubs
@@ -337,77 +338,4 @@ run_recipe() {
       _ "$ROOT" "$path"
     [ "$status" -eq "${want##*:}" ]
   done
-}
-
-# ---- the cached main gate ----
-
-# A clone of this repository, with the working tree's gate code copied over
-# it so uncommitted work is what runs. shellcheck and rumdl are stubs and the
-# clone's bats runner a spy appending a line to $SPY_LOG: the cases are about
-# whether the gate runs, and the slow checks are not what they assert.
-make_gate_clone() {
-  CLONE="$BATS_TEST_TMPDIR/clone"
-  STUBS="$BATS_TEST_TMPDIR/stubs"
-  SPY_LOG="$BATS_TEST_TMPDIR/bats-runs"
-  git clone -q "$ROOT" "$CLONE"
-  cp "$ROOT/justfile" "$CLONE/"
-  cp -R "$ROOT/scripts/." "$CLONE/scripts/"
-  cp -R "$ROOT/lib/." "$CLONE/lib/"
-  cp "$ROOT/tests/docs.bats" "$CLONE/tests/"
-  mkdir -p "$STUBS"
-  printf '#!/bin/sh\nexit 0\n' >"$STUBS/shellcheck"
-  cp "$STUBS/shellcheck" "$STUBS/rumdl"
-  chmod 755 "$STUBS/shellcheck" "$STUBS/rumdl"
-  printf '#!/bin/sh\necho run >>"%s"\nexit 0\n' "$SPY_LOG" \
-    >"$CLONE/plugin-dev/run-bats.sh"
-  : >"$SPY_LOG"
-}
-
-# The real `just precommit` in the clone, on a PATH with the stubs first and
-# a sentinel directory of its own.
-run_gate() {
-  cd "$CLONE" && PATH="$STUBS:$PATH" run env -u PLUGIN_DEV_GATE_FORCE \
-    -u PLUGIN_DEV_GATE_DIR just precommit
-}
-
-spy_runs() {
-  wc -l <"$SPY_LOG" | tr -d ' '
-}
-
-@test "editing TODO.md or TASK.md leaves the main gate cached; another root input does not" {
-  make_gate_clone
-  run_gate
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"precommit passed:"* ]]
-  [ "$(spy_runs)" -eq 1 ]
-
-  local f
-  for f in TODO.md TASK.md; do
-    printf 'one more line\n' >>"$CLONE/$f"
-    run_gate
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"precommit: cached"* ]]
-    [[ "$output" == *"task-files passed"* ]]
-    [ "$(spy_runs)" -eq 1 ]
-  done
-
-  # Control: an edit to another root markdown input is not cached, or the
-  # assertions above would hold of a gate that never reruns.
-  printf 'one more line\n' >>"$CLONE/README.md"
-  run_gate
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"precommit passed:"* ]]
-  [[ "$output" != *"precommit: cached"* ]]
-  [ "$(spy_runs)" -eq 2 ]
-}
-
-@test "precommit refuses a firing TODO.md through task-files before the main gate runs" {
-  make_gate_clone
-  firing_line >"$CLONE/TODO.md"
-  run_gate
-  [ "$status" -ne 0 ]
-  [[ "$output" == *TODO.md* ]]
-  [[ "$output" == *phantom-chardev* ]]
-  [[ "$output" != *"precommit passed"* ]]
-  [ "$(spy_runs)" -eq 0 ]
 }
