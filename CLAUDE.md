@@ -10,14 +10,15 @@ does updates it there.
   first runs the toolkit's uncached `check-refs`, `check-size` (20000 bytes a
   file, 10000 a `SKILL.md`; a file that cannot be split, such as a recorded
   fixture, is marked `linguist-generated` in `.gitattributes`) and
-  `check-frontmatter`, which read every non-ignored file, `TASK.md` and
-  `TODO.md` included. It then parses the two JSON manifests and runs shellcheck,
-  `bash -n`, the rumdl wrap check, the link check, a Python compile check and
-  the bats suites. `just task-files`, which `precommit` depends on and never
-  caches, runs the matchers and the link check over `TASK.md` and `TODO.md`
-  alone; the main gate does not read them, so editing either leaves its cached
-  pass standing. `just format-docs` re-wraps markdown. After an `.envrc` edit,
-  run it as `direnv exec . just precommit` until direnv is re-allowed.
+  `check-frontmatter`. `check-refs` and `check-size` read `TASK.md` and
+  `TODO.md`; `check-frontmatter` reads only skills, agents and commands. It then
+  parses the two JSON manifests and runs shellcheck, `bash -n`, the rumdl wrap
+  check, the link check, a Python compile check and the bats suites.
+  `just task-files`, which `precommit` depends on and never caches, runs the
+  matchers and the link check over `TASK.md` and `TODO.md` alone; the main gate
+  does not read them, so editing either leaves its cached pass standing.
+  `just format-docs` re-wraps markdown. After an `.envrc` edit, run it as
+  `direnv exec . just precommit` until direnv is re-allowed.
 - **No live file may fire a detector.** `tests/docs.bats` runs the matchers over
   every tracked file except two exemptions: `tests/fixtures/`, and three dated
   pilot files under `plans/`. `TASK.md` and `TODO.md` are skipped there because

@@ -98,7 +98,9 @@ every later sandboxed call masking inside it. In order of preference:
 - Or end the call with a `cd <root>` line.
 
 `git -C`, a git absolute-path argument, a `cd` and a subshell each keep the call
-sandboxed under any `excludedCommands` entry; the classifier cost of each:
+sandboxed under any `excludedCommands` entry. Run with
+`dangerouslyDisableSandbox`, `git -C`, a subshell and a `cd` beside git each
+cost a classifier call, absent an allow rule:
 [references/excluded-commands.md](references/excluded-commands.md).
 
 ## Writing a recipe or script that must run unsandboxed

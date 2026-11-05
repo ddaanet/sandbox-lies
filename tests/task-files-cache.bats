@@ -143,6 +143,22 @@ spy_runs() {
   [ "$(spy_runs)" -eq 0 ]
 }
 
+@test "precommit refuses a TODO.md past the byte cap after a cached pass" {
+  make_gate_tree
+  run_gate
+  [ "$status" -eq 0 ] || { echo "$output" >&2; return 1; }
+  [ "$(spy_runs)" -eq 1 ]
+
+  # Built at run time: this file stays under the cap itself. A check inside the
+  # guarded body would not see this edit: the main gate's hash excludes TODO.md.
+  head -c 20001 /dev/zero | tr '\0' x >"$GATE_TREE/TODO.md"
+  run_gate
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"oversized-file: TODO.md"* ]]
+  [[ "$output" != *"precommit passed"* ]]
+  [ "$(spy_runs)" -eq 1 ]
+}
+
 @test "precommit refuses a skill whose frontmatter lacks a description" {
   make_gate_tree
   local skill="$GATE_TREE/skills/sandbox-lies/SKILL.md"

@@ -169,9 +169,9 @@ call's, or with no path the payload `cwd`'s; the lock paths the error names; and
 whether each session id a `--resume` refusal names has a transcript, never
 opening one. Done (partly not gated).
 
-**NFR-5 — Size and links.** Every document, script, awk, TOML or JSON file and
-`justfile` is at most 400 lines (a `SKILL.md` at most 200), and every inline
-relative link resolves (reference style unchecked). Done.
+**NFR-5 — Size and links.** Every file `just check-size` reads is at most 20000
+bytes (a `SKILL.md` at most 10000), and every inline relative link resolves
+(reference style unchecked). Done.
 
 ## Architecture
 
