@@ -19,14 +19,15 @@ does updates it there.
   over every tracked top-level entry that is not a code dir (derived from the
   index, so a new one needs no edit). `gate-code` parses `hooks.json`, runs
   shellcheck, `bash -n`, the Python compile check and every other bats suite
-  over `lib hooks scripts bin tests plugin-dev`. A tracked shell file outside
-  the code dirs fails `gate-docs`, since no gate lints it. A prose-only commit
-  pays for `gate-docs` alone and a code-only one for `gate-code` alone; a file
-  one gate's checks run from a code dir (`lib/matchers.sh`,
-  `scripts/check-links.sh`) reruns both. Neither reads `TASK.md` or `TODO.md`,
-  so editing either leaves both passes standing. `just test` runs every suite,
-  `tests/docs.bats` too. `just format-docs` re-wraps markdown. After an `.envrc`
-  edit, run it as `direnv exec . just precommit` until direnv is re-allowed.
+  over `lib hooks scripts bin tests plugin-dev`. A tracked file named `*.sh`,
+  `*.bash` or `*.bats` outside the code dirs fails `gate-docs`, since no gate
+  lints it. A prose-only commit pays for `gate-docs` alone and a code-only one
+  for `gate-code` alone; a file one gate's checks run from a code dir
+  (`lib/matchers.sh`, `scripts/check-links.sh`) reruns both. Neither reads
+  `TASK.md` or `TODO.md`, so editing either leaves both passes standing.
+  `just test` runs every suite, `tests/docs.bats` too. `just format-docs`
+  re-wraps markdown. After an `.envrc` edit, run it as
+  `direnv exec . just precommit` until direnv is re-allowed.
 - **No live file may fire a detector.** The matchers run over every tracked file
   except two exemptions: `tests/fixtures/`, and three dated pilot files under
   `plans/`. `tests/docs.bats` sweeps the files outside the code dirs and

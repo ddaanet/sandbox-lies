@@ -102,7 +102,7 @@ gate-docs:
             done <"$index"
         fi
         if [ "$bad" -ne 0 ]; then
-            echo "No gate lints these: move them under a code dir." >&2
+            echo "No gate lints these: move them under a code dir, one dist.include names if the plugin ships them." >&2
             return 1
         fi
     }
