@@ -3,8 +3,8 @@
 # `precommit` still refuses a firing one through `task-files`. The real
 # `precommit` runs in a scratch repository holding what the working tree holds,
 # so uncommitted work is what is tested and no commit of this repository is an
-# input, with its own quiet TODO.md and TASK.md, so the real ones do not reach
-# this suite. The script and recipe cases are in tests/task-files.bats.
+# input, with its own quiet TODO.md and TASK.md, so the real ones' content does
+# not reach this suite. The script and recipe cases are in tests/task-files.bats.
 
 ROOT="${BATS_TEST_DIRNAME}/.."
 
@@ -52,11 +52,12 @@ copy_work_tree() {
   tar -xf "$scratch/tree.tar" -C "$dst"
 }
 
-# A fresh repository holding what this working tree holds, tracked here exactly
-# what is tracked there, so an unrelated untracked draft is out of the
-# tracked-only checks in both, and TODO.md and TASK.md replaced by a quiet line. shellcheck and rumdl are stubs and the tree's bats
-# runner a spy appending a line to $SPY_LOG: the cases are about whether the
-# gate runs, and the slow checks are not what they assert.
+# A fresh repository holding what this working tree holds. A file tracked there
+# and still on disk is tracked here, so an unrelated untracked draft stays out
+# of the tracked-only checks in both. TODO.md and TASK.md are replaced by a
+# quiet line. shellcheck and rumdl are stubs and the tree's bats runner a spy
+# appending a line to $SPY_LOG: the cases are about whether the gate runs, and
+# the slow checks are not what they assert.
 make_gate_tree() {
   GATE_TREE="$BATS_TEST_TMPDIR/gate-tree"
   STUBS="$BATS_TEST_TMPDIR/stubs"
