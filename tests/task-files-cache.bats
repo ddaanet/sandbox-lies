@@ -21,14 +21,16 @@ firing_line() {
 # regular files and symlinks only, so a gitlink's contents, a path deleted from
 # the work tree and a sandbox's char-device mask stay out. Through a
 # NUL-delimited list and an archive file, so names with whitespace survive and
-# a failure of git or tar stops the case, which a pipe would hide.
+# a failure of git or tar stops the case, which a pipe would hide. Writes to $3
+# the NUL-delimited paths among them that $1 tracks.
 copy_work_tree() {
-  local src="$1" dst="$2" scratch list index others meta path mode
+  local src="$1" dst="$2" tracked="$3" scratch list index others meta path mode
   scratch=$(mktemp -d "$BATS_TEST_TMPDIR/copy.XXXXXX")
   list="$scratch/list" index="$scratch/index" others="$scratch/others"
   git -C "$src" ls-files -z -s >"$index"
   git -C "$src" ls-files -z --others --exclude-standard >"$others"
   : >"$list"
+  : >"$tracked"
   # `-s` prefixes each path with `<mode> <object> <stage>` and a tab; 160000 is
   # a gitlink.
   while IFS= read -r -d '' meta; do
@@ -37,6 +39,7 @@ copy_work_tree() {
     [ "$mode" != 160000 ] || continue
     if [ -f "$src/$path" ] || [ -L "$src/$path" ]; then
       printf '%s\0' "$path" >>"$list"
+      printf '%s\0' "$path" >>"$tracked"
     fi
   done <"$index"
   while IFS= read -r -d '' path; do
@@ -49,20 +52,22 @@ copy_work_tree() {
   tar -xf "$scratch/tree.tar" -C "$dst"
 }
 
-# A fresh repository holding what this working tree holds, every file committed
-# (a new file need not be committed here to be tested), TODO.md and TASK.md
-# replaced by a quiet line. shellcheck and rumdl are stubs and the tree's bats
+# A fresh repository holding what this working tree holds, tracked here exactly
+# what is tracked there, so an unrelated untracked draft is out of the
+# tracked-only checks in both, and TODO.md and TASK.md replaced by a quiet line. shellcheck and rumdl are stubs and the tree's bats
 # runner a spy appending a line to $SPY_LOG: the cases are about whether the
 # gate runs, and the slow checks are not what they assert.
 make_gate_tree() {
   GATE_TREE="$BATS_TEST_TMPDIR/gate-tree"
   STUBS="$BATS_TEST_TMPDIR/stubs"
   SPY_LOG="$BATS_TEST_TMPDIR/bats-runs"
-  copy_work_tree "$ROOT" "$GATE_TREE"
+  copy_work_tree "$ROOT" "$GATE_TREE" "$BATS_TEST_TMPDIR/tracked"
   printf 'quiet\n' >"$GATE_TREE/TODO.md"
   printf 'quiet\n' >"$GATE_TREE/TASK.md"
   git -C "$GATE_TREE" init -q
-  git -C "$GATE_TREE" add -A -f
+  # -f: a file tracked there despite .gitignore stays tracked here.
+  xargs -0 git --literal-pathspecs -C "$GATE_TREE" add -f -- \
+    <"$BATS_TEST_TMPDIR/tracked"
   git -C "$GATE_TREE" commit -q -m scratch
   mkdir -p "$STUBS"
   printf '#!/bin/sh\nexit 0\n' >"$STUBS/shellcheck"
@@ -141,7 +146,7 @@ spy_runs() {
   printf 'untracked\n' >"$src/un tracked.txt"
   printf 'ignored\n' >"$src/ignored.txt"
 
-  copy_work_tree "$src" "$dst"
+  copy_work_tree "$src" "$dst" "$BATS_TEST_TMPDIR/tracked"
 
   [ -f "$dst/sp ace/deep/tra cked.txt" ]
   [ -f "$dst/ta"$'\t'"b.txt" ]
@@ -150,4 +155,8 @@ spy_runs() {
   [ ! -e "$dst/link" ]
   [ ! -e "$dst/gone.txt" ]
   [ ! -e "$dst/ignored.txt" ]
+  # The untracked file is copied but not reported as tracked; the others are.
+  local want
+  want=$(printf '%s\n' .gitignore run.sh 'sp ace/deep/tra cked.txt' $'ta\tb.txt')
+  [ "$(tr '\0' '\n' <"$BATS_TEST_TMPDIR/tracked" | LC_ALL=C sort)" = "$want" ]
 }
