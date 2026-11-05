@@ -13,12 +13,13 @@
 # rest. On the unchanged code a dense word's t(4N)/t(N) is 7.4 to 10.3 on bash
 # 5.2 and a plain word's 3.8 to 4.4, so no bound between 4 and 16 separates a
 # fix from the defect. A 16000-character dense word over a 16000-character
-# plain word, timed in the same run and locale, is 3.0 to 5.2 on the unchanged
-# code and 1.0 to 1.2 on a tokenizer that appends without copying; the bound
-# is 1.9, about the geometric mean, 1.6 times the worst fixed value and 1.6
-# under the best defective one. The plain word is timed once, in setup_file, so
-# it cancels only load that holds steady: other files' jobs under bats -j can
-# still move a ratio.
+# plain word, in the same locale, is 2.6 to 5.4 on the unchanged code and 1.0
+# to 1.2 on a tokenizer that appends without copying, at load 4 to 14; the bound
+# is 1.9, 1.6 times the worst fixed value and 1.4 under the best defective one.
+#
+# CPU seconds, not wall seconds: with the plain word timed once, in setup_file,
+# other jobs moved a wall ratio past the bound on the fixed code (2.05 to 2.6),
+# while the CPU ratios above hold with 8 busy loops on 4 vCPU.
 
 ROOT="${BATS_TEST_DIRNAME}/.."
 
@@ -39,17 +40,17 @@ setup_file() {
   tokenize_seconds "$loc" plain "$N" >"$BATS_FILE_TMPDIR/plain"
 }
 
-# tokenize_seconds <locale> <shape> <chars> — the least wall seconds of three
+# tokenize_seconds <locale> <shape> <chars> — the least CPU seconds of three
 # fresh bash runs of _readonly_tokenize over `cat <word> x`, the word <chars>
 # characters of <shape>: plain (letters), hash (a letter then #s), mixed
 # (a# repeated), redir (>& repeated). Every run's tokens are compared with
 # wcat, w<word>, wx, so a tokenizer that returned nothing quickly cannot
 # pass on speed; a mismatch exits non-zero with the shape named. python3's
-# perf_counter is the clock: bash 3.2 has no EPOCHREALTIME and BSD date no %N.
+# getrusage is the clock, user plus system time of the finished child.
 tokenize_seconds() {
   # shellcheck disable=SC2016 # the Python source holds $1/$2 for bash -c
   python3 -I -c '
-import os, subprocess, sys, time
+import os, resource, subprocess, sys
 loc, shape, n, lib = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
 word = {
     "plain": "a" * n,
@@ -61,11 +62,14 @@ want = ["wcat", "w" + word, "wx"]
 env = dict(os.environ, LC_ALL=loc)
 script = ". \"$1\"; _readonly_tokenize \"cat $2 x\"; printf \"%s\\n\" \"${_readonly_tokens[@]}\""
 best = None
+def cpu():
+    r = resource.getrusage(resource.RUSAGE_CHILDREN)
+    return r.ru_utime + r.ru_stime
 for _ in range(3):
-    t0 = time.perf_counter()
+    t0 = cpu()
     out = subprocess.run(["bash", "-c", script, "_", lib, word], env=env,
                          check=True, capture_output=True, text=True).stdout
-    dt = time.perf_counter() - t0
+    dt = cpu() - t0
     if out.split("\n")[:-1] != want:
         sys.exit("%s x %d: wrong tokens, got %d bytes" % (shape, n, len(out)))
     best = dt if best is None else min(best, dt)
@@ -75,7 +79,7 @@ print("%.4f" % best)
 
 # assert_dense_near_plain <shape> — the shape's time at N characters over the
 # plain word's at N stays under 1.9 (a linear scan about 1.0 to 1.2, the
-# copying one 3.0 to 5.2 here).
+# copying one 2.6 to 5.4 here).
 assert_dense_near_plain() {
   local loc t p ratio
   loc=$(utf8_locale)
