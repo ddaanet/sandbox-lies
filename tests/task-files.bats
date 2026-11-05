@@ -259,6 +259,8 @@ run_recipe() {
   done
   firing_line >"$dir/TODO.md"
   firing_line >"$dir/TASK.md"
+  # The docs half of the sweep needs a file to read besides the exempt ones.
+  printf 'quiet\n' >"$dir/README.md"
   git -C "$dir" add -A
 
   cd "$dir"

@@ -1,17 +1,20 @@
 #!/usr/bin/env bats
-# Editing TASK.md or TODO.md leaves the main gate's cached pass standing, and
+# Editing TASK.md or TODO.md leaves both gates' cached passes standing, and
 # `precommit` still refuses a firing one through `task-files`, a file over the
 # byte cap through `check-size` and a skill without a description through
-# `check-frontmatter`. The real
-# `precommit` runs in a scratch repository holding what the working tree holds,
-# so uncommitted work is what is tested and no commit of this repository is an
+# `check-frontmatter`. The real `precommit` runs in a scratch repository
+# holding what the working tree holds (tests/helpers/gate-tree.bash), so
+# uncommitted work is what is tested and no commit of this repository is an
 # input, with its own quiet TODO.md and TASK.md, so the real ones' content does
-# not reach this suite. The script and recipe cases are in tests/task-files.bats.
+# not reach this suite. Which gate an edit reruns is in tests/gate-coverage.bats;
+# the script and recipe cases are in tests/task-files.bats.
 
+# shellcheck disable=SC2034 # read by tests/helpers/gate-tree.bash
 ROOT="${BATS_TEST_DIRNAME}/.."
 
 load helpers/bsd-stubs
 load helpers/git-env
+load helpers/gate-tree
 
 # A line that fires the phantom-chardev detector, built from fragments so this
 # file stays quiet under the tests/docs.bats sweep.
@@ -19,107 +22,41 @@ firing_line() {
   printf '%s%s  1 root root 1, 3 Jan  1 00:00 %s\n' c rw-rw-rw- .bashrc
 }
 
-# Copy into $2 the tracked and untracked non-ignored files of the work tree $1:
-# regular files and symlinks only, so a gitlink's contents, a path deleted from
-# the work tree and a sandbox's char-device mask stay out. Through a
-# NUL-delimited list and an archive file, so names with whitespace survive and
-# a failure of git or tar stops the case, which a pipe would hide. Writes to $3
-# the NUL-delimited paths among them that $1 tracks.
-copy_work_tree() {
-  local src="$1" dst="$2" tracked="$3" scratch list index others meta path mode
-  scratch=$(mktemp -d "$BATS_TEST_TMPDIR/copy.XXXXXX")
-  list="$scratch/list" index="$scratch/index" others="$scratch/others"
-  git -C "$src" ls-files -z -s >"$index"
-  git -C "$src" ls-files -z --others --exclude-standard >"$others"
-  : >"$list"
-  : >"$tracked"
-  # `-s` prefixes each path with `<mode> <object> <stage>` and a tab; 160000 is
-  # a gitlink.
-  while IFS= read -r -d '' meta; do
-    path=${meta#*$'\t'}
-    mode=${meta%% *}
-    [ "$mode" != 160000 ] || continue
-    if [ -f "$src/$path" ] || [ -L "$src/$path" ]; then
-      printf '%s\0' "$path" >>"$list"
-      printf '%s\0' "$path" >>"$tracked"
-    fi
-  done <"$index"
-  while IFS= read -r -d '' path; do
-    if [ -f "$src/$path" ] || [ -L "$src/$path" ]; then
-      printf '%s\0' "$path" >>"$list"
-    fi
-  done <"$others"
-  tar -cf "$scratch/tree.tar" -C "$src" --null -T "$list"
-  mkdir -p "$dst"
-  tar -xf "$scratch/tree.tar" -C "$dst"
-}
-
-# A fresh repository holding what this working tree holds. A file tracked there
-# and still on disk is tracked here, so an unrelated untracked draft stays out
-# of the tracked-only checks in both. TODO.md and TASK.md are replaced by a
-# quiet line. shellcheck and rumdl are stubs and the tree's bats runner a spy
-# appending a line to $SPY_LOG: the cases are about whether the gate runs, and
-# the slow checks are not what they assert.
-make_gate_tree() {
-  GATE_TREE="$BATS_TEST_TMPDIR/gate-tree"
-  STUBS="$BATS_TEST_TMPDIR/stubs"
-  SPY_LOG="$BATS_TEST_TMPDIR/bats-runs"
-  copy_work_tree "$ROOT" "$GATE_TREE" "$BATS_TEST_TMPDIR/tracked"
-  printf 'quiet\n' >"$GATE_TREE/TODO.md"
-  printf 'quiet\n' >"$GATE_TREE/TASK.md"
-  git -C "$GATE_TREE" init -q
-  # -f: a file tracked there despite .gitignore stays tracked here.
-  xargs -0 git --literal-pathspecs -C "$GATE_TREE" add -f -- \
-    <"$BATS_TEST_TMPDIR/tracked"
-  git -C "$GATE_TREE" commit -q -m scratch
-  mkdir -p "$STUBS"
-  printf '#!/bin/sh\nexit 0\n' >"$STUBS/shellcheck"
-  cp "$STUBS/shellcheck" "$STUBS/rumdl"
-  chmod 755 "$STUBS/shellcheck" "$STUBS/rumdl"
-  printf '#!/bin/sh\necho run >>"%s"\nexit 0\n' "$SPY_LOG" \
-    >"$GATE_TREE/plugin-dev/run-bats.sh"
-  : >"$SPY_LOG"
-}
-
-# The real `just precommit` in the gate tree, on a PATH with the stubs first and
-# a sentinel directory of its own.
-run_gate() {
-  cd "$GATE_TREE" && PATH="$STUBS:$PATH" run env -u PLUGIN_DEV_GATE_FORCE \
-    -u PLUGIN_DEV_GATE_DIR just precommit
-}
-
-spy_runs() {
-  wc -l <"$SPY_LOG" | tr -d ' '
-}
-
-@test "editing TODO.md or TASK.md leaves the main gate cached; another root input does not" {
+@test "editing TODO.md or TASK.md leaves both gates cached; a root markdown file reruns gate-docs alone" {
   make_gate_tree
   run_gate
   [ "$status" -eq 0 ] || { echo "$output" >&2; return 1; }
-  [[ "$output" == *"precommit passed:"* ]]
-  [ "$(spy_runs)" -eq 1 ]
+  [[ "$output" == *"gate-docs passed:"* ]]
+  [[ "$output" == *"gate-code passed:"* ]]
+  [[ "$output" == *"precommit passed: check-refs, check-size, check-frontmatter, task-files, gate-docs, gate-code"* ]]
+  [ "$(spy_docs_runs)" -eq 1 ]
+  [ "$(spy_code_runs)" -eq 1 ]
 
   local f
   for f in TODO.md TASK.md; do
     printf 'one more line\n' >>"$GATE_TREE/$f"
     run_gate
     [ "$status" -eq 0 ]
-    [[ "$output" == *"precommit: cached"* ]]
+    [[ "$output" == *"gate-docs: cached"* ]]
+    [[ "$output" == *"gate-code: cached"* ]]
     [[ "$output" == *"task-files passed"* ]]
-    [ "$(spy_runs)" -eq 1 ]
+    [[ "$output" == *"precommit passed:"* ]]
+    [ "$(spy_runs)" -eq 2 ]
   done
 
-  # Control: an edit to another root markdown input is not cached, or the
-  # assertions above would hold of a gate that never reruns.
+  # Control: an edit to another root markdown file reruns gate-docs, or the
+  # assertions above would hold of gates that never rerun, and leaves gate-code
+  # cached.
   printf 'one more line\n' >>"$GATE_TREE/README.md"
   run_gate
   [ "$status" -eq 0 ]
-  [[ "$output" == *"precommit passed:"* ]]
-  [[ "$output" != *"precommit: cached"* ]]
-  [ "$(spy_runs)" -eq 2 ]
+  [[ "$output" == *"gate-docs passed:"* ]]
+  [[ "$output" == *"gate-code: cached"* ]]
+  [ "$(spy_docs_runs)" -eq 2 ]
+  [ "$(spy_code_runs)" -eq 1 ]
 }
 
-@test "precommit refuses a firing TODO.md through task-files before the main gate runs" {
+@test "precommit refuses a firing TODO.md through task-files before either gate runs" {
   make_gate_tree
   firing_line >"$GATE_TREE/TODO.md"
   run_gate
@@ -147,16 +84,16 @@ spy_runs() {
   make_gate_tree
   run_gate
   [ "$status" -eq 0 ] || { echo "$output" >&2; return 1; }
-  [ "$(spy_runs)" -eq 1 ]
+  [ "$(spy_runs)" -eq 2 ]
 
-  # Built at run time: this file stays under the cap itself. A check inside the
-  # guarded body would not see this edit: the main gate's hash excludes TODO.md.
+  # Built at run time: this file stays under the cap itself. A check inside a
+  # guarded body would not see this edit: the gates' hashes exclude TODO.md.
   head -c 20001 /dev/zero | tr '\0' x >"$GATE_TREE/TODO.md"
   run_gate
   [ "$status" -ne 0 ]
   [[ "$output" == *"oversized-file: TODO.md"* ]]
   [[ "$output" != *"precommit passed"* ]]
-  [ "$(spy_runs)" -eq 1 ]
+  [ "$(spy_runs)" -eq 2 ]
 }
 
 @test "precommit refuses a skill whose frontmatter lacks a description" {

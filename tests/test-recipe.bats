@@ -90,3 +90,30 @@ tests/" ]
   run_recipe
   [ "$status" -eq 3 ]
 }
+
+@test "gate-code's runner passes every suite but docs.bats, whitespace in names intact, with and without jobs" {
+  local cpus
+  cpus=$(getconf _NPROCESSORS_ONLN)
+  mkdir -p "$TREE/tests"
+  : >"$TREE/tests/a.bats"
+  : >"$TREE/tests/docs.bats"
+  : >"$TREE/tests/sp ace.bats"
+  : >"$TREE/tests/notes.txt"
+  PATH="$BIN" run "$JUST" --justfile "$TREE/justfile" _bats code
+  [ "$status" -eq 0 ]
+  [ "$(cat "$ARGS")" = "tests/a.bats
+tests/sp ace.bats" ]
+  parallel_prints 'GNU parallel 20240222' 0
+  PATH="$BIN" run "$JUST" --justfile "$TREE/justfile" _bats code
+  [ "$status" -eq 0 ]
+  [ "$(cat "$ARGS")" = "-j
+$((cpus * 2))
+tests/a.bats
+tests/sp ace.bats" ]
+}
+
+@test "the runner refuses an unknown suite and runs nothing" {
+  PATH="$BIN" run "$JUST" --justfile "$TREE/justfile" _bats everything
+  [ "$status" -eq 2 ]
+  [ ! -e "$ARGS" ]
+}

@@ -12,19 +12,28 @@ does updates it there.
   fixture, is marked `linguist-generated` in `.gitattributes`) and
   `check-frontmatter`. `check-refs` and `check-size` read `TASK.md` and
   `TODO.md`; `check-frontmatter` reads only skills, agents and commands. It then
-  parses the two JSON manifests and runs shellcheck, `bash -n`, the rumdl wrap
-  check, the link check, a Python compile check and the bats suites.
-  `just task-files`, which `precommit` depends on and never caches, runs the
-  matchers and the link check over `TASK.md` and `TODO.md` alone; the main gate
-  does not read them, so editing either leaves its cached pass standing.
+  runs `just task-files` (the matchers and the link check over `TASK.md` and
+  `TODO.md` alone, never cached) and two independent sentinel gates, each
+  printing `cached` while its inputs are unchanged. `gate-docs` parses
+  `plugin.json`, runs the rumdl wrap check, the link check and `tests/docs.bats`
+  over every tracked top-level entry that is not a code dir (derived from the
+  index, so a new one needs no edit). `gate-code` parses `hooks.json`, runs
+  shellcheck, `bash -n`, the Python compile check and every other bats suite
+  over `lib hooks scripts bin tests plugin-dev`. A prose-only commit pays for
+  `gate-docs` alone and a code-only one for `gate-code` alone; a file one gate's
+  checks run from a code dir (`lib/matchers.sh`, `scripts/check-links.sh`)
+  reruns both. Neither reads `TASK.md` or `TODO.md`, so editing either leaves
+  both passes standing. `just test` runs every suite, `tests/docs.bats` too.
   `just format-docs` re-wraps markdown. After an `.envrc` edit, run it as
   `direnv exec . just precommit` until direnv is re-allowed.
-- **No live file may fire a detector.** `tests/docs.bats` runs the matchers over
-  every tracked file except two exemptions: `tests/fixtures/`, and three dated
-  pilot files under `plans/`. `TASK.md` and `TODO.md` are skipped there because
-  `just task-files` covers them. Describe a diagnostic instead of quoting it
-  with its follow-on text; a test that needs the text builds it from fragments
-  at run time.
+- **No live file may fire a detector.** The matchers run over every tracked file
+  except two exemptions: `tests/fixtures/`, and three dated pilot files under
+  `plans/`. `tests/docs.bats` sweeps the files outside the code dirs and
+  `tests/sweep-code.bats` those under them; `tests/helpers/sweep.bash` holds the
+  one predicate that splits them. `TASK.md` and `TODO.md` are skipped there
+  because `just task-files` covers them. Describe a diagnostic instead of
+  quoting it with its follow-on text; a test that needs the text builds it from
+  fragments at run time.
 - **Fixtures come from the cutter, never by hand.** Every `fire-*` and `quiet-*`
   file under `tests/fixtures/` is a recorded tool result cut by
   `tests/extract-fixtures.py` from the transcript corpus; add a `SPEC` entry and

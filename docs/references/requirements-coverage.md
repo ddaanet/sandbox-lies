@@ -51,8 +51,9 @@ over it.
 `references/detectors.md` that audits every paragraph. Done (prose): no test or
 gate re-checks it.
 
-**FR-11** — Where · pinned by: `tests/docs.bats` runs `detect` over every other
-tracked regular file.
+**FR-11** — Where · pinned by: `tests/docs.bats` and `tests/sweep-code.bats` run
+`detect` over every other tracked regular file, split by
+`tests/helpers/sweep.bash`.
 
 **FR-12** — Where · pinned by: `bin/sandbox-lies-recover` ·
 `tests/recover.bats`, `tests/recover-cli.bats`.
