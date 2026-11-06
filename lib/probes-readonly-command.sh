@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Node names cited here (readonly-path.md, detectors.md) are files of the plugin
+# repository's docs/references/, which the plugin does not ship.
 # lib/probes-readonly-command.sh — the shell-command scan behind
 # _readonly_print_facts' readfile= and merge=1/target= facts (readonly-path.md's
 # readonly-path Probe facts table): _readonly_tokenize splits

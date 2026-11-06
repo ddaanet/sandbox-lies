@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Node names cited here (readonly-path.md, detectors.md) are files of the plugin
+# repository's docs/references/, which the plugin does not ship.
 # lib/probes-readonly-facts.sh — the readfile=/merge=1/partial=1/target=/
 # recover=/repo=/match= facts _readonly_print_facts derives for probe_readonly_path under
 # writable and nopath (readonly-path.md's readonly-path Probe facts table),

@@ -4,7 +4,7 @@
 # the probe's key=value lines on stdin. They also take the flag as a second
 # argument (D-17): absent reads false, and it words the
 # mask/gone/orphan/unknown re-run/retry clause per lock-detectors.md's flag
-# table. Text from docs/references/lock-detectors.md. _verdict_path_read is in
+# table. Text from the plugin repository's docs/references/lock-detectors.md. _verdict_path_read is in
 # lib/verdicts.sh.
 set -u
 

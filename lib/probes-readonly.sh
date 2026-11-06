@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
+# Node names cited here (readonly-path.md, detectors.md) are files of the plugin
+# repository's docs/references/, which the plugin does not ship.
 # lib/probes-readonly.sh — probe_readonly_path, the A-3 contract probe for the
-# readonly-path candidate (docs/design.md FR-4): reads the Bash tool result text
+# readonly-path candidate (the plugin repository's docs/design.md FR-4): reads the Bash tool result text
 # on stdin, takes the sandbox flag as $1, the payload cwd as $2 and
 # tool_input.command as $3, and prints an outcome token on its first line, then
 # a path= line (printf %q form) under writable and readonly only (nopath
@@ -38,7 +40,7 @@ unset _probes_lib_dir
 # `readonly` only, then — under `writable` and `nopath` only — the facts
 # _readonly_print_facts derives from the result text and <command>. <flag> is
 # part of the interface but unread here: whether the hook calls this probe at
-# all is the candidate's flag policy (docs/references/readonly-path.md),
+# all is the candidate's flag policy (the plugin repository's docs/references/readonly-path.md),
 # decided before the probe runs, not inside it.
 probe_readonly_path() {
     local cwd="${2-}" command="${3-}" text line base start top path target outcome

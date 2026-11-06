@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # lib/probes.sh — probe_<verdict> functions the hook runs outside the sandbox
-# (A-3 contract, docs/design.md FR-4): each probe reads the Bash tool result
+# (A-3 contract, the plugin repository's docs/design.md FR-4): each probe reads the Bash tool result
 # text on stdin, takes the sandbox flag as $1, the payload cwd as $2 and the
 # payload's `tool_input.command` as $3 (read by probe_readonly_path only), and
 # prints an outcome token on its first line followed by key=value lines; exit
@@ -125,7 +125,7 @@ _probe_lock_at() {
 
     # A character device is a /dev/null sandbox mask, which unsandboxed
     # readers have seen while another session's sandbox was live
-    # (docs/references/hook.md, "Why the hook can see"), never a lock git
+    # (the plugin repository's docs/references/hook.md, "Why the hook can see"), never a lock git
     # wrote: mask under either flag. Tested before the holder tool, stat or
     # wc touches the path: /dev/null is open in many processes and would
     # read held. `[ -c ]`

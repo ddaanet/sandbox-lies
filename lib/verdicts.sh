@@ -3,8 +3,8 @@
 # reads the probe's key=value lines on stdin (empty when the detector has no
 # probe), and prints the agent paragraph on line 1, the human line on line 2.
 # Phantom verdicts take no outcome argument. Text from
-# docs/references/detectors.md, except readonly_path, whose text comes from
-# docs/references/readonly-path.md, and the lock verdicts, in
+# the plugin repository's docs/references/detectors.md, except readonly_path, whose text comes from
+# the plugin repository's docs/references/readonly-path.md, and the lock verdicts, in
 # lib/verdicts-locks.sh.
 set -u
 
@@ -238,7 +238,7 @@ verdict_readonly_path() {
 
 # The shipped candidates. Each takes no outcome, as the phantom verdicts do,
 # except resume_lost: its probe's lost or found picks the text, and any other
-# outcome prints nothing. Text from docs/references/detectors.md's Verdict
+# outcome prints nothing. Text from the plugin repository's docs/references/detectors.md's Verdict
 # paragraphs, transcribed verbatim.
 verdict_tmpdir_unset() {
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
