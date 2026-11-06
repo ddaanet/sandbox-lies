@@ -227,6 +227,29 @@ setup() {
   done
 }
 
+@test "gate-code fails and prints no passed line when shellcheck reports a finding" {
+  # The stub fails only while the marker exists, so the control run below sees
+  # the same stub passing.
+  # shellcheck disable=SC2016 # $0 expands in the stub, not here
+  printf '#!/bin/sh\nif [ -e "$0.fail" ]; then echo "stub-shellcheck: finding" >&2; exit 1; fi\nexit 0\n' \
+    >"$STUBS/shellcheck"
+  gate_code() {
+    cd "$GATE_TREE" && PATH="$STUBS:$PATH" run env -u PLUGIN_DEV_GATE_FORCE \
+      -u PLUGIN_DEV_GATE_DIR just gate-code
+  }
+  # A code-dir edit makes gate-code run its checks rather than print "cached".
+  touch_file tests/matchers.bats
+  gate_code
+  [ "$status" -eq 0 ] || { echo "$output" >&2; return 1; }
+  [[ "$output" == *"gate-code passed"* ]]
+  touch_file tests/matchers.bats
+  : >"$STUBS/shellcheck.fail"
+  gate_code
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"stub-shellcheck: finding"* ]] || { echo "$output" >&2; return 1; }
+  [[ "$output" != *"gate-code passed"* ]] || { echo "$output" >&2; return 1; }
+}
+
 @test "both gates pass with BSD sed, grep, mktemp, stat and wc ahead on PATH" {
   local bsd="$BATS_TEST_TMPDIR/bsdtools"
   make_bsd_stubs "$bsd" sed grep mktemp stat wc
