@@ -20,12 +20,6 @@ setup() {
   hook_copy_tree
 }
 
-# run_hook <payload> — as tests/hook-locks.bats's, $status and $output.
-run_hook() {
-  run bash -c 'printf "%s" "$1" | bash "$2"' \
-    _ "$1" "$HOOK_COPY/hooks/annotate.sh"
-}
-
 # assert_hedged_gone — $output is the hook's reply for a gone, flag-absent
 # git-lock: the hedged paragraph and the new human line, no sandbox claim.
 assert_hedged_gone() {

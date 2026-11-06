@@ -58,6 +58,12 @@ sweep_side() {
   done <"$index"
 }
 
+# A line that fires the phantom-chardev detector, built from fragments so the
+# file calling it stays quiet under the sweep.
+firing_line() {
+  printf '%s%s  1 root root 1, 3 Jan  1 00:00 %s\n' c rw-rw-rw- .bashrc
+}
+
 # True (0) when the root-relative path $1 is under a code dir.
 is_code_path() {
   local d

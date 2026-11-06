@@ -17,13 +17,6 @@ setup() {
   hook_copy_tree
 }
 
-# run_hook <payload> — invokes the copied annotate.sh, for `run` to capture
-# $status and $output (stderr merged in, as hook.bats's run_hook does).
-run_hook() {
-  run bash -c 'printf "%s" "$1" | bash "$2"' \
-    _ "$1" "$HOOK_COPY/hooks/annotate.sh"
-}
-
 # Each flag-policy case runs one fixture twice, differing only in the flag, so
 # the silent half can only be the policy: the fires-with half shows the matcher
 # and verdict fire on the same text.

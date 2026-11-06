@@ -74,13 +74,7 @@ gate-docs:
         lib/matchers.sh tests/docs.bats tests/helpers/bsd-stubs.bash \
         tests/helpers/git-env.bash tests/helpers/sweep.bash \
         scripts/check-links.sh scripts/lib/tracked.sh scripts/lib/strip-code.awk
-    passed=""
-    report() {
-        local name="$1"
-        shift
-        "$@"
-        passed="${passed:+$passed, }$name"
-    }
+    {{ gate_report }}
     report plugin.json jq empty .claude-plugin/plugin.json
     report rumdl rumdl fmt --check -q --no-cache
     report links scripts/check-links.sh
@@ -149,13 +143,7 @@ gate-code:
         plans/2026-09-02-sandbox-detector-replay.py \
         plans/2026-09-02-sandbox-detector-hits.jsonl \
         plans/2026-09-03-sandbox-matcher-corpus-eval.md
-    passed=""
-    report() {
-        local name="$1"
-        shift
-        "$@"
-        passed="${passed:+$passed, }$name"
-    }
+    {{ gate_report }}
     # lint_paths: tracked and untracked-unignored files under the code dirs with
     # one of the extensions given, plus every file under bin/, whose shipped
     # scripts are extensionless bash, so a new file is linted before its first
@@ -216,13 +204,7 @@ gate-code:
 task-files:
     #!/usr/bin/env bash
     set -euo pipefail
-    passed=""
-    report() {
-        local name="$1"
-        shift
-        "$@"
-        passed="${passed:+$passed, }$name"
-    }
+    {{ gate_report }}
     matchers() {
         local tracked file status verdicts bad=0
         tracked=$(git ls-files -- TASK.md TODO.md)
@@ -251,6 +233,18 @@ task-files:
     report matchers matchers
     report links scripts/check-links.sh --task-files
     printf 'task-files passed: %s\n' "$passed"
+
+# The sign-off the three recipes above end with: `report <name> <cmd>...` runs
+# a check and, once it passes, adds its name to the list each prints last.
+gate_report := '''
+    passed=""
+    report() {
+        local name="$1"
+        shift
+        "$@"
+        passed="${passed:+$passed, }$name"
+    }
+'''
 
 # Hard-wrap the markdown in scope (.rumdl.toml) at 80 columns.
 format-docs:

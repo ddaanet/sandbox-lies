@@ -119,7 +119,9 @@ handle_file() {
     # Not `markdown_in_scope "$1" && check_links_in "$1"`: that form
     # returns 1 for an out-of-scope file, and walk_tracked_files calls its
     # handler under `set -e`, so the run would end 1 at the first one.
-    if [ "$TASK_FILES" -eq 1 ] || markdown_in_scope "$1"; then
+    if [ "$TASK_FILES" -eq 1 ]; then
+        case "$1" in TASK.md | TODO.md) check_links_in "$1" ;; esac
+    elif markdown_in_scope "$1"; then
         check_links_in "$1"
     fi
 }

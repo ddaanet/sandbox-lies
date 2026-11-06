@@ -11,12 +11,6 @@ load helpers/bsd-stubs
 load helpers/git-env
 load helpers/sweep
 
-# A line that fires the phantom-chardev detector, built from fragments so this
-# file stays quiet under the sweep.
-firing_line() {
-  printf '%s%s  1 root root 1, 3 Jan  1 00:00 %s\n' c rw-rw-rw- .bashrc
-}
-
 @test "no tracked code file outside the fixtures fires a detector" {
   sweep_side code
   [ "$SWEPT" -gt 0 ]

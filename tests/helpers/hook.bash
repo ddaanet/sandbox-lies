@@ -100,6 +100,13 @@ stub_probe_kv() {
   stub_lib probes.sh "$body"
 }
 
+# run_hook <payload> — invokes the copied annotate.sh, for `run` to capture
+# $status and $output (stderr merged in).
+run_hook() {
+  run bash -c 'printf "%s" "$1" | bash "$2"' \
+    _ "$1" "$HOOK_COPY/hooks/annotate.sh"
+}
+
 # assert_lacks <haystack> <pattern> — <pattern> (fixed string) must not occur
 # in <haystack>; a grep exit other than 1 (found, or errored) fails the
 # assertion rather than reading as absence. Overwrites $status and $output.

@@ -12,14 +12,9 @@
 load helpers/fixture-root
 load helpers/bsd-stubs
 load helpers/git-env
+load helpers/sweep
 
 LINKS="$ROOT/scripts/check-links.sh"
-
-# A line that fires the phantom-chardev detector, built from fragments so this
-# file stays quiet under the tests/sweep-code.bats sweep.
-firing_line() {
-  printf '%s%s  1 root root 1, 3 Jan  1 00:00 %s\n' c rw-rw-rw- .bashrc
-}
 
 # A git root holding the named root files, each tracked and quiet (one line).
 make_root() {

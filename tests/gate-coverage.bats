@@ -66,12 +66,6 @@ top_level_entries() {
   done | LC_ALL=C sort -zu
 }
 
-is_code_dir() {
-  local d
-  for d in "${SWEEP_CODE_DIRS[@]}"; do [ "$1" != "$d" ] || return 0; done
-  return 1
-}
-
 setup_file() {
   make_gate_tree "$BATS_FILE_TMPDIR/built"
   run_gates
@@ -112,7 +106,7 @@ setup() {
 @test "every tracked top-level directory that is not a code dir reruns gate-docs alone" {
   local top sample seen=0
   while IFS= read -r -d '' top; do
-    is_code_dir "$top" && continue
+    is_code_path "$top/" && continue
     [ -d "$GATE_TREE/$top" ] || continue
     sample=$(first_file_under "$top")
     edit_expecting "$sample" 1 0

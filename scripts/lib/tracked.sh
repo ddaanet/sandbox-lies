@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Shared tracked-file walk and markdown scope for the precommit gate
-# script scripts/check-links.sh. Sourced, not executed: no `set -e` of its own here — the sourcing script's options
-# apply.
+# script scripts/check-links.sh. Sourced, not executed: no `set -e` of its
+# own here — the sourcing script's options apply.
 
 # True (0) if $1 (root-relative) is in the tracked markdown scope: docs/ at
 # any depth, skills/ at any depth, or the root itself; false for markdown in
@@ -29,16 +29,18 @@ markdown_in_scope() {
 # a command substitution: exit status is lost there, and this function's
 # exit 2 must reach the caller's shell.
 #
-# With TASK_FILES=1 walk_tracked_files hands the handler the root TASK.md and
-# TODO.md alone, and the handler checks them whatever markdown_in_scope says.
+# With TASK_FILES=1 the handler checks the root TASK.md and TODO.md alone,
+# whatever markdown_in_scope says.
 #
 # $1: the program name for diagnostics. $2…: the caller's own "$@", the flag
 # first if given, then at most ROOT; more exits 2.
 parse_root() {
     local prog="$1"
     shift
+    # shellcheck disable=SC2034 # consumed by the sourcing script, not here
     TASK_FILES=0
     if [ "${1-}" = --task-files ]; then
+        # shellcheck disable=SC2034 # as above
         TASK_FILES=1
         shift
     fi
@@ -56,15 +58,15 @@ parse_root() {
 # clean tree instead of failing the run. Explicit mktemp template: BSD
 # mktemp has no default one, so a bare `mktemp` is a usage error on macOS. A
 # failed `mktemp` leaves the tree unchecked: exit 2, since a bare `set -e`
-# abort on the assignment would surface as 1 and read as a broken link. The walk-list variable is deliberately not `local`: the EXIT
-# trap that removes it fires after this function has returned, and a local
-# would already be unbound by then under `set -u`. That trap replaces any
-# EXIT trap the caller set. Exits 2 if `mktemp` or `git ls-files` fails.
+# abort on the assignment would surface as 1 and read as a broken link. The
+# walk-list variable is deliberately not `local`: the EXIT trap that removes
+# it fires after this function has returned, and a local would already be
+# unbound by then under `set -u`. That trap replaces any EXIT trap the caller
+# set. Exits 2 if `mktemp` or `git ls-files` fails.
 #
 # $1: the program name for diagnostics. $2: ROOT, a git work tree. $3: the
-# name of a function called once per tracked file (under TASK_FILES=1, once
-# per tracked TASK.md or TODO.md at the root), with the root-relative path as
-# its only argument. It must return 0: it runs under the caller's
+# name of a function called once per tracked file, with the root-relative
+# path as its only argument. It must return 0: it runs under the caller's
 # `set -e`, so a non-zero return ends the whole run with that status — a
 # trailing `in_scope && check` returns 1 for every out-of-scope file.
 walk_tracked_files() {
@@ -96,12 +98,6 @@ walk_tracked_files() {
         # the run.
         if [ -L "$root/$file" ] || [ ! -f "$root/$file" ]; then
             continue
-        fi
-        if [ "$TASK_FILES" -eq 1 ]; then
-            case "$file" in
-            TASK.md | TODO.md) ;;
-            *) continue ;;
-            esac
         fi
         "$handler" "$file"
     done <"$_tracked_walk_list"

@@ -18,14 +18,6 @@ setup() {
   hook_copy_tree
 }
 
-# run_hook <payload> — invokes annotate.sh on the copied tree, setting
-# $status and $output via bats' run. Used by the slice 4-5 sweeps below,
-# which each call the hook many times over a fixture set.
-run_hook() {
-  run bash -c 'printf "%s" "$1" | bash "$2"' \
-    _ "$1" "$HOOK_COPY/hooks/annotate.sh"
-}
-
 @test "gitadd failure payload yields one verdict" {
   local text payload
   text=$(cat "$FIXTURES/fire-masks-gitadd-refused.txt")

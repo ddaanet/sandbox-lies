@@ -19,13 +19,6 @@ setup() {
   hook_copy_tree
 }
 
-# run_hook <payload> — invokes the copied annotate.sh, for `run` to capture
-# $status and $output (stderr merged in).
-run_hook() {
-  run bash -c 'printf "%s" "$1" | bash "$2"' \
-    _ "$1" "$HOOK_COPY/hooks/annotate.sh"
-}
-
 @test "config-lock mask with no path= line keeps Re-run, never update-config" {
   local text flag ctx sys rerun other
   text=$(cat "$FIXTURES/fire-configlock-remote-add.txt")

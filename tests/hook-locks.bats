@@ -16,13 +16,6 @@ setup() {
   hook_copy_tree
 }
 
-# run_hook <payload> — invokes the copied annotate.sh, for `run` to capture
-# $status and $output (stderr merged in, as hook.bats's run_hook does).
-run_hook() {
-  run bash -c 'printf "%s" "$1" | bash "$2"' \
-    _ "$1" "$HOOK_COPY/hooks/annotate.sh"
-}
-
 # stub_probe is shared, in helpers/hook.bash: this fixture's lock path also
 # answers under the real probe (gone when the path is absent), so a stub the
 # hook never reached would otherwise pass while the real probe stats the

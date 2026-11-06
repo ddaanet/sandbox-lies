@@ -70,7 +70,8 @@ _readonly_print_facts() {
     start="$path"
     [ -n "$start" ] || start="$cwd"
     repo=$(_readonly_git_dir "$start") || return 0
-    [ "$(_readonly_git_dir "$cwd")" = "$repo" ] || recover=''
+    [ -z "$recover" ] || [ "$(_readonly_git_dir "$cwd")" = "$repo" ] \
+        || recover=''
     _readonly_repo_facts "$repo" "$recover" "${cands[@]}"
 }
 

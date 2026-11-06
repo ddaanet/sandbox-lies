@@ -4,8 +4,6 @@
 # to main before git's unlink refusal on .claude/settings.json, cut from a
 # recorded session. Neither clause says HEAD stayed put or offers update-config.
 
-bats_require_minimum_version 1.5.0
-
 load helpers/bsd-stubs
 load helpers/git-env
 load helpers/hook
@@ -14,9 +12,6 @@ setup() {
   hook_copy_tree
   REPO="$BATS_TEST_TMPDIR/repo"
   git init -q -b main "$REPO"
-  git -C "$REPO" config user.email test@example.invalid
-  git -C "$REPO" config user.name test
-  git -C "$REPO" config commit.gpgsign false
   mkdir "$REPO/.claude"
   printf '{}\n' >"$REPO/.claude/settings.json"
   git -C "$REPO" add .claude/settings.json
@@ -33,12 +28,11 @@ hook_context() {
   text=$(cat "$FIXTURES/fire-readonly-path-checkout-moved.txt")
   payload=$(post_payload "$text" | jq --arg c "$1" --arg d "$REPO" \
     '.tool_input.command = $c | .cwd = $d')
-  run bash -c 'printf "%s" "$1" | bash "$2"' _ "$payload" \
-    "$HOOK_COPY/hooks/annotate.sh"
+  run_hook "$payload"
   [ "$status" -eq 0 ]
   ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
-  run ! grep -qF 'update-config' <<<"$ctx"
-  run ! grep -qF 'HEAD unmoved' <<<"$ctx"
+  assert_lacks "$ctx" 'update-config'
+  assert_lacks "$ctx" 'HEAD unmoved'
 }
 
 # The body of the lone-checkout case, shared with its BSD re-run.

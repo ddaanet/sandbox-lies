@@ -15,15 +15,16 @@ ROOT="${BATS_TEST_DIRNAME}/.."
 load helpers/bsd-stubs
 load helpers/git-env
 load helpers/gate-tree
+load helpers/sweep
 
-# A line that fires the phantom-chardev detector, built from fragments so this
-# file stays quiet under the tests/sweep-code.bats sweep.
-firing_line() {
-  printf '%s%s  1 root root 1, 3 Jan  1 00:00 %s\n' c rw-rw-rw- .bashrc
+# One build for the file, no gate run in it: each case's copy holds no
+# sentinel, so its first run_gate is a cold one.
+setup_file() {
+  make_gate_tree "$BATS_FILE_TMPDIR/built"
 }
 
 @test "editing TODO.md or TASK.md leaves both gates cached; a root markdown file reruns gate-docs alone" {
-  make_gate_tree
+  clone_gate_tree "$BATS_FILE_TMPDIR/built"
   run_gate
   [ "$status" -eq 0 ] || { echo "$output" >&2; return 1; }
   [[ "$output" == *"gate-docs passed:"* ]]
@@ -57,7 +58,7 @@ firing_line() {
 }
 
 @test "precommit refuses a firing TODO.md through task-files before either gate runs" {
-  make_gate_tree
+  clone_gate_tree "$BATS_FILE_TMPDIR/built"
   firing_line >"$GATE_TREE/TODO.md"
   run_gate
   [ "$status" -ne 0 ]
@@ -68,7 +69,7 @@ firing_line() {
 }
 
 @test "precommit refuses a file over the byte cap, tracked or untracked, naming it" {
-  make_gate_tree
+  clone_gate_tree "$BATS_FILE_TMPDIR/built"
   # Built at run time: this file stays under the cap itself.
   head -c 20001 /dev/zero | tr '\0' x >"$GATE_TREE/untracked-big.txt"
   head -c 20001 /dev/zero | tr '\0' x >>"$GATE_TREE/CLAUDE.md"
@@ -81,7 +82,7 @@ firing_line() {
 }
 
 @test "precommit refuses a TODO.md past the byte cap after a cached pass" {
-  make_gate_tree
+  clone_gate_tree "$BATS_FILE_TMPDIR/built"
   run_gate
   [ "$status" -eq 0 ] || { echo "$output" >&2; return 1; }
   [ "$(spy_runs)" -eq 2 ]
@@ -97,7 +98,7 @@ firing_line() {
 }
 
 @test "precommit refuses a skill whose frontmatter lacks a description" {
-  make_gate_tree
+  clone_gate_tree "$BATS_FILE_TMPDIR/built"
   local skill rel="" f
   # Whichever skill the tree holds, so a rename elsewhere cannot stale this case.
   for f in "$GATE_TREE"/skills/*/SKILL.md; do

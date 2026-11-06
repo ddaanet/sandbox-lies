@@ -14,13 +14,6 @@ setup() {
   hook_copy_tree
 }
 
-# run_hook <payload> — invokes the copied annotate.sh, for `run` to capture
-# $status and $output (stderr merged in, as hook.bats's run_hook does).
-run_hook() {
-  run bash -c 'printf "%s" "$1" | bash "$2"' \
-    _ "$1" "$HOOK_COPY/hooks/annotate.sh"
-}
-
 # The resume-lost cases below run the real probe over a config dir under
 # $BATS_TEST_TMPDIR; the two ids are those of fire-resume-lost-two-turn.txt.
 RESUME_ID_1=37b5f8f7-cd46-44d7-8416-946cf6729b30
