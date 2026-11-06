@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Node names cited here (readonly-path.md, detectors.md) are files of the plugin
+# repository's docs/references/, which the plugin does not ship.
 # The hook: payload -> text -> detect -> probes -> verdicts -> one JSON
 # object. Registered on PostToolUse and PostToolUseFailure, matcher Bash
 # (hooks/hooks.json). Any parse or runtime failure exits 0 with no output

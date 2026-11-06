@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # lib/probes.sh — probe_<verdict> functions the hook runs outside the sandbox
-# (A-3 contract, docs/design.md FR-4): each probe reads the Bash tool result
+# (A-3 contract, the plugin repository's docs/design.md FR-4): each probe reads the Bash tool result
 # text on stdin, takes the sandbox flag as $1, the payload cwd as $2 and the
 # payload's `tool_input.command` as $3 (read by probe_readonly_path only), and
 # prints an outcome token on its first line followed by key=value lines; exit
@@ -81,15 +81,15 @@ probe_resume_lost() (
 )
 
 probe_git_lock() {
-    local flag="$1" text path
+    local text path
     text=$(cat)
     path=$(printf '%s\n' "$text" | _probe_lock_path)
     path=$(_probe_resolve_path "$path" "${2-}")
-    _probe_lock_at "$flag" "$path"
+    _probe_lock_at "$path"
 }
 
 probe_config_lock() {
-    local flag="$1" text path
+    local text path
     text=$(cat)
     path=$(printf '%s\n' "$text" | _probe_config_lock_path)
     # Empty means no config-lock line in the text: it stays empty, the
@@ -100,10 +100,10 @@ probe_config_lock() {
         path="$path.lock"
     fi
     path=$(_probe_resolve_path "$path" "${2-}")
-    _probe_lock_at "$flag" "$path"
+    _probe_lock_at "$path"
 }
 
-# _probe_lock_at <flag> <path> — the A-3 contract once a probe has extracted
+# _probe_lock_at <path> — the A-3 contract once a probe has extracted
 # and resolved its own lock path: presence, character-device-ness, the
 # holder, size and mtime, then the outcome and its key=value lines. Shared by
 # probe_git_lock and probe_config_lock, which differ only in how <path> is
@@ -111,27 +111,21 @@ probe_config_lock() {
 # path joined onto a newline-bearing cwd) decides the outcome as any other and
 # prints as one $'...' path= line.
 _probe_lock_at() {
-    local flag="$1" path="$2" pids holder_status=0 holder_pid mtime bytes=''
+    local path="$1" pids holder_status=0 holder_pid mtime bytes=''
     local now age outcome
 
-    # Only the literal `true` reads as unsandboxed, as FR-5 reads an absent
-    # flag as false. A wrong mask still ends in the right diagnosis (its
-    # verdict carries the repeat-failure clause); a wrong gone sends a
-    # sandboxed call to retry unchanged.
+    # Absent reads gone under either flag: a call an exclusion unsandboxed
+    # carries none, and a released lock leaves the path as a mask does, so
+    # the probe cannot name the cause. The verdict words it by the flag.
     if [ ! -e "$path" ] && [ ! -L "$path" ]; then
-        if [ "$flag" = true ]; then
-            printf '%s\n' gone
-            _probe_path_line "$path"
-        else
-            printf '%s\n' mask
-            _probe_path_line "$path"
-        fi
+        printf '%s\n' gone
+        _probe_path_line "$path"
         return 0
     fi
 
     # A character device is a /dev/null sandbox mask, which unsandboxed
     # readers have seen while another session's sandbox was live
-    # (docs/references/hook.md, "Why the hook can see"), never a lock git
+    # (the plugin repository's docs/references/hook.md, "Why the hook can see"), never a lock git
     # wrote: mask under either flag. Tested before the holder tool, stat or
     # wc touches the path: /dev/null is open in many processes and would
     # read held. `[ -c ]`

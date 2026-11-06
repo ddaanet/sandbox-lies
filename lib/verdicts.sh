@@ -2,14 +2,21 @@
 # Agent paragraph and human line per verdict. `verdict_<name> [outcome]`
 # reads the probe's key=value lines on stdin (empty when the detector has no
 # probe), and prints the agent paragraph on line 1, the human line on line 2.
-# Phantom verdicts take no outcome argument. verdict_git_lock and
-# verdict_config_lock also take the flag as a second argument (D-17): absent
-# reads false, and it words the mask/orphan/unknown re-run/retry clause per
-# lock-detectors.md's flag table. Text from docs/references/detectors.md,
-# except git_lock and config_lock, whose text comes from
-# docs/references/lock-detectors.md, and readonly_path, whose text comes from
-# docs/references/readonly-path.md.
+# Phantom verdicts take no outcome argument. Text from
+# the plugin repository's docs/references/detectors.md, except readonly_path, whose text comes from
+# the plugin repository's docs/references/readonly-path.md, and the lock verdicts, in
+# lib/verdicts-locks.sh.
 set -u
+
+# BASH_SOURCE-relative, so a caller sourcing this file alone gets the lock
+# verdicts too. Parameter expansion, not dirname: this library forks no tool.
+case "${BASH_SOURCE[0]}" in
+  */*) _verdicts_lib_dir=${BASH_SOURCE[0]%/*} ;;
+  *) _verdicts_lib_dir=. ;;
+esac
+# shellcheck disable=SC1091 # lib/ sits beside this file; path is dynamic
+. "$_verdicts_lib_dir/verdicts-locks.sh" || return 1
+unset _verdicts_lib_dir
 
 verdict_phantom_chardev() {
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
@@ -27,115 +34,6 @@ verdict_phantom_gitadd() {
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   printf '%s\n' '`git add` aborted on a sandbox mask, not a file. Stage explicit paths, or re-run the same command unsandboxed.'
   printf '%s\n' 'git add — refused a sandbox mask'
-}
-
-# `_lock_rerun <flag>` / `_lock_retry <flag>` — lock-detectors.md's
-# *Re-run*/*Retry* flag table. Any value but "true" reads as false.
-# _lock_rerun's result is a full sentence (trailing period), _lock_retry's is
-# a clause fragment its caller finishes.
-# shellcheck disable=SC2016 # backticks are literal prose, not expansion
-_lock_rerun() {
-  case "$1" in
-    true) printf 'Re-run the same command once no sandboxed command is running.' ;;
-    *) printf 'Re-run the same command with `dangerouslyDisableSandbox: true`.' ;;
-  esac
-}
-
-# shellcheck disable=SC2016 # backticks are literal prose, not expansion
-_lock_retry() {
-  case "$1" in
-    true) printf 'Retry the command once' ;;
-    *) printf 'Retry the command with `dangerouslyDisableSandbox: true`' ;;
-  esac
-}
-
-# `verdict_git_lock <outcome> [flag]`
-verdict_git_lock() {
-  local outcome="$1" flag="${2:-false}"
-  case "$outcome" in
-    mask)
-      printf '%s\n' "The lock in this error is a sandbox artefact and the repository is healthy. $(_lock_rerun "$flag") A repeat failure on a commit whose hook stages files is that hook leaking \`GIT_INDEX_FILE\`, not the sandbox."
-      printf '%s\n' 'index.lock — sandbox mask, not a real lock'
-      ;;
-    gone)
-      # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-      printf '%s\n' 'No lock exists now; git cleaned it after the failure. Retry once. A repeat failure on a commit whose hook stages files is that hook leaking `GIT_INDEX_FILE`, not the sandbox.'
-      printf '%s\n' 'index.lock — cleared after failure'
-      ;;
-    *) _verdict_lock_present index.lock "$outcome" "$flag" ;;
-  esac
-}
-
-# `verdict_config_lock <outcome> [flag]` — mask reads the probe's path= line
-# on stdin: a `.claude/settings.json.lock` path swaps in the update-config act
-# for *Re-run*, under either flag (lock-detectors.md's config-lock Verdicts);
-# any other path, or none, keeps *Re-run*, worded by the flag as git_lock's is.
-verdict_config_lock() {
-  local outcome="$1" flag="${2:-false}" line wire='' act
-  case "$outcome" in
-    mask)
-      while IFS= read -r line || [ -n "$line" ]; do
-        case "$line" in
-          path=*) wire=${line#path=} ;;
-        esac
-      done
-      # no decodable path leaves _verdict_path_raw empty: the paragraph still prints
-      _verdict_path_read "$wire" || :
-      case "$_verdict_path_raw" in
-        */.claude/settings.json.lock)
-          # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-          act='Write `.claude/settings.json` through the `update-config` skill.'
-          ;;
-        *) act=$(_lock_rerun "$flag") ;;
-      esac
-      printf '%s\n' "The \`config.lock\` behind this error is a sandbox artefact and the repository is healthy. ${act}"
-      printf '%s\n' 'config.lock — sandbox mask, not a real lock'
-      ;;
-    gone)
-      printf '%s\n' 'No lock exists now; git cleaned it after the failure. Retry once.'
-      printf '%s\n' 'config.lock — cleared after failure'
-      ;;
-    *) _verdict_lock_present config.lock "$outcome" "$flag" ;;
-  esac
-}
-
-# `_verdict_lock_present <lock file> <outcome> <flag>` — the held, orphan and
-# unknown verdicts, whose text the two lock detectors share but for the file
-# they name and the flag they word orphan/unknown's *Retry* clause by (held
-# ignores it). Interpolates pid=/bytes=/age= from the probe's remaining lines
-# on stdin (path= and any other key ignored). A key that is absent, or whose
-# value is not all digits as the probe contract has it, drops its clause
-# rather than leaving an empty or foreign value. Any other outcome prints
-# nothing.
-_verdict_lock_present() {
-  local lock="$1" outcome="$2" flag="$3" line pid='' bytes='' age='' size=''
-  while IFS= read -r line || [ -n "$line" ]; do
-    case "$line" in
-      *=*[!0-9]*) ;;
-      pid=*) pid=${line#pid=} ;;
-      bytes=*) bytes=${line#bytes=} ;;
-      age=*) age=${line#age=} ;;
-    esac
-  done
-  if [ -n "$bytes" ]; then
-    size=" (${bytes} bytes${age:+, age ${age}s})"
-  elif [ -n "$age" ]; then
-    size=" (age ${age}s)"
-  fi
-  case "$outcome" in
-    held)
-      printf '%s\n' "A process${pid:+ (pid ${pid})} holds the lock. Wait for it, then retry."
-      printf '%s\n' "${lock} — held${pid:+ by pid ${pid}}"
-      ;;
-    orphan)
-      printf '%s\n' "The lock exists outside the sandbox${size} and no process holds it. $(_lock_retry "$flag"); a second identical failure means the lock predates this session."
-      printf '%s\n' "${lock} — present, no holder"
-      ;;
-    unknown)
-      printf '%s\n' "The lock exists outside the sandbox${size}; no holder check is available here. $(_lock_retry "$flag")."
-      printf '%s\n' "${lock} — present, holder unknown"
-      ;;
-  esac
 }
 
 # `_verdict_path_read <wire>` — decodes a probe's `path=` value (the
@@ -267,13 +165,13 @@ _verdict_has_control() {
 #
 # writable and nopath then carry the tail readonly-path.md's readonly-path
 # Verdicts compose from the probe's other stdin facts (readfile=, merge=1,
-# partial=1, target=, match=): one act, capitalised alone or lowercase after
-# a merge clause, each spelled twice since bash 3.2 has no case conversion.
-# readonly ignores every fact but path=. An outcome with no text here prints
-# nothing, as an unmatched lock outcome does.
+# partial=1, target=, recover=, repo=, match=): one act; a merge clause replaces it,
+# and a read act follows the clause as its own sentence. readonly ignores
+# every fact but path=. An outcome with no text here prints nothing, as an
+# unmatched lock outcome does.
 verdict_readonly_path() {
   local outcome="$1" line path='' readfile='' merge='' partial='' target=''
-  local matches=() subject act act_low rest
+  local recover='' repo='' matches=() subject act clause rest
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in
       path=*) path=${line#path=} ;;
@@ -281,6 +179,8 @@ verdict_readonly_path() {
       merge=*) merge=${line#merge=} ;;
       partial=*) partial=${line#partial=} ;;
       target=*) target=${line#target=} ;;
+      recover=*) recover=${line#recover=} ;;
+      repo=*) repo=${line#repo=} ;;
       match=*) matches+=("${line#match=}") ;;
     esac
   done
@@ -294,32 +194,31 @@ verdict_readonly_path() {
     writable | nopath)
       if [ -n "$readfile" ]; then
         act="Re-run the command that wrote \`$readfile\`."
-        act_low="re-run the command that wrote \`$readfile\`."
       else
-        case "$outcome:$_verdict_path_raw" in
-          writable:*/.claude/settings.json)
+        case "$merge:$outcome:$_verdict_path_raw" in
+          :writable:*/.claude/settings.json)
             # shellcheck disable=SC2016 # backticks are literal prose, not expansion
             act='Write `.claude/settings.json` through the `update-config` skill.'
-            # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-            act_low='write `.claude/settings.json` through the `update-config` skill.'
             ;;
           *)
             # shellcheck disable=SC2016 # backticks are literal prose, not expansion
             act='Re-run the whole call with `dangerouslyDisableSandbox: true`.'
-            # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-            act_low='re-run the whole call with `dangerouslyDisableSandbox: true`.'
             ;;
         esac
       fi
       rest=" $act"
-      if [ -n "$merge" ]; then
-        if [ -n "$target" ]; then
-          if [ "${#matches[@]}" -gt 0 ]; then
-            rest=" The merge or checkout left files at the target with HEAD unmoved, blocking a re-run: restore $(_readonly_match_list "${matches[@]}") from HEAD — they match \`$target\` —, then $act_low"
-          fi
-        elif [ -n "$partial" ]; then
-          rest=" The merge or checkout left the files it wrote with HEAD unmoved, blocking a re-run: restore them from HEAD, then $act_low"
+      if [ -n "$merge" ] && { [ -n "$partial" ] || [ "${#matches[@]}" -gt 0 ]; }; then
+        if [ -n "$recover" ] && [ -n "$target" ] && [ -n "$repo" ]; then
+          # repo= is quoted by the probe; target= is raw prose elsewhere
+          local target_q
+          target_q=$(LC_ALL=C; printf %q "$target")
+          clause="Before any re-run, run \`sandbox-lies-recover -C $repo $recover $target_q\` with \`dangerouslyDisableSandbox: true\` and read its plan: the git command may have stopped part-way. The \`sandbox-lies:sandbox-lies\` skill says how to carry the plan out."
+        else
+          # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+          clause='Before any re-run, follow the `sandbox-lies:sandbox-lies` skill'"'"'s recovery of a refused merge or checkout: the git command may have stopped part-way.'
         fi
+        rest=" $clause"
+        [ -z "$readfile" ] || rest=" $clause $act"
       fi
       ;;
   esac
@@ -340,28 +239,9 @@ verdict_readonly_path() {
   esac
 }
 
-# _readonly_match_list <name...> — the restore clause's file list: each name
-# in backticks, comma-joined, capped at the first five with "and N more"
-# appended past that (readonly-path.md leaves the comma before "and" open).
-_readonly_match_list() {
-  local names='' extra=0 i=0 m
-  for m in "$@"; do
-    i=$((i + 1))
-    if [ "$i" -le 5 ]; then
-      names="${names:+$names, }\`$m\`"
-    else
-      extra=$((extra + 1))
-    fi
-  done
-  if [ "$extra" -gt 0 ]; then
-    names="$names and $extra more"
-  fi
-  printf '%s' "$names"
-}
-
 # The shipped candidates. Each takes no outcome, as the phantom verdicts do,
 # except resume_lost: its probe's lost or found picks the text, and any other
-# outcome prints nothing. Text from docs/references/detectors.md's Verdict
+# outcome prints nothing. Text from the plugin repository's docs/references/detectors.md's Verdict
 # paragraphs, transcribed verbatim.
 verdict_tmpdir_unset() {
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion

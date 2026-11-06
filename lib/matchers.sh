@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The shipped sandbox-symptom matchers, one per detector
-# (docs/references/detectors.md and its per-detector nodes).
+# (the plugin repository's docs/references/detectors.md and its per-detector nodes).
 #
 # Each matcher reads a Bash tool result on stdin and exits 0 when the symptom
 # is present, 1 when it is not. `detect` runs the set and prints one verdict
@@ -8,7 +8,7 @@
 #
 # The shapes here are not guesses: layer 1 replayed the naive forms over 21,272
 # recorded Bash calls and each discriminator below is the one the corpus
-# selected. See plans/2026-09-02-sandbox-detector-replay-results.md.
+# selected. manual/detectors.md describes each shape.
 #
 # bash 3.2 and BSD grep/sed: no -P, no \s, no \d, no GNU-only flags.
 
@@ -91,7 +91,7 @@ match_config_lock() {
 # A real character device in a listing (`ls -la /dev`) would also match. That
 # false positive is an accepted residual: no such call exists in the corpus,
 # nothing narrows the matcher to the project root, and
-# docs/references/detectors.md names it.
+# the plugin repository's docs/references/detectors.md names it.
 match_phantom_chardev() {
     grep -qE '^[[:space:]]*c[rwx-]{9}[.+@]?[[:space:]]'
 }
@@ -160,7 +160,7 @@ _readonly_path_line() {
 # Anchoring at line start is what the corpus needed (99% precision, 162
 # hits): the memory store and this suite's own index/heredoc lines quote
 # both messages mid-line or mid-word, never as a bare refusal starting a
-# line of their own. See docs/references/readonly-path.md's `## readonly-path`
+# line of their own. See the plugin repository's docs/references/readonly-path.md's `## readonly-path`
 # entry for the corpus figures this discriminator was measured against.
 match_readonly_path() {
     _readonly_path_line >/dev/null

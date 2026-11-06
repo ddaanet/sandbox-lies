@@ -5,6 +5,9 @@ bite hardest inside a recipe or script, where a `claude *` exclusion never
 reaches: an entry must cover every command in the call, and the call's own
 command is the recipe runner.
 
+Run the whole recipe unsandboxed: one that dies late has usually done its
+irreversible steps already.
+
 ## Multi-turn `claude` flows must run unsandboxed
 
 A sandboxed `claude --print` turn never persists its transcript —

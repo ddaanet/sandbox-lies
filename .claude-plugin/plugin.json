@@ -1,6 +1,6 @@
 {
   "name": "sandbox-lies",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Hooks that watch Bash tool output for results the command sandbox has distorted, and annotate them so the reader stops trusting a confidently wrong result, and a skill carrying what the sandbox does with no symptom in the output: what an `excludedCommands` entry actually unsandboxes, what each escape costs, why `$TMPDIR` does not survive a call, and how masks break a cleanliness gate.",
   "author": {
     "name": "David Allouche",

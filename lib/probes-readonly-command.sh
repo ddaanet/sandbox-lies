@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
+# Node names cited here (readonly-path.md, detectors.md) are files of the plugin
+# repository's docs/references/, which the plugin does not ship.
 # lib/probes-readonly-command.sh — the shell-command scan behind
 # _readonly_print_facts' readfile= and merge=1/target= facts (readonly-path.md's
 # readonly-path Probe facts table): _readonly_tokenize splits
 # tool_input.command into words and segments, _readonly_readfile_arg and
-# _readonly_merge_segment read them. Split out of
-# lib/probes-readonly-facts.sh to keep that file under the line cap;
-# lib/probes-readonly.sh sources both, so no other caller needs a source
+# _readonly_merge_segment read them. Sourced with
+# lib/probes-readonly-facts.sh by lib/probes-readonly.sh, so no other caller needs a source
 # line of its own for it.
 #
 # set -u as in lib/probes-readonly.sh; bats does not set it, so setting it
@@ -269,17 +270,18 @@ _readonly_readfile_arg() {
 
 # _readonly_merge_segment <token...> — for the first segment that opens with
 # `git`, after skipping its own global options, and runs merge, pull,
-# checkout, switch, rebase or cherry-pick: the subcommand, then each
-# following word up to a literal -- (readonly-path.md's target= "before any
-# --"), each NUL-terminated; nothing when no segment matches.
+# checkout, switch, rebase or cherry-pick: the subcommand; then 1 when that
+# segment is the call's only such segment and git runs where the probe looks
+# (every segment before it is itself a git command, its first word exactly git,
+# with no -C, --git-dir or --work-tree: any other opener, a cd, export, eval,
+# assignment or glued group opener such as (cd, may have moved the cwd), else 0; then each following word up to and including a literal --
+# (readonly-path.md's target= "before any --", which the -- record ends), each
+# NUL-terminated; nothing when no segment matches.
 _readonly_merge_segment() {
-    local tok word state=start skip_next=0 sub=''
+    local tok word state=start skip_next=0 sub='' moved=0 sole=1
     local -a cands=()
     for tok in ${1+"$@"}; do
         if [ "$tok" = '|' ]; then
-            case "$state" in
-                collect | stop) break ;;
-            esac
             state=start
             skip_next=0
             continue
@@ -287,11 +289,13 @@ _readonly_merge_segment() {
         word="${tok#w}"
         case "$state" in
             start)
-                if [ "$word" = git ]; then
-                    state=skip
-                else
-                    state=skipseg
-                fi
+                case "$word" in
+                    git) state=skip ;;
+                    *)
+                        [ -n "$sub" ] || moved=1
+                        state=skipseg
+                        ;;
+                esac
                 ;;
             skip)
                 if [ "$skip_next" -eq 1 ]; then
@@ -299,12 +303,18 @@ _readonly_merge_segment() {
                     continue
                 fi
                 case "$word" in
-                    -C | -c | --git-dir | --work-tree | --namespace \
-                        | --super-prefix)
+                    -C | --git-dir | --work-tree)
+                        [ -n "$sub" ] || moved=1
                         skip_next=1
                         ;;
+                    -c | --namespace | --super-prefix) skip_next=1 ;;
+                    --git-dir=* | --work-tree=*) [ -n "$sub" ] || moved=1 ;;
                     -*) : ;;
                     merge | pull | checkout | switch | rebase | cherry-pick)
+                        if [ -n "$sub" ]; then
+                            sole=0
+                            break
+                        fi
                         sub="$word"
                         state=collect
                         ;;
@@ -312,14 +322,14 @@ _readonly_merge_segment() {
                 esac
                 ;;
             collect)
+                cands+=("$word")
                 if [ "$word" = -- ]; then
                     state=stop
-                else
-                    cands+=("$word")
                 fi
                 ;;
         esac
     done
     [ -n "$sub" ] || return 0
-    printf '%s\0' "$sub" ${cands[@]+"${cands[@]}"}
+    [ "$moved" -eq 0 ] || sole=0
+    printf '%s\0' "$sub" "$sole" ${cands[@]+"${cands[@]}"}
 }

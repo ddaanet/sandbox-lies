@@ -1,8 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # sandbox-lies-recover: carry out the recovery of a `git checkout <branch>` or
 # `git merge --ff-only <commit-ish>` that a sandbox refusal killed part-way.
-# Contract: plans/2026-11-01-recovery-script.md. Without --apply it prints the
-# plan and changes nothing; with --apply it runs each act as it prints it.
+# Usage in skills/sandbox-lies/references/refused-merge-recovery.md. Without
+# --apply it prints the plan and changes nothing; with --apply it runs each act
+# as it prints it.
 #
 #   sandbox-lies-recover [--apply] [-C <dir>] checkout <branch>
 #   sandbox-lies-recover [--apply] [-C <dir>] merge <commit-ish>
@@ -189,7 +190,7 @@ act() {
   ACTS=$((ACTS + 1))
   [ -n "$APPLY" ] || return 0
   case $1 in
-    restore) git -C "$top" checkout HEAD -- "$2" </dev/null || fail "restore failed: $2" ;;
+    restore) git -C "$top" --literal-pathspecs checkout HEAD -- "$2" </dev/null || fail "restore failed: $2" ;;
     remove) rm -f -- "$top/$2" || fail "remove failed: $2" ;;
   esac
 }
@@ -223,14 +224,15 @@ wstate() {
 
 # Whether <rev> has an entry at <path> that is a blob or a submodule commit;
 # sets ENTRY_TYPE (blob or commit) and ENTRY_ID. Read from the tree with
-# ls-tree, which takes the path literally and never dereferences a gitlink,
-# whose commit may be absent from this repository.
+# ls-tree, which never dereferences a gitlink, whose commit may be absent from
+# this repository. --literal-pathspecs here and on the restore: a name opening
+# with `:` is otherwise pathspec magic, which ls-tree dies on and checkout obeys.
 has_path() {
   local entry meta
   # One "<mode> <type> <id>\t<path>" record, its NUL dropped; the x keeps a
   # trailing newline in the path from being stripped. Only the entry for
   # this exact path counts.
-  entry=$(git -C "$top" ls-tree -z "$1" -- "$2" | tr -d '\0'; printf x)
+  entry=$(git -C "$top" --literal-pathspecs ls-tree -z "$1" -- "$2" | tr -d '\0'; printf x)
   entry=${entry%x}
   meta=${entry%%$'\t'*}
   [ "$meta" != "$entry" ] && [ "${entry#*$'\t'}" = "$2" ] || return 1

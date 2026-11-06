@@ -2,24 +2,25 @@
 
 A sandboxed `git merge --ff-only` or `git checkout <branch>` can die on a file
 the sandbox will not let git write, leaving some files at the target and HEAD
-either moved or not. Neither the exit status nor the command says which, and the
-hook's verdict may say "HEAD unmoved" either way. One script covers every case
-observed (below); run it unsandboxed:
+either moved or not. Neither the exit status nor the command says which. One
+script covers every case observed (below); run it unsandboxed:
 
 1. **Read the plan.** Run `sandbox-lies-recover checkout <branch>` (or
    `sandbox-lies-recover merge <commit-ish>`) without `--apply`. It changes
    nothing and prints one line per path. `restore` and `remove` bring a path the
    command touched back to HEAD; `keep` is uncommitted work git carried over,
    left untouched. A last line is the command to re-run, when it did not reach
-   the target. An exit 2 that printed a `usage:` line is an argument error:
-   correct the arguments and re-run. Any other exit 2 means the script cannot
-   tell the state: act on nothing and report.
-2. **Carry it out.** Run the same command again with `--apply`. It does the
-   restores and removals, then re-runs the original command once, in one call,
-   if the target was not reached. Under the sandbox's strict mode, where a call
-   cannot run unsandboxed, the `--apply` run cannot work from the agent: ask the
-   human partner to run it as `! sandbox-lies-recover --apply checkout <branch>`
-   (or `merge <commit-ish>`).
+   the target. An exit 2 saying `cannot tell` means the state is unknown: act on
+   nothing and report. Any other exit 2 is an argument error: correct the
+   arguments and re-run.
+2. **Carry it out.** Run the same command again with `--apply` placed before the
+   subcommand. It does the restores and removals, then re-runs the original
+   command once, in one call, if the target was not reached. Under the sandbox's
+   strict mode, where a call cannot run unsandboxed, the `--apply` run cannot
+   work from the agent: ask the human partner to run it as
+   `! sandbox-lies-recover --apply -C <repo> checkout <branch>` (or
+   `merge <commit-ish>`), `<repo>` being what the verdict printed, or the
+   directory the command ran in.
 3. **Never finish a checkout with `git reset --hard <target>`**: it moves the
    current branch to the target instead of switching to it, and drops the
    commits the target lacks. For a `merge --ff-only` that still refuses after
@@ -29,6 +30,16 @@ observed (below); run it unsandboxed:
    `keep` line; otherwise it drops HEAD's own commits or the uncommitted work
    the plan kept, so do not use it: report instead. Where it does apply it
    discards every uncommitted change, so it follows normal confirmation.
+
+The script applies when the call ran exactly one such command, and that command
+is `git checkout <branch>` or `git switch <branch>` of a local branch, or
+`git merge <commit-ish>`, with no option but `-q`, `--quiet` or `--ff-only`. If
+that command ran elsewhere (`git -C <dir>`, `cd <dir> &&`), pass the directory
+as `-C <dir>`. For anything else the script does not apply: read `git status`
+and `git log -1` before any re-run and report rather than guess.
+
+The script re-runs only the one command it names, so the rest of the call stays
+yours to run, unsandboxed.
 
 Auto mode's classifier has refused `git checkout HEAD -- <file>` as destructive
 (seen 2026-10-31). The dry-run plan is what lets a refused `--apply` be asked

@@ -31,23 +31,27 @@ piped into `tail` still fires.
 **Check.** The hook looks at the lock path outside the sandbox, then asks which
 process holds it, with `lsof`, else `fuser`:
 
-- `mask` — the call was sandboxed and the lock is absent outside the sandbox,
-  or, either way, the path is a character device.
-- `gone` — an unsandboxed call, and the lock is absent.
+- `mask` — the path is a character device, whichever way the call ran.
+- `gone` — the lock is absent, whichever way the call ran.
 - `held` — the lock exists and a process holds it.
 - `orphan` — the lock exists and the holder check found no holder.
 - `unknown` — the lock exists and no holder check was possible: neither tool is
   on `PATH`, or the check failed. A lock with no holder check is never reported
   as `orphan`, since a process may still hold it.
 
-**Unsandboxed calls.** Fires either way; the flag decides between `mask` and
-`gone` and words the re-run. *Re-run* and *Retry* below stand for:
+**Unsandboxed calls.** Fires either way. The flag no longer picks between `mask`
+and `gone`: it words the re-run and the retry, `gone`'s included. The cause of a
+missing lock is hedged when the flag is absent because nothing in the payload
+records an `excludedCommands` exclusion, and a lock its holder has released
+leaves nothing at the path, as a sandbox mask does. The labels below therefore
+key on the flag, not on how the call ran: a call an exclusion unsandboxed reads
+as flag absent. *Re-run* and *Retry* below stand for:
 
-- sandboxed call — "Re-run the same command with
-  `dangerouslyDisableSandbox: true`" and "Retry the command with
+- flag absent or false — "Once no sandboxed command is running, re-run the same
+  command with `dangerouslyDisableSandbox: true`" and "Retry the command with
   `dangerouslyDisableSandbox: true`";
-- unsandboxed call — "Re-run the same command once no sandboxed command is
-  running" and "Retry the command once".
+- flag true — "Re-run the same command once no sandboxed command is running" and
+  "Retry the command once".
 
 **What it says.**
 
@@ -55,9 +59,15 @@ process holds it, with `lsof`, else `fuser`:
   healthy. *Re-run*. A repeat failure on a commit whose hook stages files is
   that hook leaking `GIT_INDEX_FILE`, not the sandbox. ·
   `index.lock — sandbox mask, not a real lock`
-- `gone` — No lock exists now; git cleaned it after the failure. Retry once. A
-  repeat failure on a commit whose hook stages files is that hook leaking
-  `GIT_INDEX_FILE`, not the sandbox. · `index.lock — cleared after failure`
+- `gone`, flag true — No lock exists now; git cleaned it after the failure.
+  Retry once. A repeat failure on a commit whose hook stages files is that hook
+  leaking `GIT_INDEX_FILE`, not the sandbox. ·
+  `index.lock — cleared after failure`
+- `gone`, flag absent or false — No lock exists now: this refusal came from a
+  sandbox mask or from a lock its holder has since released. *Retry*. A repeat
+  failure on a commit whose hook stages files is that hook leaking
+  `GIT_INDEX_FILE`, not the sandbox. ·
+  `index.lock — absent now, mask or released`
 - `held` — A process (pid N) holds the lock. Wait for it, then retry. ·
   `index.lock — held by pid N`
 - `orphan` — The lock exists outside the sandbox (N bytes, age Ns) and no
@@ -78,14 +88,18 @@ start of a line: `git config`, `git remote add` and the toolkit's
 
 **What it says.** `git-lock`'s outcomes, naming `config.lock`, without the
 `GIT_INDEX_FILE` clause. When the lock is a `.claude/settings.json.lock`, the
-`mask` paragraph says to write `.claude/settings.json` through the
-`update-config` skill instead of *Re-run*, under either flag.
+`mask` paragraph, under either flag, and the `gone` paragraph, when the flag is
+absent or false, say to write `.claude/settings.json` through the
+`update-config` skill instead of *Re-run* or *Retry*.
 
 - `mask` — The `config.lock` behind this error is a sandbox artefact and the
   repository is healthy. *Re-run*. ·
   `config.lock — sandbox mask, not a real lock`
-- `gone` — No lock exists now; git cleaned it after the failure. Retry once. ·
-  `config.lock — cleared after failure`
+- `gone`, flag true — No lock exists now; git cleaned it after the failure.
+  Retry once. · `config.lock — cleared after failure`
+- `gone`, flag absent or false — No lock exists now: this refusal came from a
+  sandbox mask or from a lock its holder has since released. *Retry*. ·
+  `config.lock — absent now, mask or released`
 - `held` — A process (pid N) holds the lock. Wait for it, then retry. ·
   `config.lock — held by pid N`
 - `orphan` — The lock exists outside the sandbox (N bytes, age Ns) and no
@@ -167,19 +181,33 @@ The act is the first of these that applies:
 - every command in the call only reads files, and one file it reads has a
   command-output name (`*.log`, `*.output`, `*.out`, `*.err`) — re-run the
   command that wrote that file, since the refusal in it came from that call;
-- the path is a `.claude/settings.json` (`writable` only) — write
-  `.claude/settings.json` through the `update-config` skill;
+- the path is a `.claude/settings.json` (`writable` only), the call ran no git
+  `merge`, `pull`, `checkout`, `switch`, `rebase` or `cherry-pick`, and the text
+  holds no git partial-checkout error — write `.claude/settings.json` through
+  the `update-config` skill;
 - otherwise — re-run the whole call with `dangerouslyDisableSandbox: true`.
 
-When the call ran a git `merge`, `pull`, `checkout`, `switch`, `rebase` or
-`cherry-pick`, or git reported a partially written checkout, a clause comes
-before the act. If modified files already match the target the command was
-moving to, it names up to five of them by absolute path and says to restore them
-from HEAD first, since they block a re-run; if git reported a partial checkout
-and no target could be read, it says to restore the files the command wrote from
-HEAD. With a target and no matching file, or with neither a target nor a partial
-checkout, there is no clause. The clause removes nothing; untracked files the
-target added are left to the skill's recovery procedure.
+A recovery clause replaces the act when the text holds git's partial-checkout
+error, whatever command printed it, or when the call ran one of those git
+commands and modified files already match the target it was moving to.
+
+The clause tells you to run `sandbox-lies-recover -C <repo> <kind> <ref>` with
+`dangerouslyDisableSandbox: true` and read its plan when the script's invocation
+is exactly what the call ran; the `sandbox-lies:sandbox-lies` skill says how to
+carry the plan out. That takes one such git command in the call, running where
+the hook looks (no `-C`, `--git-dir` or `--work-tree`, every earlier segment
+itself a `git` command without them, and the refused path in the working
+directory's repository), with one target and no `--`, no option but `-q`,
+`--quiet` and `--ff-only`, and for a `checkout` or `switch` a local branch.
+Otherwise the clause points at the skill's recovery of a refused merge or
+checkout.
+
+The clause does not say where HEAD is, since a checkout can move HEAD although
+git reported an error and exited 0. It removes nothing and never asks for the
+script's `--apply`. If the refusal came from a file the call read, the re-run of
+the command that wrote that file follows the clause as its own sentence. With no
+partial-checkout error and no matching file, there is no clause and the act
+applies.
 
 ## tmpdir-unset
 

@@ -12,6 +12,11 @@ then shows as if they were files in the repository. Two shapes occur:
   (mode `-r--r--r--`, size 0), a path that ought to be a directory getting a
   zero-byte file too.
 
+The mask-free test of a call's sandbox state is a write only the sandbox
+refuses, `touch /tmp/<name>`. `${TMPDIR-UNSET}` discriminates too: on CC 2.1.281
+it is `/tmp/claude-<uid>` sandboxed and `/tmp` unsandboxed, and on CC 2.1.233 it
+was unset.
+
 That directory is not always the project root. Seen on CC 2.1.281: in the main
 session the Bash tool's working directory persists between calls, so one `cd`
 into a submodule left later sandboxed calls masking `.claude/` and `.mcp.json`

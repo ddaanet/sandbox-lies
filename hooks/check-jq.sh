@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SessionStart hook (hooks/hooks.json; D-12, docs/references/hook.md). Speaks
+# SessionStart hook (hooks/hooks.json; D-12, the plugin repository's docs/references/hook.md). Speaks
 # only when `jq` is not on PATH, because hooks/annotate.sh needs it and
 # otherwise degrades with no sign. The JSON is printed from fixed text, so the
 # notice needs no `jq`.
