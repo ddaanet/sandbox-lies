@@ -1,6 +1,6 @@
 ---
 name: sandbox-lies
-description: "What the Claude Code command sandbox does to Bash calls that no tool result reveals: whether a call ran sandboxed, what `excludedCommands` and `dangerouslyDisableSandbox` cost, why `$TMPDIR` does not survive a call, and where masks land. Use when writing a `sandbox.excludedCommands` entry, a recipe or script that must run unsandboxed, a cleanliness gate over `git status`, a `cd` into a submodule or subdirectory, a scratch path a later command or subagent reads, a `claude -p` run for a `SessionStart` hook's side effect, or a multi-turn `claude --resume` flow; when acting on a slash command's `` !`cmd` `` context block or recovering a merge or checkout a sandbox write refusal hit, even one that exited 0; and when reading `ps` for a background task."
+description: "What the Claude Code command sandbox does to Bash calls that no tool result reveals: whether a call ran sandboxed, what `excludedCommands` and `dangerouslyDisableSandbox` cost, why `$TMPDIR` does not survive a call, and where masks land. Use when writing a `sandbox.excludedCommands` entry, a recipe or script that must run unsandboxed, a cleanliness gate over `git status`, a `cd` into a submodule or subdirectory, a scratch path a later command or subagent reads, a `claude -p` run for a `SessionStart` hook's side effect, or a multi-turn `claude --resume` flow; when acting on a slash command's inline-shell context block or recovering a merge or checkout a sandbox write refusal hit, even one that exited 0; and when reading `ps` for a background task."
 ---
 
 # Sandbox lies
@@ -74,8 +74,8 @@ validator's refusals and the rewriting-hook alternative:
   sandbox mode; check it rather than assume. Under it, ask the human partner to
   run the command as `! <command>` or to change the mode; never retry the same
   sandboxed command. In a background session, and on Linux with
-  `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` set, a `!` command runs sandboxed too:
-  there, ask for the mode change.
+  `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` set, a command run that way is sandboxed
+  too: there, ask for the mode change.
 - **An unsandboxed command reaches the permission classifier** unless a narrow
   allow rule covering it or the read-only validator clears it, and the
   classifier denies benign compounds unpredictably. Keep an escaped command in
@@ -143,11 +143,11 @@ observed collapse:
   with no sandboxed command running alongside it, or scope the gate to tracked
   paths with `git status --porcelain --untracked-files=no` where untracked files
   are not the subject.
-- **A slash command's `` !`cmd` `` expansion is a Bash call no hook sees.** It
-  goes through the same sandbox decision as a typed call, so a `## Context`
-  block can list masks, its own or a concurrent sibling's, and no annotation
-  will say so. Never act on an injected listing: re-run `git status` unsandboxed
-  first.
+- **A slash command's inline shell expansion (an exclamation mark before a
+  backticked command) is a Bash call no hook sees.** It goes through the same
+  sandbox decision as a typed call, so a `## Context` block can list masks, its
+  own or a concurrent sibling's, and no annotation will say so. Never act on an
+  injected listing: re-run `git status` unsandboxed first.
 
 Mask shapes and placement, and the expansion path's mechanism:
 [references/masks-and-gates.md](references/masks-and-gates.md).
