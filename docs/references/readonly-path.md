@@ -94,10 +94,12 @@ what the call ran, which takes all of these:
 - the call holds exactly one segment running one of the six merge-style
   subcommands, and the scan of the command was not cut;
 - git runs where the probe looks: the segment has no `-C`, `--git-dir` or
-  `--work-tree` global option, and no segment before it opens with `cd` or
-  `pushd`, and the refused path's repository is the `cwd`'s. git's
-  partial-checkout paths are relative and join onto the `cwd`, so otherwise the
-  probe's repository is not the one git ran in;
+  `--work-tree` global option, every segment before it is itself a `git` command
+  (first word exactly `git`, no such option; a `cd`, `export`, `eval`,
+  assignment or group opener there may have moved the working directory), and
+  the refused path's repository is the `cwd`'s. git's partial-checkout paths are
+  relative and join onto the `cwd`, so otherwise the probe's repository is not
+  the one git ran in;
 - the segment holds exactly one non-option word, the target, a word holding `>`
   or `<` being a redirection and not counted;
 - its only options are `-q`, `--quiet` and `--ff-only`;

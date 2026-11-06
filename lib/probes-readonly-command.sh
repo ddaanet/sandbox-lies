@@ -272,18 +272,18 @@ _readonly_readfile_arg() {
 # `git`, after skipping its own global options, and runs merge, pull,
 # checkout, switch, rebase or cherry-pick: the subcommand; then 1 when that
 # segment is the call's only such segment and git runs where the probe looks
-# (no -C, --git-dir or --work-tree on it, no cd or pushd word in an earlier
-# segment), else 0; then each following word up to and including a literal --
+# (every segment before it is itself a git command, its first word exactly git,
+# with no -C, --git-dir or --work-tree: any other opener, a cd, export, eval,
+# assignment or glued group opener such as (cd, may have moved the cwd), else 0; then each following word up to and including a literal --
 # (readonly-path.md's target= "before any --", which the -- record ends), each
 # NUL-terminated; nothing when no segment matches.
 _readonly_merge_segment() {
-    local tok word state=start skip_next=0 sub='' moved=0 seg_moved=0 sole=1
+    local tok word state=start skip_next=0 sub='' moved=0 sole=1
     local -a cands=()
     for tok in ${1+"$@"}; do
         if [ "$tok" = '|' ]; then
             state=start
             skip_next=0
-            seg_moved=0
             continue
         fi
         word="${tok#w}"
@@ -291,18 +291,10 @@ _readonly_merge_segment() {
             start)
                 case "$word" in
                     git) state=skip ;;
-                    cd | pushd)
+                    *)
                         [ -n "$sub" ] || moved=1
                         state=skipseg
                         ;;
-                    *) state=skipseg ;;
-                esac
-                ;;
-            skipseg)
-                # any cd or pushd word before the git segment, however the
-                # segment opens ({ cd x; ... }), moves git conservatively
-                case "$word" in
-                    cd | pushd) [ -n "$sub" ] || moved=1 ;;
                 esac
                 ;;
             skip)
@@ -312,11 +304,11 @@ _readonly_merge_segment() {
                 fi
                 case "$word" in
                     -C | --git-dir | --work-tree)
-                        seg_moved=1
+                        [ -n "$sub" ] || moved=1
                         skip_next=1
                         ;;
                     -c | --namespace | --super-prefix) skip_next=1 ;;
-                    --git-dir=* | --work-tree=*) seg_moved=1 ;;
+                    --git-dir=* | --work-tree=*) [ -n "$sub" ] || moved=1 ;;
                     -*) : ;;
                     merge | pull | checkout | switch | rebase | cherry-pick)
                         if [ -n "$sub" ]; then
@@ -324,7 +316,6 @@ _readonly_merge_segment() {
                             break
                         fi
                         sub="$word"
-                        [ "$seg_moved" -eq 0 ] || moved=1
                         state=collect
                         ;;
                     *) state=skipseg ;;

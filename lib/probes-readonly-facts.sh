@@ -79,9 +79,9 @@ _readonly_print_facts() {
 # whose words name exactly what it can repeat, else nothing. recover= prints only
 # when all of these hold, the script's own invocation being then the command the
 # call ran: the call holds one merge-style segment and its scan was not cut; git
-# runs where the probe looks, with no -C, --git-dir or --work-tree and no cd or pushd
-# word in an earlier segment, since git's partial-checkout paths are relative and the probe joins
-# them onto the cwd, and the refused path's repository is the cwd's; no literal --;
+# runs where the probe looks, every earlier segment being a git command with no
+# -C, --git-dir or --work-tree (any other earlier segment may have moved the cwd),
+# since git's partial-checkout paths are relative and the probe joins them onto the cwd, and the refused path's repository is the cwd's; no literal --;
 # (these three checked by the caller) exactly one
 # non-option word, the target, a word holding > or < being a redirection and not
 # counted; the only options are -q, --quiet and --ff-only; for a checkout or
