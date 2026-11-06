@@ -179,9 +179,16 @@ gate-code:
         local f
         for f in "$@"; do bash -n "$f"; done
     }
+    # In parallel, a few files a process. Given the whole list, shellcheck
+    # follows a `source` whose target is also an input file; `-x` follows it
+    # either way, so splitting the list loses no cross-file information.
+    each_shellcheck() {
+        printf '%s\0' "$@" |
+            xargs -0 -n 4 -P "$(getconf _NPROCESSORS_ONLN)" shellcheck -x
+    }
     report hooks.json jq empty hooks/hooks.json
     lint_paths sh bash bats
-    report shellcheck shellcheck "${files[@]}"
+    report shellcheck each_shellcheck "${files[@]}"
     lint_paths sh
     report 'bash -n' each_bash_n "${files[@]}"
     # tests/corpus-eval.bats and tests/extract-fixtures.bats run the two Python
