@@ -272,8 +272,8 @@ _readonly_readfile_arg() {
 # `git`, after skipping its own global options, and runs merge, pull,
 # checkout, switch, rebase or cherry-pick: the subcommand; then 1 when that
 # segment is the call's only such segment and git runs where the probe looks
-# (no -C, --git-dir or --work-tree on it, no earlier segment opening with cd or
-# pushd), else 0; then each following word up to and including a literal --
+# (no -C, --git-dir or --work-tree on it, no cd or pushd word in an earlier
+# segment), else 0; then each following word up to and including a literal --
 # (readonly-path.md's target= "before any --", which the -- record ends), each
 # NUL-terminated; nothing when no segment matches.
 _readonly_merge_segment() {
@@ -296,6 +296,13 @@ _readonly_merge_segment() {
                         state=skipseg
                         ;;
                     *) state=skipseg ;;
+                esac
+                ;;
+            skipseg)
+                # any cd or pushd word before the git segment, however the
+                # segment opens ({ cd x; ... }), moves git conservatively
+                case "$word" in
+                    cd | pushd) [ -n "$sub" ] || moved=1 ;;
                 esac
                 ;;
             skip)

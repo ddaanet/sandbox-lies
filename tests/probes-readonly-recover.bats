@@ -172,6 +172,12 @@ no_recover() {
   no_recover "git --work-tree '$REPO' checkout feat" feat
 }
 
+@test "a cd or pushd word in any earlier segment withholds recover=" {
+  no_recover "{ cd '$REPO'; git checkout feat; }" feat
+  no_recover "( pushd '$REPO'; git checkout feat )" feat
+  no_recover "true && { cd /; git checkout feat; }" feat
+}
+
 @test "a -C on an earlier segment, or a cd after the segment, keeps recover=" {
   probe_facts "git -C '$REPO' status && git checkout feat"
   printf '%s\n' "$output" | grep -qxF 'recover=checkout'

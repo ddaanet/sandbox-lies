@@ -59,3 +59,20 @@ lone_checkout_case() {
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   [ "$ctx" = "\`$REPO/.claude/settings.json\`"' is writable outside the sandbox, whose allowlist refused it. Before any re-run, follow the `sandbox-lies:sandbox-lies` skill'"'"'s recovery of a refused merge or checkout: the git command may have stopped part-way.' ]
 }
+
+@test "a branch name holding a shell metacharacter reaches the recovery script as one argument" {
+  local ctx cmd
+  # shellcheck disable=SC2016 # the literal $ is the metacharacter under test
+  git -C "$REPO" branch 'a;b$IFS(c)'
+  hook_context "git checkout 'a;b\$IFS(c)'"
+  cmd=${ctx#*run \`}
+  cmd=${cmd%%\` with*}
+  [[ "$cmd" == sandbox-lies-recover\ * ]]
+  printargs() { printf '%s\n' "$@"; }
+  run eval "${cmd/sandbox-lies-recover/printargs}"
+  [ "$status" -eq 0 ]
+  [ "$output" = "-C
+$REPO
+checkout
+a;b\$IFS(c)" ]
+}

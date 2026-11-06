@@ -209,7 +209,10 @@ verdict_readonly_path() {
       rest=" $act"
       if [ -n "$merge" ] && { [ -n "$partial" ] || [ "${#matches[@]}" -gt 0 ]; }; then
         if [ -n "$recover" ] && [ -n "$target" ] && [ -n "$repo" ]; then
-          clause="Before any re-run, run \`sandbox-lies-recover -C $repo $recover $target\` with \`dangerouslyDisableSandbox: true\` and read its plan: the git command may have stopped part-way. The \`sandbox-lies:sandbox-lies\` skill says how to carry the plan out."
+          # repo= is quoted by the probe; target= is raw prose elsewhere
+          local target_q
+          target_q=$(LC_ALL=C; printf %q "$target")
+          clause="Before any re-run, run \`sandbox-lies-recover -C $repo $recover $target_q\` with \`dangerouslyDisableSandbox: true\` and read its plan: the git command may have stopped part-way. The \`sandbox-lies:sandbox-lies\` skill says how to carry the plan out."
         else
           # shellcheck disable=SC2016 # backticks are literal prose, not expansion
           clause='Before any re-run, follow the `sandbox-lies:sandbox-lies` skill'"'"'s recovery of a refused merge or checkout: the git command may have stopped part-way.'
