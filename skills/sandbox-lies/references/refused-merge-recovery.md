@@ -13,11 +13,11 @@ script covers every case observed (below); run it unsandboxed:
    the target. An exit 2 saying `cannot tell` means the state is unknown: act on
    nothing and report. Any other exit 2 is an argument error: correct the
    arguments and re-run.
-2. **Carry it out.** Run the same command again with `--apply`. It does the
-   restores and removals, then re-runs the original command once, in one call,
-   if the target was not reached. Under the sandbox's strict mode, where a call
-   cannot run unsandboxed, the `--apply` run cannot work from the agent: ask the
-   human partner to run it as
+2. **Carry it out.** Run the same command again with `--apply` placed before the
+   subcommand. It does the restores and removals, then re-runs the original
+   command once, in one call, if the target was not reached. Under the sandbox's
+   strict mode, where a call cannot run unsandboxed, the `--apply` run cannot
+   work from the agent: ask the human partner to run it as
    `! sandbox-lies-recover --apply -C <repo> checkout <branch>` (or
    `merge <commit-ish>`), `<repo>` being what the verdict printed, or the
    directory the command ran in.

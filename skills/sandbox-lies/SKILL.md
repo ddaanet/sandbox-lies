@@ -156,9 +156,9 @@ Mask shapes and placement, and the expansion path's mechanism:
 
 After a refused `git merge --ff-only` or `git checkout <branch>`, even at exit
 0, run `sandbox-lies-recover checkout <branch>` (or `merge <commit-ish>`)
-unsandboxed without `--apply`; read the plan, then run it with `--apply`. Never
-finish a checkout with `git reset --hard <target>`. The procedure and its
-evidence:
+unsandboxed without `--apply`; read the plan, then run it with `--apply` before
+the subcommand. Never finish a checkout with `git reset --hard <target>`. The
+procedure and its evidence:
 [references/refused-merge-recovery.md](references/refused-merge-recovery.md).
 
 ## Background tasks are invisible to a sandboxed `ps`
