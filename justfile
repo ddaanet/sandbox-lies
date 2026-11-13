@@ -15,8 +15,8 @@ code_dirs := "lib hooks scripts bin tests plugin-dev"
 # (sentinel-guard; plugin-dev/manual/gates.md), and ends with the list of checks
 # that passed.
 [doc('Checks that run before every commit.')]
-precommit: check-refs check-size check-frontmatter task-files gate-docs gate-code
-    @printf 'precommit passed: check-refs, check-size, check-frontmatter, task-files, gate-docs, gate-code\n'
+precommit: check-refs check-size check-frontmatter check-modes task-files gate-docs gate-code
+    @printf 'precommit passed: check-refs, check-size, check-frontmatter, check-modes, task-files, gate-docs, gate-code\n'
 
 # Everything that is not code: the manifest, the wrap check, the link check, the
 # refusal of a tracked shell file outside the code dirs (no gate lints one) and

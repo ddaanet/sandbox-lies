@@ -29,7 +29,7 @@ setup_file() {
   [ "$status" -eq 0 ] || { echo "$output" >&2; return 1; }
   [[ "$output" == *"gate-docs passed:"* ]]
   [[ "$output" == *"gate-code passed:"* ]]
-  [[ "$output" == *"precommit passed: check-refs, check-size, check-frontmatter, task-files, gate-docs, gate-code"* ]]
+  [[ "$output" == *"precommit passed: check-refs, check-size, check-frontmatter, check-modes, task-files, gate-docs, gate-code"* ]]
   [ "$(spy_docs_runs)" -eq 1 ]
   [ "$(spy_code_runs)" -eq 1 ]
 
