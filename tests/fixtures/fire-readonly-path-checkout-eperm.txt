@@ -1,0 +1,8 @@
+D	.claude/agents/commit.md
+M	.claude/settings.json
+M	agent-core
+warning: unable to unlink '.claude/agents/quiet-task.md': Operation not permitted
+warning: unable to unlink '.claude/agents/tdd-task.md': Operation not permitted
+error: unable to create file .claude/agents/commit.md: Operation not permitted
+error: unable to unlink old '.claude/settings.json': Operation not permitted
+Switched to branch 'unification'

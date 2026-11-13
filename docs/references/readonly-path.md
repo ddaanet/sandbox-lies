@@ -21,7 +21,16 @@ backticks, pipes and colons, then a colon and a space, as `cp`, `mv`, `rm`,
 it — and ends in a colon, a space and the kernel's read-only-filesystem (EROFS)
 or busy-device (EBUSY) message, trailing blanks allowed. Or Python's: a line
 beginning with an exception name ending in `Error`, a colon and a space, errno
-30 or 16 in brackets, the same message, a colon. The store quotes both mid-line.
+30 or 16 in brackets, the same message, a colon. Or, as a third alternative, one
+of five git refusals that end in the operation-not-permitted message, each a
+whole line from its start, trailing blanks allowed: `error:` failing to create a
+file, `error:` failing to unlink an old file and `warning:` failing to unlink a
+file (both with the path single-quoted), `error:` failing to write the config
+file, and `fatal:` failing to create an index lock (the path single-quoted and
+ending in `/.git/index.lock`). That message is taken from no other line, so
+another tool's refusal ending in it stays quiet, as does a git line outside the
+five. The evidence for this alternative is macOS transcript records only; no
+live reproduction exists for it. The store quotes the messages mid-line.
 Expected residual: a path not writable outside the sandbox either.
 
 **Flag policy.** Silent when the flag is true.
@@ -54,19 +63,27 @@ prints escaped, is cut at that quote or yields `nopath`; a curly-quoted or
 unquoted path holding two straight quotes is read as what lies between them;
 under `git -C` a relative path names the `-C` directory's tree, not the `cwd`'s,
 so it is wrong (`recover=` is withheld there), and one whose parent is missing
-reads `readonly`, which carries no merge clause.
+reads `readonly`, which carries no merge clause. A `warning:` unlink line of the
+third alternative is not a partial-checkout line, so its relative path joins
+onto the `cwd`, not the worktree top: a checkout run from a subdirectory whose
+first matching line is that warning gets the verdict for a path not writable
+outside the sandbox, `readonly`, wrong for a sandbox refusal, with no merge
+clause. Whether to change that join is an open decision (`TODO.md`). Index locks
+under `.git/worktrees/<name>/` and `.git/modules/<name>/` do not end in
+`/.git/index.lock`, so the fifth shape does not take them.
 
-Five `nopath` shapes stay unextracted; together they are 11 of the 195 hits of
-the 2026-09-27 dogfood: `tee`'s refusal of a file under `/tmp`; `sed`'s
-temporary file in a relative directory; git's refusal to write `.git/config`,
-which is busy rather than read-only; a removal warning on a dotfile; and `cp`
-with an empty operand, which names no path at all. In every recorded case a path
-would not change the act: each extractable path is writable outside the sandbox,
-so `writable` would give the same re-run `nopath` gives, and none names
-`.claude/settings.json`. A removal refused on a leaked phantom mask gets that
-re-run too, and the leak makes it futile, since the mask outlives its command
-and a restart clears it. A detector for that symptom would need a corpus replay
-under D-15.
+The create-file and config-write lines of the third alternative read `nopath`
+like their twins, since neither path is quoted. Five `nopath` shapes stay
+unextracted; together they are 11 of the 195 hits of the 2026-09-27 dogfood:
+`tee`'s refusal of a file under `/tmp`; `sed`'s temporary file in a relative
+directory; git's refusal to write `.git/config`, which is busy rather than
+read-only; a removal warning on a dotfile; and `cp` with an empty operand, which
+names no path at all. In every recorded case a path would not change the act:
+each extractable path is writable outside the sandbox, so `writable` would give
+the same re-run `nopath` gives, and none names `.claude/settings.json`. A
+removal refused on a leaked phantom mask gets that re-run too, and the leak
+makes it futile, since the mask outlives its command and a restart clears it. A
+detector for that symptom would need a corpus replay under D-15.
 
 | outcome | condition |
 |---|---|
@@ -129,25 +146,26 @@ then rests on `match=` lines, which a finished checkout leaves none of. A
 partial checkout whose text lost git's error — cut by a `tail`, or sent to a
 file — gets a clause only through a `match=` line. The delete-only case (git's
 `warning:` on an unlink, exit 0, HEAD moved) prints no `partial=1`, so it gets a
-clause only when a `match=` line fires. `partial=1` does not check which git
-command printed the error, so a `stash` or `restore` dying on the same error
-counts too. A git partial-checkout line that another program prefixed or
-indented (a wrapper's own prefix) does not count; git's own progress fragment
-before the message, ended by a carriage return, does. A file whose name holds a
-newline is never a `match=` or a `readfile=`, and a repository root holding one
-gives no `target=` or `match=` at all: either would split a `match=` line and
-forge the key line after it. A repository at `/` gives `match=//<file>`. A
-reader behind a `cd`, or a reader or git behind a variable assignment, is not
-recognised. The scan does not parse `$( )`, backticks, subshells, braces or
-`$'…'`, so their contents read as words of the command around them, and a `cd`
-inside a subshell does not withhold `recover=`; it stops at the end of a line
-holding `<<`, and after 16384 characters, and neither cut command yields
-`readfile=`. A `>` anywhere in a word counts as output redirection, quoted or
-not, except a descriptor duplication (`2>&1`, `>&2`); so do `sort -o` and
-`awk -i`. A candidate ref holding `@{`, `^{`, `:` or a leading `-` is skipped.
-With an unborn HEAD, or past 1000 files modified against HEAD, no `target=` is
-printed. A file matches byte for byte, before any clean filter, and never as a
-symlink.
+clause only when a `match=` line fires; it can fire the detector alone, through
+the third alternative, and then gets the bare re-run act. `partial=1` does not
+check which git command printed the error, so a `stash` or `restore` dying on
+the same error counts too. A git partial-checkout line that another program
+prefixed or indented (a wrapper's own prefix) does not count; git's own progress
+fragment before the message, ended by a carriage return, does. A file whose name
+holds a newline is never a `match=` or a `readfile=`, and a repository root
+holding one gives no `target=` or `match=` at all: either would split a `match=`
+line and forge the key line after it. A repository at `/` gives
+`match=//<file>`. A reader behind a `cd`, or a reader or git behind a variable
+assignment, is not recognised. The scan does not parse `$( )`, backticks,
+subshells, braces or `$'…'`, so their contents read as words of the command
+around them, and a `cd` inside a subshell does not withhold `recover=`; it stops
+at the end of a line holding `<<`, and after 16384 characters, and neither cut
+command yields `readfile=`. A `>` anywhere in a word counts as output
+redirection, quoted or not, except a descriptor duplication (`2>&1`, `>&2`); so
+do `sort -o` and `awk -i`. A candidate ref holding `@{`, `^{`, `:` or a leading
+`-` is skipped. With an unborn HEAD, or past 1000 files modified against HEAD,
+no `target=` is printed. A file matches byte for byte, before any clean filter,
+and never as a symlink.
 
 The `readfile=` operand rule leaves these residuals, each shown by what the
 probe prints:
@@ -267,5 +285,13 @@ with a command-output name — a background task's `*.output`, a `*.log` —
 carrying an earlier sandboxed call's refusal. Any such name (`*.out`, `*.err`
 and the like too) is a legitimate flag; a `*.md` or other document carrying one
 is material about sandbox effects, self-reference (D-10).
+
+The third alternative, replayed on 2026-11-13 with the shipped matcher as
+arbiter over the whole local corpus: 34 hits that the first two alternatives do
+not take, all true (100%), 6 of them this project's traffic. 28 are sandbox
+refusals, 27 in `edify` and 1 in `devddaanet`, none run with the unsandbox flag;
+the 6 are sessions of this project printing corpus or fixture lines back (D-10).
+The same replay finds 169 hits for the first two alternatives, against the 162
+above.
 
 **Decision: ships.**

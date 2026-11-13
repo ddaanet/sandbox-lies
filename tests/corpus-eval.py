@@ -58,6 +58,7 @@ PREFILTER_SUBSTRINGS = [
     "crw-",  # phantom-chardev
     "Read-only file system",  # readonly-path
     "Device or resource busy",  # readonly-path
+    "Operation not permitted",  # readonly-path, git's five refusals
     "Permission denied",  # tmpdir-unset
     "No such file or directory",  # tmpdir-unset
     "No conversation found",  # resume-lost

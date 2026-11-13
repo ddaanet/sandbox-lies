@@ -1,0 +1,13 @@
+1	1	memory
+mktemp: mkdtemp failed on /var/folders/tg/d__2bczj23q_q_vs201hg96h0000gn/T/tmp.6XAna0NDHE: Operation not permitted
+fatal: Unable to create '/idx.lock': Operation not permitted
+.claude-plugin/icon.png
+.claude-plugin/plugin.json
+.claude/gitlore-hook-setup
+.claude/settings.json
+.envrc
+.gitignore
+.gitlore/bin/claude
+.gitmodules
+CLAUDE.md
+LICENSE

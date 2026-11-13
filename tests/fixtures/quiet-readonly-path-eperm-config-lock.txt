@@ -1,0 +1,3 @@
+Exit code 128
+error: could not lock config file .git/config: Operation not permitted
+fatal: could not set 'remote.origin.url' to 'https://github.com/ddaanet/agent-core.git'

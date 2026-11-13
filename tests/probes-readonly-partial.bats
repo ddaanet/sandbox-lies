@@ -131,3 +131,32 @@ $(partial_checkout_unlink_error "$BATS_TEST_TMPDIR/a")"
   [ "${output%%$'\n'*}" = writable ]
   run ! grep -q '^partial=1$' <<<"$output"
 }
+
+# Pins for git's operation-not-permitted refusals (eperm_shape_line). Neither
+# names its path in single quotes, so both read nopath, as their read-only
+# twins do; they differ in the partial=1 fact, which follows git's three
+# partial-checkout heads and never the message. Green today because the matcher
+# finds no line and the facts print over the whole text; they hold once it does.
+@test "an unquoted create-file refusal reads nopath with partial=1, whatever its message" {
+  local text
+
+  text=$(eperm_shape_line 1 "$BATS_TEST_TMPDIR/a")
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'git checkout x' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = nopath ]
+  printf '%s\n' "$output" | grep -qxF 'partial=1'
+}
+
+@test "an unquoted config-write refusal reads nopath without partial=1" {
+  local text
+
+  text=$(eperm_shape_line 4 "$BATS_TEST_TMPDIR/.git/config")
+  run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
+    'git checkout x' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = nopath ]
+  run ! grep -q '^partial=1$' <<<"$output"
+}

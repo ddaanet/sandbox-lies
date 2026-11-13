@@ -146,6 +146,37 @@ SPEC = [
     ("quiet-readonly-path-index-line", "-Users-david-code-gitlore",
      "2026-08-13", 'grep -n "claude-plugin-dev" memory/ddaanet/MEMORY.md',
      "inter-device move failed", "short", 60, 4000),
+    # git's refusals worded as an operation-not-permitted error, as the macOS
+    # sandbox records them: the readonly-path matcher's five git shapes
+    # a checkout that refused a settings file (create and unlink old lines)
+    ("fire-readonly-path-checkout-eperm", "-Users-david-code-edify",
+     "2026-01-22", "git checkout unification", "unable to create file",
+     "short", 40, 4000),
+    # the config write of a new branch refused after the checkout finished
+    ("fire-readonly-path-config-eperm", "-Users-david-code-edify",
+     "2026-01-05", "git checkout origin/tmp -b tmp_checkout",
+     "could not write config file", "short", 40, 4000),
+    # an index lock refused in another repository than the cwd, after a
+    # non-shape ref-lock line the matcher passes over
+    ("fire-readonly-path-index-lock-eperm", "-Users-david-code-devddaanet",
+     "2026-10-31",
+     "cd /Users/david/code/plugin-craft && git symbolic-ref HEAD",
+     "/.git/index.lock'", "short", 40, 4000),
+    # the shape-5 head on an empty-variable path: no .git/index.lock suffix
+    ("quiet-readonly-path-eperm-idx-tmp", "-Users-david-code-devddaanet",
+     "2026-10-30", "git -C $H diff --numstat dev", "/idx.lock'",
+     "short", 40, 4000),
+    # cp refusing masks: another tool's line ending the same way
+    ("quiet-readonly-path-eperm-cp-special", "-Users-david-code-ghmem",
+     "2026-10-15", 'mkdir -p "$TMPDIR/with space"',
+     "cannot create special file", "short", 40, 4000),
+    # a real sandbox refusal the decided scope leaves silent, not a false
+    # positive: git's config-lock head is no one of the five shapes
+    ("quiet-readonly-path-eperm-config-lock", "-Users-david-code-edify",
+     "2026-01-19",
+     "git remote add origin https://github.com/ddaanet/agent-core.git"
+     " && git remote -v",
+     "could not lock config file", "short", 40, 4000),
 ]
 
 

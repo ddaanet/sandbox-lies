@@ -15,6 +15,7 @@ FIXTURES="$ROOT/tests/fixtures"
 bats_require_minimum_version 1.5.0
 
 load helpers/bsd-stubs
+load helpers/probes
 
 # assert_verdict <want> <text> — detect on <text> prints exactly <want>, one
 # verdict name, or nothing and exits 1 when <want> is empty.
@@ -110,6 +111,83 @@ tmpdir_unset_quoted_words_pair() {
   grep -qF "[Errno 16] $busy: " <<< "$text"
   run ! grep -qF 'Errno 30' <<< "$text"
   assert_verdict readonly-path "$text"
+}
+
+# ---------------------------- readonly-path: git's operation-not-permitted shapes
+#
+# Five git heads, each a whole line ending in the message, take the third
+# alternative (eperm_shape_line builds them). Each shape's case pairs the fire
+# with the near-misses of its line anchor, so the quiet half cannot pass
+# because the matcher is absent.
+
+# eperm_shape_case <n> <path> — shape <n> fires at the line start and with
+# trailing blanks, and stays quiet behind a grep -n locator and mid-line.
+eperm_shape_case() {
+  local line
+  line=$(eperm_shape_line "$1" "$2")
+  assert_verdict readonly-path "$line"
+  assert_verdict readonly-path "$line   "
+  assert_verdict '' "48:$line"
+  assert_verdict '' "- the checkout died with $line"
+}
+
+@test "readonly-path fires on git's create-file refusal, not behind a locator" {
+  eperm_shape_case 1 .claude/agents/commit.md
+}
+
+@test "readonly-path fires on git's unlink-old refusal, not behind a locator" {
+  eperm_shape_case 2 .claude/settings.json
+}
+
+@test "readonly-path fires on git's unlink warning, not behind a locator" {
+  eperm_shape_case 3 .claude/agents/tdd-task.md
+}
+
+@test "readonly-path fires on git's config-write refusal, not behind a locator" {
+  eperm_shape_case 4 .git/config
+}
+
+@test "readonly-path fires on git's index-lock refusal, not behind a locator" {
+  eperm_shape_case 5 /r/.git/index.lock
+}
+
+@test "readonly-path stays quiet on other tools' lines ending in the message" {
+  # A cp refusal ends the same way and the corpus holds ~90 of them: the
+  # message alone is no signal, only the five git heads carry it.
+  local cp
+  cp="cp: cannot create special file '/r/x': $(eperm_message)"
+  assert_verdict '' "$cp"
+  assert_verdict '' "mv: cannot move 'a' to 'b': $(eperm_message)"
+}
+
+@test "readonly-path stays quiet on git heads outside the five shapes" {
+  local msg head
+  msg=$(eperm_message)
+  head='error: could not lock '
+  assert_verdict '' "${head}config file .git/config: $msg"
+  head='fatal: cannot '
+  assert_verdict '' "${head}unlink '.claude/x': $msg"
+  head='error: cannot lock ref '
+  assert_verdict '' "${head}'HEAD': Unable to create '/r/.git/HEAD.lock': $msg"
+}
+
+@test "readonly-path stays quiet on the lock head when the path is no index lock" {
+  assert_verdict '' "$(eperm_shape_line 5 /idx.lock)"
+  assert_verdict '' "$(eperm_shape_line 5 /r/.git/HEAD.lock)"
+  assert_verdict '' "$(eperm_shape_line 5 /r/index.lock)"
+}
+
+@test "readonly-path stays quiet on each git head ending in another errno" {
+  # The message is bound to the head: a third errno that is neither the
+  # read-only-filesystem nor the busy-device message leaves each head quiet.
+  local n path nospace
+  nospace='No space'
+  nospace="$nospace left on device"
+  for n in 1 2 3 4 5; do
+    path=/r/x
+    [ "$n" -ne 5 ] || path=/r/.git/index.lock
+    assert_verdict '' "$(eperm_shape_line "$n" "$path" "$nospace")"
+  done
 }
 
 # ------------------------------------- FR-7: curly quotes, tab-indented names

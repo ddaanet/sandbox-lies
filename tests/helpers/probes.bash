@@ -77,6 +77,37 @@ partial_checkout_mkdir_error() {
   printf '%s\n' "$msg"
 }
 
+# eperm_message — the operation-not-permitted message the macOS sandbox gives
+# a refused write, built from two fragments as erofs_message is (self-quiet,
+# FR-11).
+eperm_message() {
+  local msg='Operation not'
+  msg="$msg permitted"
+  printf '%s' "$msg"
+}
+
+# eperm_shape_line <n> <path> [<message>] — git's refusal shape <n> on <path>
+# (1 unable to create file, 2 unable to unlink old, 3 warning unable to
+# unlink, 4 could not write config file, 5 fatal unable to create: a lock),
+# ending in <message>, which defaults to eperm_message and may be passed empty.
+# Each head is two fragments around the path, so no source line holds a head
+# and the message whole (self-quiet, FR-11). Shapes 2, 3 and 5 single-quote
+# the path, as git does; 1 and 4 leave it bare. Shared by
+# tests/matchers-edges.bats, tests/probes-readonly-partial.bats,
+# tests/probes-readonly-resolve.bats and tests/hook-recover.bats.
+eperm_shape_line() {
+  local n="$1" path="$2" message head
+  message="${3-$(eperm_message)}"
+  case "$n" in
+    1) head='error: unable to create '; head="${head}file $path" ;;
+    2) head='error: unable to unlink '; head="${head}old '$path'" ;;
+    3) head='warning: unable to unlink '; head="${head}'$path'" ;;
+    4) head='error: could not write '; head="${head}config file $path" ;;
+    5) head='fatal: Unable to create '; head="${head}'$path'" ;;
+  esac
+  printf '%s: %s\n' "$head" "$message"
+}
+
 # cp_refusal_in_path <dir> <n> — a cp refusal (not git's) whose single-quoted
 # path holds partial-checkout phrase <n> (1 unlink, 2 create, 3 mkdir) mid-path,
 # the phrase built from two fragments as the helpers above build theirs.

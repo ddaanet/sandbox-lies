@@ -1,0 +1,4 @@
+0
+cp: cannot create special file '/tmp/claude-1000/with space/ghmem/.vscode': Operation not permitted
+cp: cannot create special file '/tmp/claude-1000/with space/ghmem/.idea': Operation not permitted
+done

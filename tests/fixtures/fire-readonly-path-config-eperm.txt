@@ -1,0 +1,4 @@
+branch 'tmp_checkout' set up to track 'origin/tmp'.
+error: could not write config file .git/config: Operation not permitted
+error: could not write config file .git/config: Operation not permitted
+Switched to a new branch 'tmp_checkout'

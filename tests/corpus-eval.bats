@@ -9,6 +9,7 @@ bats_require_minimum_version 1.5.0
 
 load helpers/bsd-stubs
 load helpers/corpus
+load helpers/probes
 
 setup() {
   HOME="$BATS_TEST_TMPDIR/home"
@@ -48,6 +49,24 @@ one_call() {
   [ "${#survivors[@]}" -eq 1 ]
   [ -e "$OUTDIR/survivors/000001.txt" ]
   [ ! -e "$OUTDIR/verdicts.tsv" ]
+}
+
+# The line carries no other prefilter substring, so only the operation-not-
+# permitted phrase can keep it (eperm_shape_line 1 builds it from fragments).
+@test "extract keeps a survivor whose only signal is git's refused create-file line" {
+  local text
+  text=$(eperm_shape_line 1 a/b)
+  {
+    corpus_use u1 "2026-09-01T00:00:00Z" "git checkout x"
+    corpus_result u1 "2026-09-01T00:00:01Z" "$text"
+  } >"$PROJ/s.jsonl"
+
+  run -0 --separate-stderr eval_py extract --outdir "$OUTDIR"
+
+  # shellcheck disable=SC2154 # set by bats' run --separate-stderr
+  [[ "$stderr" != *Traceback* ]] || false
+  [ -e "$OUTDIR/survivors/000001.txt" ]
+  grep -qF "$text" "$OUTDIR/survivors/000001.txt"
 }
 
 @test "aggregate skips verdict lines with no manifest entry and counts them" {

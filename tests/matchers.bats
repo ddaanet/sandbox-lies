@@ -64,6 +64,13 @@ expected_for() {
     fire-readonly-path-git-mkdir)    printf 'readonly-path\n' ;;
     fire-readonly-path-checkout-moved) printf 'readonly-path\n' ;;
     quiet-readonly-path-index-line)  : ;;
+    # git's operation-not-permitted refusals, as the macOS sandbox records them.
+    fire-readonly-path-checkout-eperm)    printf 'readonly-path\n' ;;
+    fire-readonly-path-config-eperm)      printf 'readonly-path\n' ;;
+    fire-readonly-path-index-lock-eperm)  printf 'readonly-path\n' ;;
+    quiet-readonly-path-eperm-idx-tmp)    : ;;
+    quiet-readonly-path-eperm-cp-special) : ;;
+    quiet-readonly-path-eperm-config-lock) : ;;
     *) return 1 ;;
   esac
 }
@@ -272,6 +279,41 @@ assert_fixture() {
   local f="$FIXTURES/quiet-readonly-path-index-line.txt"
   grep -qF 'inter-device move failed' "$f"
   grep -qF 'Read-only file system' "$f"
+}
+
+@test "readonly-path fires on git's create and unlink refusals during a checkout" {
+  assert_fixture fire-readonly-path-checkout-eperm
+}
+
+@test "readonly-path fires on git's refused config write after a checkout" {
+  assert_fixture fire-readonly-path-config-eperm
+}
+
+@test "readonly-path fires on git's refused index lock behind a ref-lock line" {
+  assert_fixture fire-readonly-path-index-lock-eperm
+  grep -qF "cannot lock ref 'HEAD'" \
+    "$FIXTURES/fire-readonly-path-index-lock-eperm.txt"
+}
+
+@test "readonly-path stays quiet on an index lock whose path is empty-variable bare" {
+  assert_fixture quiet-readonly-path-eperm-idx-tmp
+  local f="$FIXTURES/quiet-readonly-path-eperm-idx-tmp.txt"
+  grep -qF "fatal: Unable to create '/idx.lock'" "$f"
+  grep -qF 'Operation not permitted' "$f"
+}
+
+@test "readonly-path stays quiet on cp refusing a special file" {
+  assert_fixture quiet-readonly-path-eperm-cp-special
+  local f="$FIXTURES/quiet-readonly-path-eperm-cp-special.txt"
+  grep -qF 'cp: cannot create special file' "$f"
+  grep -qF 'Operation not permitted' "$f"
+}
+
+@test "readonly-path stays quiet on git's config-lock refusal, a real refusal outside the five shapes" {
+  assert_fixture quiet-readonly-path-eperm-config-lock
+  local f="$FIXTURES/quiet-readonly-path-eperm-config-lock.txt"
+  grep -qF 'error: could not lock config file' "$f"
+  grep -qF 'Operation not permitted' "$f"
 }
 
 # --------------------------------------------------- the store's own strings

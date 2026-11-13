@@ -108,6 +108,78 @@ path_line() {
   [ "${output%%$'\n'*}" = writable ]
 }
 
+# git's operation-not-permitted refusals (helpers/probes.bash eperm_shape_line).
+# Red today for one reason: the matcher finds no line in the text, so the probe
+# prints nopath and no path= line. The cwd sub and the top's d are both real,
+# so only a join onto the wrong base, or no join, moves the outcome.
+@test "an unlink-old refusal worded as not permitted joins onto the worktree top from a subdirectory" {
+  local repo="$BATS_TEST_TMPDIR/repo" text
+  mkdir -p "$repo/.git" "$repo/sub" "$repo/d"
+  : >"$repo/d/f"
+
+  text=$(eperm_shape_line 2 d/f)
+  run_probe_command probe_readonly_path false "$repo/sub" 'git checkout x' "$text"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "$(path_line)" = "path=$repo/d/f" ]
+  [ "${output%%$'\n'*}" = writable ]
+}
+
+# The warning is no partial-checkout needle, so it joins onto the cwd: at the
+# top that is the top. The subdirectory case is held on a decision (TODO.md).
+@test "an unlink warning worded as not permitted reads writable at the worktree top" {
+  local repo="$BATS_TEST_TMPDIR/repo" text
+  mkdir -p "$repo/.git" "$repo/d"
+  : >"$repo/d/f"
+
+  text=$(eperm_shape_line 3 d/f)
+  run_probe_command probe_readonly_path false "$repo" 'git checkout x' "$text"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "$(path_line)" = "path=$repo/d/f" ]
+  [ "${output%%$'\n'*}" = writable ]
+}
+
+# The lock file does not exist, so the writability test falls to its parent,
+# the repository's .git. The path is absolute and passes through unchanged.
+@test "an index-lock refusal worded as not permitted reads writable on the scratch lock path" {
+  local repo="$BATS_TEST_TMPDIR/repo" text
+  mkdir -p "$repo/.git" "$repo/sub"
+
+  text=$(eperm_shape_line 5 "$repo/.git/index.lock")
+  run_probe_command probe_readonly_path false "$repo/sub" 'git status' "$text"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "$(path_line)" = "path=$repo/.git/index.lock" ]
+  [ "${output%%$'\n'*}" = writable ]
+}
+
+@test "the not-permitted shapes resolve through BSD grep and sed" {
+  local repo="$BATS_TEST_TMPDIR/repo" text bsd="$BATS_TEST_TMPDIR/bsdtools"
+  mkdir -p "$repo/.git" "$repo/sub" "$repo/d"
+  : >"$repo/d/f"
+  make_bsd_stubs "$bsd" grep sed
+
+  text=$(eperm_shape_line 2 d/f)
+  PATH="$bsd:$PATH" run_probe_command probe_readonly_path false "$repo/sub" \
+    'git checkout x' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "$(path_line)" = "path=$repo/d/f" ]
+  [ "${output%%$'\n'*}" = writable ]
+
+  text=$(eperm_shape_line 5 "$repo/.git/index.lock")
+  PATH="$bsd:$PATH" run_probe_command probe_readonly_path false "$repo/sub" \
+    'git status' "$text"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "$(path_line)" = "path=$repo/.git/index.lock" ]
+  [ "${output%%$'\n'*}" = writable ]
+}
+
 @test "partial-checkout path resolves through BSD grep and sed" {
   local repo="$BATS_TEST_TMPDIR/repo" text bsd="$BATS_TEST_TMPDIR/bsdtools"
   mkdir -p "$repo/.git" "$repo/sub" "$repo/d"
