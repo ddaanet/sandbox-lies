@@ -67,7 +67,7 @@ lone_checkout_case() {
   hook_context "git checkout 'a;b\$IFS(c)'"
   cmd=${ctx#*run \`}
   cmd=${cmd%%\` with*}
-  [[ "$cmd" == sandbox-lies-recover\ * ]]
+  [[ "$cmd" == sandbox-lies-recover\ * ]] || false
   printargs() { printf '%s\n' "$@"; }
   run eval "${cmd/sandbox-lies-recover/printargs}"
   [ "$status" -eq 0 ]

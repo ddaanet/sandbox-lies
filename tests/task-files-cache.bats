@@ -27,9 +27,9 @@ setup_file() {
   clone_gate_tree "$BATS_FILE_TMPDIR/built"
   run_gate
   [ "$status" -eq 0 ] || { echo "$output" >&2; return 1; }
-  [[ "$output" == *"gate-docs passed:"* ]]
-  [[ "$output" == *"gate-code passed:"* ]]
-  [[ "$output" == *"precommit passed: check-refs, check-size, check-frontmatter, check-modes, task-files, gate-docs, gate-code"* ]]
+  [[ "$output" == *"gate-docs passed:"* ]] || false
+  [[ "$output" == *"gate-code passed:"* ]] || false
+  [[ "$output" == *"precommit passed: check-refs, check-size, check-frontmatter, check-modes, task-files, gate-docs, gate-code"* ]] || false
   [ "$(spy_docs_runs)" -eq 1 ]
   [ "$(spy_code_runs)" -eq 1 ]
 
@@ -38,10 +38,10 @@ setup_file() {
     printf 'one more line\n' >>"$GATE_TREE/$f"
     run_gate
     [ "$status" -eq 0 ]
-    [[ "$output" == *"gate-docs: cached"* ]]
-    [[ "$output" == *"gate-code: cached"* ]]
-    [[ "$output" == *"task-files passed"* ]]
-    [[ "$output" == *"precommit passed:"* ]]
+    [[ "$output" == *"gate-docs: cached"* ]] || false
+    [[ "$output" == *"gate-code: cached"* ]] || false
+    [[ "$output" == *"task-files passed"* ]] || false
+    [[ "$output" == *"precommit passed:"* ]] || false
     [ "$(spy_runs)" -eq 2 ]
   done
 
@@ -51,8 +51,8 @@ setup_file() {
   printf 'one more line\n' >>"$GATE_TREE/README.md"
   run_gate
   [ "$status" -eq 0 ]
-  [[ "$output" == *"gate-docs passed:"* ]]
-  [[ "$output" == *"gate-code: cached"* ]]
+  [[ "$output" == *"gate-docs passed:"* ]] || false
+  [[ "$output" == *"gate-code: cached"* ]] || false
   [ "$(spy_docs_runs)" -eq 2 ]
   [ "$(spy_code_runs)" -eq 1 ]
 }
@@ -62,9 +62,9 @@ setup_file() {
   firing_line >"$GATE_TREE/TODO.md"
   run_gate
   [ "$status" -ne 0 ]
-  [[ "$output" == *TODO.md* ]]
-  [[ "$output" == *phantom-chardev* ]]
-  [[ "$output" != *"precommit passed"* ]]
+  [[ "$output" == *TODO.md* ]] || false
+  [[ "$output" == *phantom-chardev* ]] || false
+  [[ "$output" != *"precommit passed"* ]] || false
   [ "$(spy_runs)" -eq 0 ]
 }
 
@@ -75,9 +75,9 @@ setup_file() {
   head -c 20001 /dev/zero | tr '\0' x >>"$GATE_TREE/CLAUDE.md"
   run_gate
   [ "$status" -ne 0 ]
-  [[ "$output" == *"oversized-file: untracked-big.txt"* ]]
-  [[ "$output" == *"oversized-file: CLAUDE.md"* ]]
-  [[ "$output" != *"precommit passed"* ]]
+  [[ "$output" == *"oversized-file: untracked-big.txt"* ]] || false
+  [[ "$output" == *"oversized-file: CLAUDE.md"* ]] || false
+  [[ "$output" != *"precommit passed"* ]] || false
   [ "$(spy_runs)" -eq 0 ]
 }
 
@@ -92,8 +92,8 @@ setup_file() {
   head -c 20001 /dev/zero | tr '\0' x >"$GATE_TREE/TODO.md"
   run_gate
   [ "$status" -ne 0 ]
-  [[ "$output" == *"oversized-file: TODO.md"* ]]
-  [[ "$output" != *"precommit passed"* ]]
+  [[ "$output" == *"oversized-file: TODO.md"* ]] || false
+  [[ "$output" != *"precommit passed"* ]] || false
   [ "$(spy_runs)" -eq 2 ]
 }
 
@@ -109,9 +109,9 @@ setup_file() {
   mv "$skill.new" "$skill"
   run_gate
   [ "$status" -ne 0 ]
-  [[ "$output" == *"$rel"* ]]
-  [[ "$output" == *description* ]]
-  [[ "$output" != *"precommit passed"* ]]
+  [[ "$output" == *"$rel"* ]] || false
+  [[ "$output" == *description* ]] || false
+  [[ "$output" != *"precommit passed"* ]] || false
   [ "$(spy_runs)" -eq 0 ]
 }
 

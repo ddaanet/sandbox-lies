@@ -72,7 +72,7 @@ real_probe_case() {
   [ -n "$recorded" ]
   absent="$BATS_TEST_TMPDIR/absent-repo/.git/index.lock"
   text=${text//"$recorded"/$absent}
-  [[ $text == *"$absent"* ]]
+  [[ $text == *"$absent"* ]] || false
   [ ! -e "$absent" ]
 
   run_hook "$(failure_payload "$text")"

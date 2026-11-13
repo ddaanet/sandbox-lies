@@ -91,7 +91,7 @@ teardown() {
   for name in "a b" "it's" "caf"$'\303\251' "tab"$'\t'"x" "a\\b" "a\$b" $'a\nb' "a\"b"; do
     run --separate-stderr assert_unescaped_dir "$BATS_TEST_TMPDIR/$name"
     [ "$status" -eq 1 ] || { printf 'name %q passed\n' "$name" >&2; return 1; }
-    [[ $stderr == *"holds a byte printf %q escapes"* ]]
+    [[ $stderr == *"holds a byte printf %q escapes"* ]] || false
   done
 
   run --separate-stderr assert_unescaped_dir "$BATS_TEST_TMPDIR/plain-dir_1.d"

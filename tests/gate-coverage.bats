@@ -213,8 +213,8 @@ setup() {
     git -C "$GATE_TREE" add -- "$f"
     gate_docs
     [ "$status" -ne 0 ]
-    [[ "$output" == *"shell-outside-code-dirs: $f"* ]]
-    [[ "$output" != *"gate-docs passed"* ]]
+    [[ "$output" == *"shell-outside-code-dirs: $f"* ]] || false
+    [[ "$output" != *"gate-docs passed"* ]] || false
     git -C "$GATE_TREE" rm -q --cached -- "$f"
     gate_docs
     [ "$status" -eq 0 ] || { echo "$output" >&2; return 1; }
@@ -235,7 +235,7 @@ setup() {
   touch_file tests/matchers.bats
   gate_code
   [ "$status" -eq 0 ] || { echo "$output" >&2; return 1; }
-  [[ "$output" == *"gate-code passed"* ]]
+  [[ "$output" == *"gate-code passed"* ]] || false
   touch_file tests/matchers.bats
   : >"$STUBS/shellcheck.fail"
   gate_code

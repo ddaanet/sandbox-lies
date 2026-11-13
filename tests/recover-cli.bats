@@ -39,7 +39,7 @@ teardown() {
   before=$(snap)
   run rec dry checkout feat
   [ "$status" -eq 0 ]
-  [[ "$output" == *"restore d/f"* ]]
+  [[ "$output" == *"restore d/f"* ]] || false
   after=$(snap)
   [ "$before" = "$after" ]
 }
@@ -50,8 +50,8 @@ teardown() {
   before=$(snap)
   run rec dry merge feat
   [ "$status" -eq 0 ]
-  [[ "$output" == *"remove a/new/x"* ]]
-  [[ "${lines[$((${#lines[@]} - 1))]}" == *"git merge --ff-only feat" ]]
+  [[ "$output" == *"remove a/new/x"* ]] || false
+  [[ "${lines[$((${#lines[@]} - 1))]}" == *"git merge --ff-only feat" ]] || false
   after=$(snap)
   [ "$before" = "$after" ]
 }
@@ -59,8 +59,8 @@ teardown() {
 @test "--apply prints each act and the re-run it runs" {
   scenario merge m1
   apply_ok
-  [[ "$output" == *"remove a/new/x"* ]]
-  [[ "$output" == *"git merge --ff-only feat"* ]]
+  [[ "$output" == *"remove a/new/x"* ]] || false
+  [[ "$output" == *"git merge --ff-only feat"* ]] || false
   assert_reached
   assert_status
 }
@@ -97,7 +97,7 @@ teardown() {
   printf 'mine\n' >"$REPO/d/new"
   run rec apply merge feat
   [ "$status" -eq 1 ]
-  [[ "$output" == *"keep d/new"* ]]
+  [[ "$output" == *"keep d/new"* ]] || false
   [ "$(g rev-parse HEAD)" = "$PRE" ]
   [ "$(g symbolic-ref -q HEAD)" = refs/heads/main ]
   assert_status '?? d/new'

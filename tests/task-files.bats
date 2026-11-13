@@ -159,9 +159,9 @@ run_recipe() {
     firing_line >"$dir/$f"
     run_recipe "$dir"
     [ "$status" -ne 0 ]
-    [[ "$stderr$output" == *"$f"* ]]
-    [[ "$stderr$output" == *phantom-chardev* ]]
-    [[ "$output" != *"task-files passed"* ]]
+    [[ "$stderr$output" == *"$f"* ]] || false
+    [[ "$stderr$output" == *phantom-chardev* ]] || false
+    [[ "$output" != *"task-files passed"* ]] || false
   done
 }
 
@@ -171,8 +171,8 @@ run_recipe() {
   printf '[m](missing.md)\n' >"$dir/TASK.md"
   run_recipe "$dir"
   [ "$status" -ne 0 ]
-  [[ "$output" == *"broken-link: TASK.md -> missing.md"* ]]
-  [[ "$output" != *"task-files passed"* ]]
+  [[ "$output" == *"broken-link: TASK.md -> missing.md"* ]] || false
+  [[ "$output" != *"task-files passed"* ]] || false
 }
 
 @test "task-files fails when the matchers themselves fail" {
@@ -181,8 +181,8 @@ run_recipe() {
   printf '#!/usr/bin/env bash\nexit 3\n' >"$dir/lib/matchers.sh"
   run_recipe "$dir"
   [ "$status" -ne 0 ]
-  [[ "$stderr$output" == *TODO.md* ]]
-  [[ "$stderr$output" == *"exited 3"* ]]
+  [[ "$stderr$output" == *TODO.md* ]] || false
+  [[ "$stderr$output" == *"exited 3"* ]] || false
 }
 
 @test "task-files fails on a file the matchers cannot read, not reading it as quiet" {
@@ -196,8 +196,8 @@ run_recipe() {
   [ "$status" -ne 0 ]
   # The matchers step's own report: the link check would also stop on the
   # file, and a matchers step that read it as quiet would leave that one.
-  [[ "$stderr" == *"task-files: cannot read TASK.md"* ]]
-  [[ "$output" != *"task-files passed"* ]]
+  [[ "$stderr" == *"task-files: cannot read TASK.md"* ]] || false
+  [[ "$output" != *"task-files passed"* ]] || false
 }
 
 @test "task-files walks only tracked files: a removed one is no error" {
@@ -233,7 +233,7 @@ run_recipe() {
   firing_line >"$dir/TODO.md"
   PATH="$bsd:$PATH" run_recipe "$dir"
   [ "$status" -ne 0 ]
-  [[ "$stderr$output" == *phantom-chardev* ]]
+  [[ "$stderr$output" == *phantom-chardev* ]] || false
 }
 
 # ---- the cached gates stop reading them ----
@@ -261,16 +261,16 @@ run_recipe() {
   cd "$dir"
   run bats --filter 'no tracked file outside the fixtures' tests/docs.bats
   [ "$status" -eq 0 ] || { echo "$output" >&2; return 1; }
-  [[ "$output" == *"ok 1 no tracked file outside the fixtures fires a detector"* ]]
+  [[ "$output" == *"ok 1 no tracked file outside the fixtures fires a detector"* ]] || false
 
   # Control: the same line in any other file fails the sweep, naming it.
   firing_line >"$dir/NOTES.md"
   git -C "$dir" add NOTES.md
   run bats --filter 'no tracked file outside the fixtures' tests/docs.bats
   [ "$status" -ne 0 ]
-  [[ "$output" == *"NOTES.md: phantom-chardev"* ]]
-  [[ "$output" != *"TODO.md: phantom"* ]]
-  [[ "$output" != *"TASK.md: phantom"* ]]
+  [[ "$output" == *"NOTES.md: phantom-chardev"* ]] || false
+  [[ "$output" != *"TODO.md: phantom"* ]] || false
+  [[ "$output" != *"TASK.md: phantom"* ]] || false
 }
 
 @test "markdown_in_scope turns away the root TASK.md and TODO.md only" {

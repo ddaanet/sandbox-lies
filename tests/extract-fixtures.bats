@@ -49,7 +49,7 @@ assert_cut_verbatim() {
   run cut_fixture
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"NOT FOUND: $NAME"* ]]
+  [[ "$output" == *"NOT FOUND: $NAME"* ]] || false
   [ ! -e "$SCRATCH/tests/fixtures/$NAME.txt" ]
 }
 
@@ -62,7 +62,7 @@ assert_cut_verbatim() {
   run cut_fixture
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"NOT FOUND: $NAME"* ]]
+  [[ "$output" == *"NOT FOUND: $NAME"* ]] || false
   [ ! -e "$SCRATCH/tests/fixtures/$NAME.txt" ]
 }
 
@@ -102,7 +102,7 @@ assert_cut_verbatim() {
   run --separate-stderr cut_fixture
 
   # shellcheck disable=SC2154 # set by bats' run --separate-stderr
-  [[ "$stderr" != *Traceback* ]]
+  [[ "$stderr" != *Traceback* ]] || false
   assert_cut_verbatim
 }
 
@@ -116,7 +116,7 @@ assert_cut_verbatim() {
   run --separate-stderr cut_fixture
 
   # shellcheck disable=SC2154 # set by bats' run --separate-stderr
-  [[ "$stderr" != *Traceback* ]]
+  [[ "$stderr" != *Traceback* ]] || false
   assert_cut_verbatim
 }
 
@@ -130,7 +130,7 @@ assert_cut_verbatim() {
   run --separate-stderr cut_fixture
 
   # shellcheck disable=SC2154 # set by bats' run --separate-stderr
-  [[ "$stderr" != *Traceback* ]]
+  [[ "$stderr" != *Traceback* ]] || false
   assert_cut_verbatim
 }
 
@@ -145,7 +145,7 @@ assert_cut_verbatim() {
   run --separate-stderr cut_fixture
 
   # shellcheck disable=SC2154 # set by bats' run --separate-stderr
-  [[ "$stderr" != *Traceback* ]]
+  [[ "$stderr" != *Traceback* ]] || false
   [ "$status" -eq 0 ]
   grep -Fq "$(lock_text)" "$SCRATCH/tests/fixtures/$NAME.txt"
 }

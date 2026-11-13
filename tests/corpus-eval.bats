@@ -62,7 +62,7 @@ one_call() {
   # two unmatched lines against one matched file, so the 2 on the "skipped"
   # line is the unmatched count and not the matched file's 1
   grep -i skipped <<<"$output" | grep -Eq '(^|[^0-9])2([^0-9]|$)'
-  [[ "$output" == *"-> 000001.txt"* ]]
+  [[ "$output" == *"-> 000001.txt"* ]] || false
 }
 
 @test "aggregate counts skipped verdict lines by line, not by verdict" {
@@ -131,9 +131,9 @@ one_call() {
   run -0 --separate-stderr eval_py aggregate --outdir "$OUTDIR"
 
   # shellcheck disable=SC2154 # set by bats' run --separate-stderr
-  [[ "$stderr" != *Traceback* ]]
+  [[ "$stderr" != *Traceback* ]] || false
   grep -Fxq "verdict lines skipped, no manifest entry: 1" <<<"$output"
-  [[ "$output" == *"-> 000001.txt"* ]]
+  [[ "$output" == *"-> 000001.txt"* ]] || false
 }
 
 @test "extract skips a Bash tool_use whose id is a list" {
@@ -144,7 +144,7 @@ one_call() {
   run -0 --separate-stderr eval_py extract --outdir "$OUTDIR"
 
   # shellcheck disable=SC2154 # set by bats' run --separate-stderr
-  [[ "$stderr" != *Traceback* ]]
+  [[ "$stderr" != *Traceback* ]] || false
   [ -e "$OUTDIR/survivors/000001.txt" ]
 }
 
@@ -157,7 +157,7 @@ one_call() {
   run -0 --separate-stderr eval_py extract --outdir "$OUTDIR"
 
   # shellcheck disable=SC2154 # set by bats' run --separate-stderr
-  [[ "$stderr" != *Traceback* ]]
+  [[ "$stderr" != *Traceback* ]] || false
   [ -e "$OUTDIR/survivors/000001.txt" ]
 }
 
@@ -169,7 +169,7 @@ one_call() {
   run -0 --separate-stderr eval_py extract --outdir "$OUTDIR"
 
   # shellcheck disable=SC2154 # set by bats' run --separate-stderr
-  [[ "$stderr" != *Traceback* ]]
+  [[ "$stderr" != *Traceback* ]] || false
   [ -e "$OUTDIR/survivors/000001.txt" ]
   [ ! -e "$OUTDIR/survivors/000009.txt" ]
 }

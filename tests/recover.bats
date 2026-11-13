@@ -75,7 +75,7 @@ teardown() {
   scenario checkout change
   printf 'f v3 mine\n' >"$REPO/d/f"
   apply_ok
-  [[ "$output" == *"keep d/f"* ]]
+  [[ "$output" == *"keep d/f"* ]] || false
   assert_reached
   assert_status ' M d/f'
   assert_bytes d/f $'f v3 mine\n'
@@ -85,7 +85,7 @@ teardown() {
   scenario checkout delete
   printf 'f v1 edited\n' >"$REPO/d/f"
   apply_ok
-  [[ "$output" == *"keep d/f"* ]]
+  [[ "$output" == *"keep d/f"* ]] || false
   assert_reached
   assert_status '?? d/f'
   assert_bytes d/f $'f v1 edited\n'
@@ -147,7 +147,7 @@ teardown() {
   [ "$(cat "$REPO/d/f")" = "f v1" ]
   [ "$(g status --porcelain -uall)" = "?? d/f" ]
   apply_ok
-  [[ "$output" == *"remove d/f"* ]]
+  [[ "$output" == *"remove d/f"* ]] || false
   [ ! -e "$REPO/d/f" ]
   assert_reached
   assert_status
@@ -159,15 +159,15 @@ teardown() {
 
 @test "a gitlink whose commit is absent is compared as presence, not kept" {
   cell checkout gitlink
-  [[ "$output" != *sub* ]]
+  [[ "$output" != *sub* ]] || false
 }
 
 @test "a directory at a gitlink only the target has is never removed" {
   scenario merge gitlink_add
   mkdir -p "$REPO/sub"
   apply_ok
-  [[ "$output" != *"remove sub"* ]]
-  [[ "$output" != *"restore sub"* ]]
+  [[ "$output" != *"remove sub"* ]] || false
+  [[ "$output" != *"restore sub"* ]] || false
   [ -d "$REPO/sub" ]
   assert_reached
 }
@@ -185,7 +185,7 @@ teardown() {
   printf 'sp mine\n' >"$REPO/d/sp ace.txt"
   printf 'nl mine\n' >"$REPO/d/nl"$'\n'"file.txt"
   apply_ok
-  [[ "$output" == *"keep d/sp ace.txt"* ]]
+  [[ "$output" == *"keep d/sp ace.txt"* ]] || false
   assert_reached
   assert_status " M d/nl"$'\n'"file.txt" ' M d/sp ace.txt'
   assert_bytes "d/sp ace.txt" $'sp mine\n'
@@ -204,8 +204,8 @@ teardown() {
       *) printf 'stray plan line: [%s]\n' "$line" >&2; return 1 ;;
     esac
   done <<<"$output"
-  [[ "$output" == *"keep d/sp ace.txt"* ]]
-  [[ "$output" == *"keep "*"d/nl"*"file.txt"* ]]
+  [[ "$output" == *"keep d/sp ace.txt"* ]] || false
+  [[ "$output" == *"keep "*"d/nl"*"file.txt"* ]] || false
 }
 
 # A pathspec is magic only at its start, and only the root is outside the
@@ -217,7 +217,7 @@ teardown() {
   printf 'x v1\n' >"$REPO/:!x"
   printf 'g mine\n' >"$REPO/d/g"
   apply_ok
-  [[ "$output" == *"restore :!x"* ]]
+  [[ "$output" == *"restore :!x"* ]] || false
   assert_reached
   assert_status ' M d/g'
   assert_bytes ":!x" $'x v2\n'
@@ -249,7 +249,7 @@ teardown() {
   scenario checkout change
   printf 'f v3 mine\n' >"$REPO/d/f"
   apply_ok
-  [[ "$output" == *"keep d/f"* ]]
+  [[ "$output" == *"keep d/f"* ]] || false
   assert_reached
   assert_status ' M d/f' ' M other.txt' '?? scratch.txt'
   assert_bytes d/f $'f v3 mine\n'

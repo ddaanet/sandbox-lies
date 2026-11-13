@@ -81,9 +81,9 @@ load helpers/sweep
 
   sweep_side docs "$dir"
   [ "$SWEPT" -eq 2 ]
-  [[ "$FIRING" == *"  docs/prose.md: phantom-chardev"* ]]
-  [[ "$FIRING" == *"  sp ace/prose.md: phantom-chardev"* ]]
-  [[ "$FIRING" != *code.sh* && "$FIRING" != *fixtures* && "$FIRING" != *TODO.md* ]]
+  [[ "$FIRING" == *"  docs/prose.md: phantom-chardev"* ]] || false
+  [[ "$FIRING" == *"  sp ace/prose.md: phantom-chardev"* ]] || false
+  [[ "$FIRING" != *code.sh* && "$FIRING" != *fixtures* && "$FIRING" != *TODO.md* ]] || false
 }
 
 @test "the predicate's code dirs are the justfile's code_dirs" {
