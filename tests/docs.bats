@@ -30,3 +30,30 @@ load helpers/sweep
     return 1
   }
 }
+
+# Claude Code runs two patterns in a SKILL.md as shell commands when the skill
+# loads, so a SKILL.md that merely shows one as an example fails to load. The
+# patterns are built from fragments: this file is swept by the matchers too.
+# Prints "path:line:text" for each match under the git repo given as $1.
+skill_expansions() {
+  local bang='!' tick='`' inline fenced f
+  inline="(^|[[:space:]])${bang}${tick}"
+  fenced="^[[:space:]]*${tick}${tick}${tick}${bang}"
+  SKILL_COUNT=0
+  while IFS= read -r -d '' f; do
+    [ "${f##*/}" = SKILL.md ] || continue
+    SKILL_COUNT=$((SKILL_COUNT + 1))
+    grep -nHE -e "$inline" -e "$fenced" -- "$1/$f" || true
+  done < <(git -C "$1" ls-files -z)
+}
+
+@test "no tracked SKILL.md matches a Claude Code expansion pattern" {
+  skill_expansions "$ROOT" >"$BATS_TEST_TMPDIR/hits"
+  # the function ran in the current shell via redirection, so SKILL_COUNT is set
+  [ "$SKILL_COUNT" -gt 0 ]
+  [ ! -s "$BATS_TEST_TMPDIR/hits" ] || {
+    echo "SKILL.md lines Claude Code would run as commands:" >&2
+    cat "$BATS_TEST_TMPDIR/hits" >&2
+    return 1
+  }
+}
