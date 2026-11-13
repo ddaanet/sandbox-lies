@@ -38,7 +38,7 @@ load helpers/sweep
 skill_expansions() {
   local bang='!' tick='`' inline fenced f
   inline="(^|[[:space:]])${bang}${tick}"
-  fenced="^[[:space:]]*${tick}${tick}${tick}${bang}"
+  fenced="${tick}${tick}${tick}${bang}"
   SKILL_COUNT=0
   while IFS= read -r -d '' f; do
     [ "${f##*/}" = SKILL.md ] || continue
