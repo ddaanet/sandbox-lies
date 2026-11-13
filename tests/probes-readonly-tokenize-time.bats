@@ -13,9 +13,11 @@
 # rest. On the unchanged code a dense word's t(4N)/t(N) is 7.4 to 10.3 on bash
 # 5.2 and a plain word's 3.8 to 4.4, so no bound between 4 and 16 separates a
 # fix from the defect. A 16000-character dense word over a 16000-character
-# plain word, in the same locale, is 2.6 to 5.4 on the unchanged code and 1.0
-# to 1.2 on a tokenizer that appends without copying, at load 4 to 14; the bound
-# is 1.9, 1.6 times the worst fixed value and 1.4 under the best defective one.
+# plain word, in the same locale, is 2.6 to 5.4 on the unchanged code. On a
+# tokenizer that appends without copying it is 0.9 to 1.4 with the cases running
+# alongside one another, at load 9 to 15, and was 1.0 to 1.2 when they ran one
+# at a time. The bound is 1.9, 1.4 times the worst fixed value and 1.4 under
+# the best defective one, which was measured with the cases one at a time.
 #
 # CPU seconds, not wall seconds: with the plain word timed once, in setup_file,
 # other jobs moved a wall ratio past the bound on the fixed code (2.05 to 2.6),
@@ -75,8 +77,8 @@ print("%.4f" % best)
 }
 
 # assert_dense_near_plain <shape> — the shape's time at N characters over the
-# plain word's at N stays under 1.9 (a linear scan about 1.0 to 1.2, the
-# copying one 2.6 to 5.4 here).
+# plain word's at N stays under 1.9 (the header gives the ranges measured on
+# a linear scan and on the copying one).
 assert_dense_near_plain() {
   local loc t p ratio
   loc=$(utf8_locale)
