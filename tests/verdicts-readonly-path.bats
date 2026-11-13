@@ -251,9 +251,9 @@ print("%.4f" % best)
   # timings use, so a decoder that returned nothing quickly cannot pass on
   # speed.
   # shellcheck disable=SC1090
-  [ "$(LC_ALL=$loc; . "$VERDICTS"; _verdict_path_read "$wire_n"; [ "$_verdict_path_raw" = "$p_n" ] && echo same)" = same ]
+  [ "$(trap - DEBUG; LC_ALL=$loc; . "$VERDICTS"; _verdict_path_read "$wire_n"; [ "$_verdict_path_raw" = "$p_n" ] && echo same)" = same ]
   # shellcheck disable=SC1090,SC2030
-  [ "$(LC_ALL=$loc; . "$VERDICTS"; _verdict_path_read "$wire_4n"; [ "$_verdict_path_raw" = "$p_4n" ] && echo same)" = same ]
+  [ "$(trap - DEBUG; LC_ALL=$loc; . "$VERDICTS"; _verdict_path_read "$wire_4n"; [ "$_verdict_path_raw" = "$p_4n" ] && echo same)" = same ]
 
   t_n=$(decode_seconds "$loc" "$wire_n")
   t_4n=$(decode_seconds "$loc" "$wire_4n")
