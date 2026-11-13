@@ -9,21 +9,21 @@ does updates it there.
 - **Run `just precommit` before every commit** and read its own exit status. It
   first runs the toolkit's uncached `check-refs`, `check-size` (20000 bytes a
   file, 10000 a `SKILL.md`; a file that cannot be split, such as a recorded
-  fixture, is marked `linguist-generated` in `.gitattributes`) and
-  `check-frontmatter`. `check-refs` and `check-size` read `TASK.md` and
-  `TODO.md`; `check-frontmatter` reads only skills, agents and commands. It then
-  runs `just task-files` (the matchers and the link check over `TASK.md` and
-  `TODO.md` alone, never cached) and two independent sentinel gates, each
-  printing `cached` while its inputs are unchanged. `gate-docs` parses
-  `plugin.json`, runs the rumdl wrap check, the link check and `tests/docs.bats`
-  over every tracked top-level entry that is not a code dir (derived from the
-  index, so a new one needs no edit). `gate-code` parses `hooks.json`, runs
-  shellcheck, `bash -n`, the Python compile check and every other bats suite
-  over `lib hooks scripts bin tests plugin-dev`. A tracked file named `*.sh`,
-  `*.bash` or `*.bats` outside the code dirs fails `gate-docs`, since no gate
-  lints it. A prose-only commit pays for `gate-docs` alone and a code-only one
-  for `gate-code` alone; a file one gate's checks run from a code dir
-  (`lib/matchers.sh`, `scripts/check-links.sh`) reruns both. Neither reads
+  fixture, is marked `linguist-generated` in `.gitattributes`),
+  `check-frontmatter` and `check-modes`. `check-refs` and `check-size` read
+  `TASK.md` and `TODO.md`; `check-frontmatter` reads only skills, agents and
+  commands. It then runs `just task-files` (the matchers and the link check over
+  `TASK.md` and `TODO.md` alone, never cached) and two independent sentinel
+  gates, each printing `cached` while its inputs are unchanged. `gate-docs`
+  parses `plugin.json`, runs the rumdl wrap check, the link check and
+  `tests/docs.bats` over every tracked top-level entry that is not a code dir
+  (derived from the index, so a new one needs no edit). `gate-code` parses
+  `hooks.json`, runs shellcheck, `bash -n`, the Python compile check and every
+  other bats suite over `lib hooks scripts bin tests plugin-dev`. A tracked file
+  named `*.sh`, `*.bash` or `*.bats` outside the code dirs fails `gate-docs`,
+  since no gate lints it. A prose-only commit pays for `gate-docs` alone and a
+  code-only one for `gate-code` alone; a file one gate's checks run from a code
+  dir (`lib/matchers.sh`, `scripts/check-links.sh`) reruns both. Neither reads
   `TASK.md` or `TODO.md`, so editing either leaves both passes standing.
   `just test` runs every suite, `tests/docs.bats` too. `just format-docs`
   re-wraps markdown. After an `.envrc` edit, run it as
