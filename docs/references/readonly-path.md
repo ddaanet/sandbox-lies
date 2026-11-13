@@ -63,13 +63,13 @@ prints escaped, is cut at that quote or yields `nopath`; a curly-quoted or
 unquoted path holding two straight quotes is read as what lies between them;
 under `git -C` a relative path names the `-C` directory's tree, not the `cwd`'s,
 so it is wrong (`recover=` is withheld there), and one whose parent is missing
-reads `readonly`, which carries no merge clause. A `warning:` unlink line of the
-third alternative is not a partial-checkout line, so its relative path joins
-onto the `cwd`, not the worktree top: a checkout run from a subdirectory whose
-first matching line is that warning gets the verdict for a path not writable
-outside the sandbox, `readonly`, wrong for a sandbox refusal, with no merge
-clause. Whether to change that join is an open decision (`TODO.md`). Index locks
-under `.git/worktrees/<name>/` and `.git/modules/<name>/` do not end in
+reads `readonly`, which carries no merge clause. Git prints a `warning:` unlink
+line's path relative to the repository top, but that line is not a
+partial-checkout line, so the probe resolves its path against the `cwd`: from a
+subdirectory the writability test runs on a different path from the one refused,
+and the verdict follows whatever is at that other path, which can give either
+outcome. Whether to change that join is an open decision (`TODO.md`). Index
+locks under `.git/worktrees/<name>/` and `.git/modules/<name>/` do not end in
 `/.git/index.lock`, so the fifth shape does not take them.
 
 The create-file and config-write lines of the third alternative read `nopath`
@@ -292,6 +292,8 @@ not take, all true (100%), 6 of them this project's traffic. 28 are sandbox
 refusals, 27 in `edify` and 1 in `devddaanet`, none run with the unsandbox flag;
 the 6 are sessions of this project printing corpus or fixture lines back (D-10).
 The same replay finds 169 hits for the first two alternatives, against the 162
-above.
+of 2026-09-25 above; the 7 additional hits were not classified, since the
+earlier hit list was not kept, and the 99% figure is the earlier measurement,
+not re-taken.
 
 **Decision: ships.**

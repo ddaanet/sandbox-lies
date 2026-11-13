@@ -109,9 +109,9 @@ path_line() {
 }
 
 # git's operation-not-permitted refusals (helpers/probes.bash eperm_shape_line).
-# Red today for one reason: the matcher finds no line in the text, so the probe
-# prints nopath and no path= line. The cwd sub and the top's d are both real,
-# so only a join onto the wrong base, or no join, moves the outcome.
+# Each pins where the probe joins the path of the line the matcher takes;
+# without that line the probe would print nopath and no path= line. The cwd
+# sub and the top's d are both real, so only a join onto the wrong base, or no join, moves the outcome.
 @test "an unlink-old refusal worded as not permitted joins onto the worktree top from a subdirectory" {
   local repo="$BATS_TEST_TMPDIR/repo" text
   mkdir -p "$repo/.git" "$repo/sub" "$repo/d"

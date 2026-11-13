@@ -135,8 +135,8 @@ $(partial_checkout_unlink_error "$BATS_TEST_TMPDIR/a")"
 # Pins for git's operation-not-permitted refusals (eperm_shape_line). Neither
 # names its path in single quotes, so both read nopath, as their read-only
 # twins do; they differ in the partial=1 fact, which follows git's three
-# partial-checkout heads and never the message. Green today because the matcher
-# finds no line and the facts print over the whole text; they hold once it does.
+# partial-checkout heads and never the message. The facts print over the whole
+# text, so they hold whether or not the matcher takes the line.
 @test "an unquoted create-file refusal reads nopath with partial=1, whatever its message" {
   local text
 
