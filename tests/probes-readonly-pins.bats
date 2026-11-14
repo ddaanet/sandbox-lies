@@ -178,32 +178,38 @@ bare_pull_case() {
 # content: restoring one from HEAD, leaving exactly 1000, brings target= back,
 # so the cap and nothing else withholds it.
 @test "past 1000 modified files against HEAD, matching the target, gives no target" {
-  local repo="$BATS_TEST_TMPDIR/manyfiles" text i saved_trap
+  local repo="$BATS_TEST_TMPDIR/manyfiles" text i
 
-  # bats' DEBUG trap fires on every command of the three loops below: they run
-  # untrapped, and the trap is restored before the probe calls.
-  saved_trap=$(trap -p DEBUG)
-  trap - DEBUG
+  # bats' DEBUG trap fires on every command of the three loops below: each
+  # runs untrapped in a subshell, which sets nothing the body reads.
   git init -q -b main "$repo"
   git -C "$repo" config user.email test@example.invalid
   git -C "$repo" config user.name test
   git -C "$repo" config commit.gpgsign false
-  for i in $(seq 1 1001); do
-    printf 'v1\n' >"$repo/f$i"
-  done
+  (
+    trap - DEBUG
+    for i in $(seq 1 1001); do
+      printf 'v1\n' >"$repo/f$i"
+    done
+  )
   git -C "$repo" add .
   git -C "$repo" commit -q -m init
   git -C "$repo" checkout -q -b feat
-  for i in $(seq 1 1001); do
-    printf 'v2\n' >"$repo/f$i"
-  done
+  (
+    trap - DEBUG
+    for i in $(seq 1 1001); do
+      printf 'v2\n' >"$repo/f$i"
+    done
+  )
   git -C "$repo" add .
   git -C "$repo" commit -q -m feat
   git -C "$repo" checkout -q main
-  for i in $(seq 1 1001); do
-    printf 'v2\n' >"$repo/f$i"
-  done
-  eval "$saved_trap"
+  (
+    trap - DEBUG
+    for i in $(seq 1 1001); do
+      printf 'v2\n' >"$repo/f$i"
+    done
+  )
 
   text=$(readonly_path_text fire-readonly-path-cp-tmp "")
 

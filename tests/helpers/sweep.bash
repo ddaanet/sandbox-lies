@@ -26,15 +26,15 @@ EXEMPT=(
 sweep_side() {
   local side="$1" root="${2:-$ROOT}" index meta path mode verdicts status
   local saved_trap
-  # bats' DEBUG trap fires on every command of the loop below; run it
-  # untrapped and put the trap back for the caller's assertions.
-  saved_trap=$(trap -p DEBUG)
-  trap - DEBUG
   SWEPT=0
   FIRING=""
   index="$BATS_TEST_TMPDIR/sweep-index"
   git -C "$root" ls-files -z -s >"$index"
   [ -s "$index" ]
+  # bats' DEBUG trap fires on every command of the loop below; run it
+  # untrapped and put the trap back for the caller's assertions.
+  saved_trap=$(trap -p DEBUG)
+  trap - DEBUG
   # `-s` prefixes each path with `<mode> <object> <stage>` and a tab;
   # 120000 is a symlink and 160000 a gitlink, neither of them a file to read.
   while IFS= read -r -d '' meta; do
