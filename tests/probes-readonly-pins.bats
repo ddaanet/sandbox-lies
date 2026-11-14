@@ -178,8 +178,12 @@ bare_pull_case() {
 # content: restoring one from HEAD, leaving exactly 1000, brings target= back,
 # so the cap and nothing else withholds it.
 @test "past 1000 modified files against HEAD, matching the target, gives no target" {
-  local repo="$BATS_TEST_TMPDIR/manyfiles" text i
+  local repo="$BATS_TEST_TMPDIR/manyfiles" text i saved_trap
 
+  # bats' DEBUG trap fires on every command of the three loops below: they run
+  # untrapped, and the trap is restored before the probe calls.
+  saved_trap=$(trap -p DEBUG)
+  trap - DEBUG
   git init -q -b main "$repo"
   git -C "$repo" config user.email test@example.invalid
   git -C "$repo" config user.name test
@@ -199,6 +203,7 @@ bare_pull_case() {
   for i in $(seq 1 1001); do
     printf 'v2\n' >"$repo/f$i"
   done
+  eval "$saved_trap"
 
   text=$(readonly_path_text fire-readonly-path-cp-tmp "")
 

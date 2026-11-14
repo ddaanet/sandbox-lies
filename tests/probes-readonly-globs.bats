@@ -196,7 +196,13 @@ probe_for() {
   done
   [ "${#word}" -eq 600 ]
 
+  # bats' DEBUG trap fires on every command of the tokenizer's loop: run it
+  # untrapped, then restore the trap for the assertions.
+  local saved_trap
+  saved_trap=$(trap -p DEBUG)
+  trap - DEBUG
   _readonly_tokenize "cat $word x.log"
+  eval "$saved_trap"
 
   # shellcheck disable=SC2154 # _readonly_tokenize sets both, sourced in setup
   local tokens=("${_readonly_tokens[@]}") cut=$_readonly_tokens_cut

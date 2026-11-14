@@ -52,18 +52,19 @@ ROWS
 # reading its probe lines would swallow the rest of the row table from the
 # caller's loop. [flag], when given, is passed as the verdict's $2, alongside
 # <outcome> as $1; omitted (empty, or the rows() sentinel `-`), the verdict is
-# called with <outcome> alone, exercising its documented default.
+# called with <outcome> alone, exercising its documented default. The
+# subshells clear bats' DEBUG trap, which would fire on every command in them.
 verdict_text() {
   local name="$1" outcome="$2" flag="${3:-}"
   if [ "$outcome" = "-" ]; then
     # shellcheck disable=SC1090 # $VERDICTS is lib/verdicts.sh, resolved above
-    ( . "$VERDICTS"; "verdict_$name" ) </dev/null
+    ( trap - DEBUG; . "$VERDICTS"; "verdict_$name" ) </dev/null
   elif [ -z "$flag" ] || [ "$flag" = "-" ]; then
     # shellcheck disable=SC1090
-    ( . "$VERDICTS"; "verdict_$name" "$outcome" ) </dev/null
+    ( trap - DEBUG; . "$VERDICTS"; "verdict_$name" "$outcome" ) </dev/null
   else
     # shellcheck disable=SC1090
-    ( . "$VERDICTS"; "verdict_$name" "$outcome" "$flag" ) </dev/null
+    ( trap - DEBUG; . "$VERDICTS"; "verdict_$name" "$outcome" "$flag" ) </dev/null
   fi
 }
 

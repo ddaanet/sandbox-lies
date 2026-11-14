@@ -25,6 +25,11 @@ EXEMPT=(
 # bare, not through `run`, since the results are variables.
 sweep_side() {
   local side="$1" root="${2:-$ROOT}" index meta path mode verdicts status
+  local saved_trap
+  # bats' DEBUG trap fires on every command of the loop below; run it
+  # untrapped and put the trap back for the caller's assertions.
+  saved_trap=$(trap -p DEBUG)
+  trap - DEBUG
   SWEPT=0
   FIRING=""
   index="$BATS_TEST_TMPDIR/sweep-index"
@@ -56,6 +61,7 @@ sweep_side() {
     [ "$status" -le 1 ] ||
       FIRING="$FIRING"$'\n'"  $path: matchers exited $status"
   done <"$index"
+  eval "$saved_trap"
 }
 
 # A line that fires the phantom-chardev detector, built from fragments so the
