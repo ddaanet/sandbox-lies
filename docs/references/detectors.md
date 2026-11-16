@@ -146,8 +146,7 @@ under D-15. A candidate with a probe builds it only once the detector ships.
 Measured 2026-09-25 by that replay, then `tests/corpus-eval.py` over 55,896 Bash
 pairs; a hit is a match the flag lets fire. Each shipped candidate's figure was
 then re-measured over the same extraction with its shipped matcher as arbiter,
-and none moved (`plans/sandbox-lies/reports/item-4-2-s1-code-review.md`,
-`plans/sandbox-lies/reports/item-4-3-s1-green.md`).
+and none moved.
 
 ### readonly-path
 

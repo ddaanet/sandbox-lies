@@ -1,7 +1,6 @@
 #!/usr/bin/env bats
 # lib/probes-readonly.sh's probe_readonly_path: pins the defects the Item 8.0
-# slice 3 code review found and fixed
-# (plans/sandbox-lies/reports/item-8-0-s3-code-review.md) that the slice's own
+# slice 3 code review found and fixed that the slice's own
 # tests (tests/probes-readonly-facts.bats) did not reach. It shares
 # fixtures and helpers with that file through tests/helpers/probes.bash rather than duplicating them.
 

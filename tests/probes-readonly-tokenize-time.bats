@@ -2,8 +2,7 @@
 # lib/probes-readonly-command.sh's _readonly_tokenize must not copy a growing
 # word on every unquoted # or >&: a word dense in either took 3 to 5 s at 16384
 # characters on bash 5.2 and 35 s on 3.2.0, against 1.3 to 3 s for a plain
-# word (plans/sandbox-lies-review-fixes-3/reports/deliverable-review.md,
-# finding 6). The pattern is tests/verdicts-readonly-path.bats's timing case.
+# word. The pattern is tests/verdicts-readonly-path.bats's timing case.
 # Its own file: the timings are slow. Under bats -j its cases run alongside one
 # another and alongside other files: CPU seconds are not shared between them.
 #
