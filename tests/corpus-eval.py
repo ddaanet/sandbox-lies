@@ -23,7 +23,7 @@ Usage:
   # line per file, its verdicts blank-separated, so tr joins them):
   #   for f in DIR/survivors/*; do
   #     v=$(bash lib/matchers.sh <"$f" | tr '\n' ' ')
-  #     [ -n "$v" ] && printf '%s\t%s\n' "$(basename "$f")" "$v"
+  #     [ -z "$v" ] || printf '%s\t%s\n' "$(basename "$f")" "$v"
   #   done >DIR/verdicts.tsv
   python3 tests/corpus-eval.py aggregate --outdir DIR
 """
