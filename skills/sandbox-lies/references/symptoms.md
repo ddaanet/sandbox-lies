@@ -8,7 +8,7 @@ leaves alone, or that arrive outside a tool result.
 |---|---|---|
 | `rm` on a dotfile says the device or resource is busy; `git clean -f` warns it failed to remove one | A mask: a mount point in the sandboxed call's namespace, nothing on disk | [masks-and-gates.md](masks-and-gates.md#a-mask-that-outlives-its-command) |
 | Zero-byte or character-device dotfiles, `.claude/*` entries, untracked in `git status` | Masks of some running sandboxed call; never delete, commit or report them | [masks-and-gates.md](masks-and-gates.md) |
-| Masks still listed with nothing running | A leaked mask set; restart Claude Code | [masks-and-gates.md](masks-and-gates.md#a-mask-that-outlives-its-command) |
+| Masks still listed by an unsandboxed `git status` with nothing running | A leaked mask set; restart Claude Code | [masks-and-gates.md](masks-and-gates.md#a-mask-that-outlives-its-command) |
 | A denial naming `auto mode classifier` | The permission classifier, not the sandbox; `dangerouslyDisableSandbox` does not lift it | [classifier-denials.md](classifier-denials.md) |
 | *Logging/Audit Tampering*, *Auto Mode Bypass* | A write to a file a hook consumes | [classifier-denials.md](classifier-denials.md#denials-by-the-reason-the-classifier-names) |
 | *external repo outside the trusted source control org* | A push to another repository or a submodule | [classifier-denials.md](classifier-denials.md#denials-by-the-reason-the-classifier-names) |

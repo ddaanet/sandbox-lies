@@ -37,9 +37,8 @@ annotate is code that consumes such output without an agent reading it.
 
 A mask says nothing about the repository: it is not a file anyone created there,
 and its presence or absence is not a finding about the tree. Never delete,
-commit or report one. The zero-byte `.claude/autodrive.lock` files seen in some
-repositories are not masks either: they are leftovers of an earlier autodrive
-version and say nothing about a live session.
+commit or report a mask as a change to the tree; the one exception, a Linux
+leftover that is no longer a mask, is below.
 
 ## A mask that outlives its command
 
@@ -56,9 +55,10 @@ removing nothing. Asked to remove stray untracked files, read the tree with an
 unsandboxed `git status` first and report that there is nothing to remove; if
 masks show there with nothing running, restart Claude Code rather than delete.
 On Linux, a sandbox that died uncleanly has been seen to leave a mount-point
-file behind: empty, mode `0444`, listed in no `/proc/*/mountinfo`. That is no
-longer a mask but a real file, which `rm` removes; a path some `mountinfo` still
-lists is a live mask, left alone.
+file behind: empty, mode `0444`, the same shape as a live mask. Run
+`grep -l <path> /proc/*/mountinfo` unsandboxed, since a sandboxed call's PID
+namespace hides every other process's mounts: a path no `mountinfo` lists is a
+real file, which `rm` removes; a path one lists is a live mask, left alone.
 
 ## A porcelain gate reports DIRTY against a clean tree
 
