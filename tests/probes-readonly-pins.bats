@@ -177,38 +177,21 @@ bare_pull_case() {
 # content: restoring one from HEAD, leaving exactly 1000, brings target= back,
 # so the cap and nothing else withholds it.
 @test "past 1000 modified files against HEAD, matching the target, gives no target" {
-  local repo="$BATS_TEST_TMPDIR/manyfiles" text i
+  local repo="$BATS_TEST_TMPDIR/manyfiles" text
 
-  # bats' DEBUG trap fires on every command of the three loops below: each
-  # runs untrapped in a subshell, which sets nothing the body reads.
   git init -q -b main "$repo"
   git -C "$repo" config user.email test@example.invalid
   git -C "$repo" config user.name test
   git -C "$repo" config commit.gpgsign false
-  (
-    trap - DEBUG
-    for i in $(seq 1 1001); do
-      printf 'v1\n' >"$repo/f$i"
-    done
-  )
+  fill_files "$repo" v1
   git -C "$repo" add .
   git -C "$repo" commit -q -m init
   git -C "$repo" checkout -q -b feat
-  (
-    trap - DEBUG
-    for i in $(seq 1 1001); do
-      printf 'v2\n' >"$repo/f$i"
-    done
-  )
+  fill_files "$repo" v2
   git -C "$repo" add .
   git -C "$repo" commit -q -m feat
   git -C "$repo" checkout -q main
-  (
-    trap - DEBUG
-    for i in $(seq 1 1001); do
-      printf 'v2\n' >"$repo/f$i"
-    done
-  )
+  fill_files "$repo" v2
 
   text=$(readonly_path_text fire-readonly-path-cp-tmp "")
 
@@ -220,6 +203,19 @@ bare_pull_case() {
   [ "$status" -eq 0 ]
   printf '%s\n' "$output" | grep -qxF 'target=feat'
   printf '%s\n' "$output" | grep -qxF "match=$repo/f1000"
+}
+
+# fill_files <repo> <content> — writes <content> to f1 .. f1001 in <repo>.
+# bats' DEBUG trap would fire on every command of the loop: it runs untrapped
+# in a subshell, which sets nothing the caller reads.
+fill_files() {
+  (
+    trap - DEBUG
+    local i
+    for i in $(seq 1 1001); do
+      printf '%s\n' "$2" >"$1/f$i"
+    done
+  )
 }
 
 # make_merge_pass_repo <repo> — main holds x and z; feat changes z; HEAD at
