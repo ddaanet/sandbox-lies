@@ -166,21 +166,16 @@ _readonly_path_line() {
 # Python's: an exception name ending in `Error`, `[Errno 30]` or
 # `[Errno 16]`, the same message, then a colon -- the quoted path that
 # follows is not required, since the discriminator anchors at the message,
-# not the line end, for this alternative. Or one of five git refusals that
-# end in the operation-not-permitted message, each a whole line from its
-# start with trailing blanks allowed: failing to create a file, failing to
-# unlink an old file (error, path quoted), failing to unlink a file
-# (warning, path quoted), failing to write the config file, and failing to
-# create an index lock (path quoted, ending in /.git/index.lock). That
-# message alone is not taken from any other tool's line.
+# not the line end, for this alternative. Or one of the git refusals listed
+# in _readonly_path_line, each a whole line ending in the
+# operation-not-permitted message. That message alone is not taken from any
+# other tool's line.
 #
-# Anchoring at line start is what the corpus needed (99% precision, 162
-# hits for the first two alternatives; 34 hits, all true, for the third,
-# replayed on 2026-11-13; 6 of them this project's own traffic): the memory
-# store and this suite's own index/heredoc lines quote both messages
-# mid-line or mid-word, never as a bare refusal starting a line of their
-# own. See the plugin repository's docs/references/readonly-path.md's `## readonly-path`
-# entry for the corpus figures this discriminator was measured against.
+# Anchoring at line start is what the corpus needed: the memory store and
+# this suite's own index/heredoc lines quote both messages mid-line or
+# mid-word, never as a bare refusal starting a line of their own. The corpus
+# figures are in the plugin repository's docs/references/readonly-path.md,
+# `## readonly-path` entry.
 match_readonly_path() {
     _readonly_path_line >/dev/null
 }
