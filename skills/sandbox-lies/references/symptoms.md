@@ -2,12 +2,13 @@
 
 One row per thing seen in a Bash result, a denial or a listing. The hook
 annotates the sandbox's own diagnostics as they occur; these are the ones it
-leaves alone, or that arrive outside a tool result.
+leaves alone, that arrive outside a tool result, or on which its advice does not
+apply.
 
 | Seen | What it is | Where |
 |---|---|---|
-| `rm` on a dotfile says the device or resource is busy; `git clean -f` warns it failed to remove one | A mask: a mount point in the sandboxed call's namespace, nothing on disk | [masks-and-gates.md](masks-and-gates.md#a-mask-that-outlives-its-command) |
-| Zero-byte or character-device dotfiles, `.claude/*` entries, untracked in `git status` | Masks of some running sandboxed call; never delete, commit or report them | [masks-and-gates.md](masks-and-gates.md) |
+| `rm` on a dotfile says the device or resource is busy; `git clean -f` warns it failed to remove one | A mask: a mount point in the sandboxed call's namespace, nothing on disk. On a mask path the hook's advice to re-run unsandboxed, or that the failure is not a sandbox effect, does not apply: never delete it | [masks-and-gates.md](masks-and-gates.md#a-mask-that-outlives-its-command) |
+| Zero-byte or character-device dotfiles, `.claude/*` entries, untracked in `git status` | Masks of some running sandboxed call; never delete one, commit one, or report one as a file or change in the repository | [masks-and-gates.md](masks-and-gates.md) |
 | Masks still listed by an unsandboxed `git status` with nothing running | A leaked mask set; restart Claude Code | [masks-and-gates.md](masks-and-gates.md#a-mask-that-outlives-its-command) |
 | A denial naming `auto mode classifier` | The permission classifier, not the sandbox; `dangerouslyDisableSandbox` does not lift it | [classifier-denials.md](classifier-denials.md) |
 | *Logging/Audit Tampering*, *Auto Mode Bypass* | A write to a file a hook consumes | [classifier-denials.md](classifier-denials.md#denials-by-the-reason-the-classifier-names) |

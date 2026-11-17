@@ -3,8 +3,10 @@
 The auto-mode permission classifier is not the sandbox:
 `dangerouslyDisableSandbox` leaves the sandbox, and the classifier has no such
 toggle. It refuses an agent's write to a path that configures or audits the
-agent itself, whatever tool carries the write. The refusal is a guardrail, not a
-prompt: approval does not lift it, and a retry fails identically.
+agent itself, whatever tool carries the write. For the self-configuration paths
+(settings, a file a hook consumes) the refusal is a guardrail, not a prompt:
+approval does not lift it, and a retry fails identically. The push denials are
+lifted by what their own bullet names.
 
 ## Denials, by the reason the classifier names
 
@@ -37,7 +39,7 @@ known to be denied. This is not a way to launder a denied write through a
 script. How the classifier judges an unsandboxed recipe by its top-level
 command: [escapes-and-costs.md](escapes-and-costs.md).
 
-## After a denial
+## After a denial of a self-configuration write
 
 Stop. Where the *path* is the objection, a write through another tool after a
 denied Bash call reads as tunnelling the same act. Where a destructive *verb*

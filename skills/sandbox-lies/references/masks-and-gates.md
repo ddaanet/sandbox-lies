@@ -36,8 +36,8 @@ This plugin annotates a listing or a status that shows them. What it cannot
 annotate is code that consumes such output without an agent reading it.
 
 A mask says nothing about the repository: it is not a file anyone created there,
-and its presence or absence is not a finding about the tree. Never delete,
-commit or report one.
+and its presence or absence is not a finding about the tree. Never delete one,
+commit one, or report one as a file or change in the repository.
 
 ## A mask that outlives its command
 

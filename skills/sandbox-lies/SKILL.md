@@ -17,9 +17,9 @@ the recipe, the gate or the directive, before any output exists.
 
 - **A call runs unsandboxed only when it carries
   `dangerouslyDisableSandbox: true` or an `excludedCommands` entry covers every
-  command in it.** Any uncovered command, or a forfeiting shape listed below —
-  git's absolute, `~`-led or `..`-bearing path arguments among them — keeps the
-  call sandboxed. Before relying on an exclusion, re-probe with
+  command in it.** Any uncovered command, or a forfeiting shape in the list
+  linked below — git's absolute, `~`-led or `..`-bearing path arguments among
+  them — keeps the call sandboxed. Before relying on an exclusion, re-probe with
   `git status --porcelain --ignored` alone in its call: without `--ignored`, a
   sandboxed listing leaves out every mask name the repository ignores. The
   probes, and why earlier "not honoured" ones prove nothing:
