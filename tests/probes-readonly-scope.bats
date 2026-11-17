@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 # lib/probes-readonly.sh's probe_readonly_path: the two facts read off every
-# matching line rather than the first. claudeonly=1 says each refused path
+# matching line rather than the first. claudeonly=1 says a refused path
 # lies under a .claude directory; configonly=1 says each matching line is
 # git's config-file write refusal. Both print under writable and nopath only.
 # The git lines come from helpers/probes.bash's eperm_shape_line, built from
@@ -21,14 +21,12 @@ setup() {
   mkdir -p "$REPO/.git" "$REPO/.claude/agents" "$REPO/src"
 }
 
-# checkout_lines [<extra line>] — the four git refusal shapes a checkout
-# printed on .claude files (fire-readonly-path-checkout-eperm), one per
-# line, then <extra line> when given.
+# checkout_lines — the git refusal shapes a checkout printed on .claude
+# files (fire-readonly-path-checkout-eperm), one per line.
 checkout_lines() {
   eperm_shape_line 3 .claude/agents/quiet-task.md
   eperm_shape_line 1 .claude/agents/commit.md
   eperm_shape_line 2 .claude/settings.json
-  [ -z "${1-}" ] || printf '%s\n' "$1"
 }
 
 # fact <key> — the probe's <key>= line of the last run, empty when none.
@@ -55,17 +53,22 @@ scope_case() {
   PATH="$bsd:$PATH" scope_case
 }
 
-@test "one refused path outside .claude withholds claudeonly=1" {
-  run_probe_command probe_readonly_path false "$REPO" 'git checkout x' \
-    "$(checkout_lines "$(eperm_shape_line 2 src/main.c)")"
+@test "one refused path under .claude after one outside it prints claudeonly=1" {
+  local text
+  text=$(printf '%s\n' "$(eperm_shape_line 2 src/main.c)" \
+    "$(eperm_shape_line 2 .claude/settings.json)")
+  run_probe_command probe_readonly_path false "$REPO" 'git checkout x' "$text"
   [ "$status" -eq 0 ]
   [ "${output%%$'\n'*}" = writable ]
-  [ -z "$(fact claudeonly)" ]
+  [ "$(fact path)" = "path=$REPO/src/main.c" ]
+  [ "$(fact claudeonly)" = claudeonly=1 ]
 }
 
-@test "a refused line with no readable path withholds claudeonly=1" {
-  run_probe_command probe_readonly_path false "$REPO" 'git checkout x' \
-    "$(checkout_lines "$(eperm_shape_line 4 .git/config)")"
+@test "refused paths outside .claude alone withhold claudeonly=1" {
+  local text
+  text=$(printf '%s\n' "$(eperm_shape_line 2 src/main.c)" \
+    "$(eperm_shape_line 4 .git/config)")
+  run_probe_command probe_readonly_path false "$REPO" 'git checkout x' "$text"
   [ "$status" -eq 0 ]
   [ -z "$(fact claudeonly)" ]
 }

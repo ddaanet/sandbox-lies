@@ -120,18 +120,18 @@ _probe_top_relative_line() {
 
 # _probe_readonly_scope <matched> <cwd> <path> — the facts read off every
 # line the matcher accepts (<matched>, the first resolved to <path> already),
-# not just the first: claudeonly=1 when each such line names a path that,
+# not just the first: claudeonly=1 when any such line names a path that,
 # resolved as _probe_readonly_line_path resolves it, has a .claude
 # component, the last one not followed by worktrees (Claude Code's own
 # worktrees sit there, and their project files run no code) unless what
 # follows .claude/ holds a .. segment, the one spelling that can climb back
 # out, read unnormalised as the tool printed it; configonly=1
 # when each is git's config-file write refusal. A line naming no path is not
-# under .claude. The scan stops once neither fact
-# can hold, so a long refusal list costs one path read per line only while
-# every path so far is under .claude.
+# under .claude. The scan stops once claudeonly=1 holds and configonly=1
+# cannot, so a long refusal list costs one path read per line only until a
+# .claude path turns up.
 _probe_readonly_scope() {
-    local matched="$1" cwd="$2" path="$3" line claude=yes config=yes head
+    local matched="$1" cwd="$2" path="$3" line claude=no config=yes head
     local first=yes
     [ -n "$matched" ] || return 0
     head='error: could not write'
@@ -141,21 +141,21 @@ _probe_readonly_scope() {
             "$head"*) ;;
             *) config=no ;;
         esac
-        if [ "$claude" = yes ]; then
+        if [ "$claude" = no ]; then
             [ "$first" = yes ] || path=$(_probe_readonly_line_path "$line" "$cwd")
             case "$path" in
-                */.claude) ;;
+                */.claude) claude=yes ;;
                 */.claude/*)
                     case "/${path##*/.claude/}/" in
-                        */../*) ;;
-                        /worktrees/*) claude=no ;;
+                        */../*) claude=yes ;;
+                        /worktrees/*) ;;
+                        *) claude=yes ;;
                     esac
                     ;;
-                *) claude=no ;;
             esac
         fi
         first=no
-        [ "$claude" = yes ] || [ "$config" = yes ] || break
+        [ "$claude" = no ] || [ "$config" = yes ] || break
     done < <(printf '%s\n' "$matched")
     [ "$claude" = no ] || printf '%s\n' claudeonly=1
     [ "$config" = no ] || printf '%s\n' configonly=1

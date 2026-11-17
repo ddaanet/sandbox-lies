@@ -86,7 +86,7 @@ a;b\$IFS(c)" ]
   mkdir "$REPO/.claude"
   printf '{}\n' >"$REPO/.claude/settings.json"
   hook_context 'git checkout main' .claude
-  [[ "$ctx" == "\`$REPO/.claude/settings.json\` is writable outside the sandbox, whose allowlist refused it. The git command may have stopped part-way. Every refused path is under a"*'tell the user'* ]] || false
+  [[ "$ctx" == "\`$REPO/.claude/settings.json\` is writable outside the sandbox, whose allowlist refused it. The git command may have stopped part-way. A refused path is under a"*'tell the user'* ]] || false
   assert_lacks "$ctx" 'sandbox-lies-recover'
   assert_lacks "$ctx" 'dangerouslyDisableSandbox'
 }

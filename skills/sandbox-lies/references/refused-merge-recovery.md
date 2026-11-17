@@ -17,9 +17,9 @@ script covers every case observed (below); run it unsandboxed:
    subcommand. It does the restores and removals, then re-runs the original
    command once, in one call, if the target was not reached. Under the sandbox's
    strict mode, where a call cannot run unsandboxed, the `--apply` run cannot
-   work from the agent; where the hook's verdict says every refused path is
-   under a `.claude` directory, whose files can run code, it is not the agent's
-   to run. In either case, ask the human partner to run it as
+   work from the agent; where the hook's verdict says a refused path is under a
+   `.claude` directory, whose files can run code, it is not the agent's to run.
+   In either case, ask the human partner to run it as
    `! sandbox-lies-recover --apply -C <repo> checkout <branch>` (or
    `merge <commit-ish>`), `<repo>` being what the verdict printed, or the
    directory the command ran in.
@@ -41,8 +41,8 @@ as `-C <dir>`. For anything else the script does not apply: read `git status`
 and `git log -1` before any re-run and report rather than guess.
 
 The script re-runs only the one command it names, so the rest of the call stays
-yours to run, unsandboxed, except where the hook's verdict says every refused
-path is under a `.claude` directory: that is the human partner's to run.
+yours to run, unsandboxed, except where the hook's verdict says a refused path
+is under a `.claude` directory: that is the human partner's to run.
 
 Auto mode's classifier has refused `git checkout HEAD -- <file>` as destructive
 (seen 2026-10-31). The dry-run plan is what lets a refused `--apply` be asked

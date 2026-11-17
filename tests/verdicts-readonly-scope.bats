@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 # lib/verdicts.sh's verdict_readonly_path under the probe's claudeonly=1 and
-# configonly=1 facts: the act for refusals that all fall under a .claude
-# directory, and the act for a call whose only refusal is git's config-file
+# configonly=1 facts: the act for a refusal of which one path falls under a
+# .claude directory, and the act for a call whose only refusal is git's config-file
 # write. Their precedence against readfile=, the update-config act and the
 # merge clause. The rest of the composition: tests/verdicts-readonly.bats.
 
@@ -31,8 +31,8 @@ quiet() {
   w=$(line1 writable path=/r/.claude/agents/a.md claudeonly=1)
   n=$(line1 nopath claudeonly=1)
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  [ "$w" = '`/r/.claude/agents/a.md` is writable outside the sandbox, whose allowlist refused it. Every refused path is under a `.claude` directory, whose files can run code: tell the user what was refused, and leave any unsandboxed re-run or recovery to them.' ]
-  [[ "$n" == "The sandbox's write allowlist most likely refused this write. Every refused path"* ]] || false
+  [ "$w" = '`/r/.claude/agents/a.md` is writable outside the sandbox, whose allowlist refused it. A refused path is under a `.claude` directory, whose files can run code: tell the user what was refused, and leave any unsandboxed re-run or recovery to them.' ]
+  [[ "$n" == "The sandbox's write allowlist most likely refused this write. A refused path is under"* ]] || false
   text_lacks "$w" 'dangerouslyDisableSandbox'
   quiet "$w"
 }
@@ -42,7 +42,7 @@ quiet() {
   w=$(line1 writable path=/r/.claude/settings.json merge=1 partial=1 \
     target=b recover=checkout repo=/r claudeonly=1)
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  [[ "$w" == *'The git command may have stopped part-way. Every refused path is under a `.claude` directory'* ]] || false
+  [[ "$w" == *'The git command may have stopped part-way. A refused path is under a `.claude` directory'* ]] || false
   text_lacks "$w" 'sandbox-lies-recover'
   text_lacks "$w" 'dangerouslyDisableSandbox'
   text_lacks "$w" 'recovery of a refused merge'
@@ -54,7 +54,7 @@ quiet() {
   w=$(line1 writable path=/r/.claude/settings.json merge=1 partial=1 \
     target=b recover=checkout repo=/r)
   [[ "$w" == *'sandbox-lies-recover -C /r checkout b'* ]] || false
-  text_lacks "$w" 'Every refused path'
+  text_lacks "$w" 'refused path is under a'
 }
 
 @test "the update-config act and the read act win over claudeonly=1" {
@@ -63,10 +63,10 @@ quiet() {
   r=$(line1 nopath readfile=/w/b.log claudeonly=1)
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   [[ "$w" == *'through the `update-config` skill.' ]] || false
-  text_lacks "$w" 'Every refused path'
+  text_lacks "$w" 'refused path is under a'
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
   [[ "$r" == *'Re-run the command that wrote `/w/b.log`.' ]] || false
-  text_lacks "$r" 'Every refused path'
+  text_lacks "$r" 'refused path is under a'
 }
 
 @test "configonly=1 makes the config change alone, not a re-run of the call" {

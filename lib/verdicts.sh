@@ -196,7 +196,7 @@ verdict_readonly_path() {
   fi
 
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  claude_act='Every refused path is under a `.claude` directory, whose files can run code: tell the user what was refused, and leave any unsandboxed re-run or recovery to them.'
+  claude_act='A refused path is under a `.claude` directory, whose files can run code: tell the user what was refused, and leave any unsandboxed re-run or recovery to them.'
   case "$outcome" in
     writable | nopath)
       if [ -n "$readfile" ]; then
