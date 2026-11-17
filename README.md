@@ -34,7 +34,9 @@ updating the plugin.
 The symptoms, discriminators and corpus figures were recorded on Linux, where
 the command sandbox is bubblewrap. The scripts are written to run under macOS's
 bash 3.2 and BSD tools as well, and the test suite passes on macOS under Apple's
-bash 3.2.57, but the macOS sandbox's messages and masks have not been verified.
+bash 3.2.57, but the macOS sandbox's messages and masks have not been verified
+live. The git refusals ending in "operation not permitted" that `readonly-path`
+handles come from macOS session records.
 
 ## Detectors
 
@@ -46,8 +48,9 @@ the tool's own diagnostic shape. Nine ship:
   present with no holder.
 - `phantom-chardev`, `phantom-untracked` and `phantom-gitadd` — sandbox masks
   over dotfiles shown in a listing, in `git status`, or refused by `git add`.
-- `readonly-path` — a write refused as read-only; the hook checks whether the
-  path is writable outside the sandbox.
+- `readonly-path` — a write refused as read-only or busy, or one of five git
+  refusals reported as not permitted (macOS); the hook checks whether the path
+  is writable outside the sandbox.
 - `tmpdir-unset` — an unsandboxed call whose `$TMPDIR` path collapsed to `/`.
 - `resume-lost` — `claude`'s resume refusal; the hook checks outside the sandbox
   whether the transcript exists and reports one the sandbox never let persist,
@@ -66,6 +69,11 @@ covers, what each escape costs, why `$TMPDIR` does not survive a call, how masks
 break a cleanliness gate. The `sandbox-lies:sandbox-lies` skill carries that
 knowledge and triggers while an agent is writing an exclusion, a recipe, a
 cleanliness gate or a directive with a scratch path, before any output exists.
+It also covers what the Bash tool's own wrapper does to a command (`set -e`
+inert inside a call, `grep` typed into the tool being ugrep, the `!` shell
+sharing the agent's working directory) and the auto-mode classifier's denials of
+self-configuring writes, with a table routing each odd result, denial name or
+listing to its explanation.
 
 The plugin also puts one script on the agent's `PATH`, `sandbox-lies-recover`,
 for a `git checkout` or `git merge --ff-only` a sandbox refusal left half-done.

@@ -143,9 +143,20 @@ match_phantom_gitadd() {
 # but prints "binary file matches" to stderr in place of the line, so the
 # matcher fired while the probe read no path.
 _readonly_path_line() {
+    # Git's five refusals under the macOS sandbox, one head per line, the
+    # shared message below them: the heads and the message never share a
+    # source line, so this file does not itself read as a refusal.
+    local heads="error: unable to create file .+"
+    heads="$heads|error: unable to unlink old '.+'"
+    heads="$heads|warning: unable to unlink '.+'"
+    heads="$heads|error: could not write config file .+"
+    heads="$heads|fatal: Unable to create '.+/\.git/index\.lock'"
+    local eperm="Operation not"
+    eperm="$eperm permitted"
     LC_ALL=C grep -m1 -E \
         '^[^`|:[:space:]]+: .*: (Read-only file system|Device or resource busy)[[:space:]]*$'\
-'|^[A-Za-z]+Error: \[Errno (30|16)\] (Read-only file system|Device or resource busy):'
+'|^[A-Za-z]+Error: \[Errno (30|16)\] (Read-only file system|Device or resource busy):'\
+"|^($heads): ${eperm}[[:space:]]*\$"
 }
 
 # A line that opens with a tool's own prefix (a run free of blanks,
@@ -155,13 +166,16 @@ _readonly_path_line() {
 # Python's: an exception name ending in `Error`, `[Errno 30]` or
 # `[Errno 16]`, the same message, then a colon -- the quoted path that
 # follows is not required, since the discriminator anchors at the message,
-# not the line end, for this alternative.
+# not the line end, for this alternative. Or one of the git refusals listed
+# in _readonly_path_line, each a whole line ending in the
+# operation-not-permitted message. That message alone is not taken from any
+# other tool's line.
 #
-# Anchoring at line start is what the corpus needed (99% precision, 162
-# hits): the memory store and this suite's own index/heredoc lines quote
-# both messages mid-line or mid-word, never as a bare refusal starting a
-# line of their own. See the plugin repository's docs/references/readonly-path.md's `## readonly-path`
-# entry for the corpus figures this discriminator was measured against.
+# Anchoring at line start is what the corpus needed: the memory store and
+# this suite's own index/heredoc lines quote both messages mid-line or
+# mid-word, never as a bare refusal starting a line of their own. The corpus
+# figures are in the plugin repository's docs/references/readonly-path.md,
+# `## readonly-path` entry.
 match_readonly_path() {
     _readonly_path_line >/dev/null
 }

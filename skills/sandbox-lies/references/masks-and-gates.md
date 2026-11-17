@@ -35,6 +35,25 @@ classifier call
 This plugin annotates a listing or a status that shows them. What it cannot
 annotate is code that consumes such output without an agent reading it.
 
+A mask says nothing about the repository: it is not a file anyone created there,
+and its presence or absence is not a finding about the tree. Never delete one,
+commit one, or report one as a file or change in the repository.
+
+## A mask that outlives its command
+
+The masks exist while a sandboxed command runs, any one, this session's, a
+subagent's or a concurrent session's, and are torn down when it completes, so a
+reader that sees them has normally caught one mid-run. Masks still present with
+nothing running are a leak. Observed on CC 2.1.278: the full set stood in an
+idle tree across several turns and was gone after a Claude Code restart.
+
+Trying to delete one looks like a real failure. Inside a sandboxed command the
+mask is a mount point in that command's own namespace, so `rm` reports the
+device as busy and `git clean -f` prints one removal warning per mask while
+removing nothing. Asked to remove stray untracked files, read the tree with an
+unsandboxed `git status` first and report that there is nothing to remove; if
+masks show there with nothing running, restart Claude Code rather than delete.
+
 ## A porcelain gate reports DIRTY against a clean tree
 
 A mask the repository does not ignore is reported as a `??` line whatever else

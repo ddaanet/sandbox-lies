@@ -155,7 +155,13 @@ explicit paths, or re-run the same command unsandboxed. ·
 busy, on a line that begins with the refusing tool's own prefix (`cp`, `mv`,
 `rm`, `touch`, bash with its line number, git's `error`, `fatal` or `warning`)
 and ends with the kernel's message, or on Python's exception line for the same
-two errors.
+two errors. It also fires on five git refusals that end "Operation not
+permitted", each a whole line from its start: git could not create a file, could
+not unlink an old file (an error), could not unlink a file (a warning), could
+not write the config file, or could not create the index lock of the repository.
+These are git's own refusals as recorded in sandboxed macOS sessions; no live
+reproduction exists. A checkout refused this way can still print its success
+line and exit 0.
 
 **Check.** The hook takes the refused path from the line and tests outside the
 sandbox whether it, or its parent when it does not exist, is writable:

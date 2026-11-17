@@ -1,6 +1,6 @@
 ---
 name: sandbox-lies
-description: "What the Claude Code command sandbox does to Bash calls that no tool result reveals: whether a call ran sandboxed, what `excludedCommands` and `dangerouslyDisableSandbox` cost, why `$TMPDIR` does not survive a call, and where masks land. Use when writing a `sandbox.excludedCommands` entry, a recipe or script that must run unsandboxed, a cleanliness gate over `git status`, a `cd` into a submodule or subdirectory, a scratch path a later command or subagent reads, a `claude -p` run for a `SessionStart` hook's side effect, or a multi-turn `claude --resume` flow; when acting on a slash command's inline-shell context block or recovering a merge or checkout a sandbox write refusal hit, even one that exited 0; and when reading `ps` for a background task."
+description: "What the Claude Code command sandbox, the Bash tool's own wrapper and the auto-mode classifier do to Bash calls that no tool result explains: whether a call ran sandboxed, what `excludedCommands` and `dangerouslyDisableSandbox` cost, why `$TMPDIR` does not survive a call, where masks land, and why `set -e`, a `grep` probe or a self-configuring write misbehaves. Use when a Bash call exits oddly, is denied, or lists files nobody created; when writing a `sandbox.excludedCommands` entry, a recipe or script that must run unsandboxed, a cleanliness gate over `git status`, a `cd` into a submodule or subdirectory, a scratch path a later command or subagent reads, a `claude -p` run for a `SessionStart` hook's side effect, or a multi-turn `claude --resume` flow; when acting on a slash command's inline-shell context block or recovering a merge or checkout a sandbox write refusal hit, even one that exited 0; when reading `ps` for a background task; and when handing the human partner a `!` command."
 ---
 
 # Sandbox lies
@@ -17,9 +17,9 @@ the recipe, the gate or the directive, before any output exists.
 
 - **A call runs unsandboxed only when it carries
   `dangerouslyDisableSandbox: true` or an `excludedCommands` entry covers every
-  command in it.** Any uncovered command, or a forfeiting shape listed below —
-  git's absolute, `~`-led or `..`-bearing path arguments among them — keeps the
-  call sandboxed. Before relying on an exclusion, re-probe with
+  command in it.** Any uncovered command, or a forfeiting shape in the list
+  linked below — git's absolute, `~`-led or `..`-bearing path arguments among
+  them — keeps the call sandboxed. Before relying on an exclusion, re-probe with
   `git status --porcelain --ignored` alone in its call: without `--ignored`, a
   sandboxed listing leaves out every mask name the repository ignores. The
   probes, and why earlier "not honoured" ones prove nothing:
@@ -40,28 +40,10 @@ the recipe, the gate or the directive, before any output exists.
 
 ## Writing an `excludedCommands` entry
 
-An entry is a permission-rule pattern, and CC applies it only when it covers
-every command in the call. Before writing one:
-
-- Write `git *`, a prefix; `git:*` is the legacy form. A plain `"git status"`
-  covers only the bare literal.
-- A covered call still stays sandboxed with a `sudo`, `eval` or `xargs` head, a
-  `cd`, `pushd` or `popd` anywhere, a subshell, a command substitution, an `if`
-  or `for` block, a redirection (a descriptor duplication such as `2>&1` is
-  documented as fine, but was seen to keep a call sandboxed), or a command name
-  from a variable. Nested commands never match: `sh -c '…'` and a git inside a
-  recipe or script.
-- Git stays sandboxed under any entry with `-C <dir>`, and with an absolute,
-  `~`-led or `..`-bearing path argument (`git init`, `git clone`,
-  `git worktree add`, among others).
-- It does not grant approval: the rest of the permission pipeline still judges
-  the command. A narrow allow rule covering the command clears it before the
-  classifier. So does the read-only validator, for a bare read-only command from
-  the original working directory, except where the session has server-side
-  review.
-
-The full list of forfeiting shapes, wrapper unwrapping, the read-only
-validator's refusals and the rewriting-hook alternative:
+An entry is a permission-rule pattern that applies only when it covers every
+command in the call. The pattern forms, the shapes that keep a covered call
+sandboxed, wrapper unwrapping, the read-only validator's refusals and the
+rewriting-hook alternative:
 [references/excluded-commands.md](references/excluded-commands.md).
 
 ## Leaving the sandbox for one call
@@ -96,6 +78,10 @@ every later sandboxed call masking inside it. In order of preference:
 - Give a command absolute paths; give git `-C <dir>`.
 - Otherwise use a subshell, `(cd <dir> && …)`, whose `cd` cannot persist.
 - Or end the call with a `cd <root>` line.
+
+The human partner's `!` commands run in the same working directory, so a `!`
+command handed over carries `git -C <abs-path>` or absolute paths too
+([references/bash-tool-wrapper.md](references/bash-tool-wrapper.md)).
 
 `git -C`, a git absolute-path argument, a `cd` and a subshell each keep the call
 sandboxed under any `excludedCommands` entry. Run with
@@ -168,3 +154,16 @@ evidence a job died: check with an unsandboxed `ps`, the task's output file and
 the artifact it writes. Never restart the job in the foreground to check.
 Evidence and waiting rules:
 [references/background-tasks.md](references/background-tasks.md).
+
+## The Bash tool's wrapper and the classifier
+
+- **`set -e` aborts nothing inside a Bash call**, and `grep` typed into the tool
+  is ugrep: chain with `&&` or run `bash -e -c '…'`, and probe with
+  `command grep`. Mechanism:
+  [references/bash-tool-wrapper.md](references/bash-tool-wrapper.md).
+- **A classifier denial of a self-configuring write is final**: no flag or retry
+  lifts it. Stop and hand the write to the human partner or a hook:
+  [references/classifier-denials.md](references/classifier-denials.md).
+
+Every odd result, denial name or listing, one row each, with where it is
+explained: [references/symptoms.md](references/symptoms.md).
