@@ -134,21 +134,14 @@ match_phantom_gitadd() {
     grep -qE '^error: .*: can only add regular files, symbolic links or git-directories'
 }
 
-# _readonly_path_line -- prints stdin's first line match_readonly_path
-# accepts, nothing when there is none; _readonly_path_lines prints every
-# such line. Shared with probe_readonly_path
+# _readonly_path_lines -- prints every stdin line match_readonly_path
+# accepts, nothing when there is none. Shared with probe_readonly_path
 # (lib/probes-readonly.sh, sourced there) so the discriminator lives in one
 # place rather than as two copies that could drift apart. LC_ALL=C: under a
 # UTF-8 locale GNU grep reads a line holding an invalid byte as binary, and
 # on a Python refusal (whose alternative stops before the path) it exits 0
 # but prints "binary file matches" to stderr in place of the line, so the
 # matcher fired while the probe read no path.
-_readonly_path_line() {
-    _readonly_path_lines -m1
-}
-
-# _readonly_path_lines [<grep option>...] -- the options go to grep;
-# ${1+"$@"}, since bash 3.2 under set -u calls an empty "$@" unbound.
 _readonly_path_lines() {
     # Git's five refusals under the macOS sandbox, one head per line, the
     # shared message below them: the heads and the message never share a
@@ -160,7 +153,7 @@ _readonly_path_lines() {
     heads="$heads|fatal: Unable to create '.+/\.git/index\.lock'"
     local eperm="Operation not"
     eperm="$eperm permitted"
-    LC_ALL=C grep ${1+"$@"} -E \
+    LC_ALL=C grep -E \
         '^[^`|:[:space:]]+: .*: (Read-only file system|Device or resource busy)[[:space:]]*$'\
 '|^[A-Za-z]+Error: \[Errno (30|16)\] (Read-only file system|Device or resource busy):'\
 "|^($heads): ${eperm}[[:space:]]*\$"
@@ -174,7 +167,7 @@ _readonly_path_lines() {
 # `[Errno 16]`, the same message, then a colon -- the quoted path that
 # follows is not required, since the discriminator anchors at the message,
 # not the line end, for this alternative. Or one of the git refusals listed
-# in _readonly_path_line, each a whole line ending in the
+# in _readonly_path_lines, each a whole line ending in the
 # operation-not-permitted message. That message alone is not taken from any
 # other tool's line.
 #
@@ -184,7 +177,7 @@ _readonly_path_lines() {
 # figures are in the plugin repository's docs/references/readonly-path.md,
 # `## readonly-path` entry.
 match_readonly_path() {
-    _readonly_path_line >/dev/null
+    _readonly_path_lines >/dev/null
 }
 
 # The shape an empty $TMPDIR expansion produces, as the replay selected it: a
