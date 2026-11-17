@@ -165,3 +165,21 @@ scope_case() {
   [ "${output%%$'\n'*}" = writable ]
   [ "$(fact claudeonly)" = claudeonly=1 ]
 }
+
+# Only .. can climb out: a mkdir operand's trailing slash and a ./ segment
+# stay inside the worktree and keep the exemption.
+@test "a trailing slash or ./ inside a .claude/worktrees checkout withholds claudeonly=1" {
+  local wt="$REPO/.claude/worktrees/x" text
+  mkdir -p "$wt"
+  : >"$wt/.git"
+  text="mkdir: cannot create directory 'build/': $(erofs_message)"
+  run_probe_command probe_readonly_path false "$wt" 'mkdir build/' "$text"
+  [ "$status" -eq 0 ]
+  [ "${output%%$'\n'*}" = writable ]
+  [ -z "$(fact claudeonly)" ]
+  text="cp: cannot create regular file './a.c': $(erofs_message)"
+  run_probe_command probe_readonly_path false "$wt" 'cp b ./a.c' "$text"
+  [ "$status" -eq 0 ]
+  [ "${output%%$'\n'*}" = writable ]
+  [ -z "$(fact claudeonly)" ]
+}

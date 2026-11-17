@@ -124,8 +124,8 @@ _probe_top_relative_line() {
 # resolved as _probe_readonly_line_path resolves it, has a .claude
 # component, the last one not followed by worktrees (Claude Code's own
 # worktrees sit there, and their project files run no code) unless what
-# follows .claude/ holds a ., .. or empty segment, read unnormalised as the
-# tool printed it, which keeps the .claude act; configonly=1
+# follows .claude/ holds a .. segment, the one spelling that can climb back
+# out, read unnormalised as the tool printed it; configonly=1
 # when each is git's config-file write refusal. A line naming no path is not
 # under .claude. The scan stops once neither fact
 # can hold, so a long refusal list costs one path read per line only while
@@ -147,7 +147,7 @@ _probe_readonly_scope() {
                 */.claude) ;;
                 */.claude/*)
                     case "/${path##*/.claude/}/" in
-                        */./* | */../* | *//*) ;;
+                        */../*) ;;
                         /worktrees/*) claude=no ;;
                     esac
                     ;;
