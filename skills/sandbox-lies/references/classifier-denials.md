@@ -27,7 +27,6 @@ approval does not lift it, and a retry fails identically.
 - **Publishing reached for unprompted** draws *Create Public Surface*: a
   `just release minor` issued while executing a task file, with no user message
   naming a release, was denied with a `sandbox.excludedCommands` entry in place.
-  A run of the same recipe the user had named passed (next section).
 - **Adding a git subtree** is handed to the human partner rather than run.
 
 ## The verdict weighs the command as invoked, and who asked for it
@@ -38,14 +37,13 @@ not a way to launder a denied write through a script. How the classifier judges
 an unsandboxed recipe by its top-level command:
 [escapes-and-costs.md](escapes-and-costs.md).
 
-## After a denial
+## After a denial of a self-configuration write
 
-Stop, unless the denial's bullet above names what lifts it. Where the *path* is
-the objection, a write through another tool after a denied Bash call reads as
-tunnelling the same act. Where a destructive *verb* is, the recoverable
-equivalent passes: a bare `rm` is denied where `git rm` goes through. Write no
-reasoning about getting past a denial into any file; the classifier reads it
-back as intent. Pick the writer the path belongs to:
+Stop. Where the *path* is the objection, a write through another tool after a
+denied Bash call reads as tunnelling the same act. Where a destructive *verb*
+is, the recoverable equivalent passes: a bare `rm` is denied where `git rm` goes
+through. Write no reasoning about getting past a denial into any file; the
+classifier reads it back as intent. Pick the writer the path belongs to:
 
 - **The human partner**, through a ready-to-run `!` command, made independent of
   the working directory ([bash-tool-wrapper.md](bash-tool-wrapper.md)); for
