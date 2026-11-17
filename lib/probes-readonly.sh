@@ -122,8 +122,10 @@ _probe_top_relative_line() {
 # line the matcher accepts (<matched>, the first resolved to <path> already),
 # not just the first: claudeonly=1 when each such line names a path that,
 # resolved as _probe_readonly_line_path resolves it, has a .claude
-# component; configonly=1 when each is git's config-file write refusal. A
-# line naming no path is not under .claude. The scan stops once neither fact
+# component, the last one not followed by worktrees (Claude Code's own
+# worktrees sit there, and their project files run no code); configonly=1
+# when each is git's config-file write refusal. A line naming no path is not
+# under .claude. The scan stops once neither fact
 # can hold, so a long refusal list costs one path read per line only while
 # every path so far is under .claude.
 _probe_readonly_scope() {
@@ -140,7 +142,12 @@ _probe_readonly_scope() {
         if [ "$claude" = yes ]; then
             [ "$first" = yes ] || path=$(_probe_readonly_line_path "$line" "$cwd")
             case "$path" in
-                */.claude | */.claude/*) ;;
+                */.claude) ;;
+                */.claude/*)
+                    case "${path##*/.claude/}" in
+                        worktrees | worktrees/*) claude=no ;;
+                    esac
+                    ;;
                 *) claude=no ;;
             esac
         fi

@@ -126,3 +126,29 @@ scope_case() {
   [ "${output%%$'\n'*}" = nopath ]
   [ -z "$(fact configonly)" ]
 }
+
+# Claude Code keeps its worktrees under <repo>/.claude/worktrees/<name>/:
+# project files there run no code, so they do not count as under .claude,
+# while a worktree's own .claude directory does.
+@test "a path inside a .claude/worktrees checkout withholds claudeonly=1" {
+  local wt="$REPO/.claude/worktrees/x"
+  mkdir -p "$wt/src"
+  : >"$wt/.git"
+  run_probe_command probe_readonly_path false "$wt" 'git checkout x' \
+    "$(eperm_shape_line 1 src/a.c)"
+  [ "$status" -eq 0 ]
+  [ "${output%%$'\n'*}" = writable ]
+  [ "$(fact path)" = "path=$wt/src/a.c" ]
+  [ -z "$(fact claudeonly)" ]
+}
+
+@test "a worktree's own .claude directory still prints claudeonly=1" {
+  local wt="$REPO/.claude/worktrees/x"
+  mkdir -p "$wt/.claude"
+  : >"$wt/.git"
+  run_probe_command probe_readonly_path false "$wt" 'git checkout x' \
+    "$(eperm_shape_line 2 .claude/settings.json)"
+  [ "$status" -eq 0 ]
+  [ "${output%%$'\n'*}" = writable ]
+  [ "$(fact claudeonly)" = claudeonly=1 ]
+}
