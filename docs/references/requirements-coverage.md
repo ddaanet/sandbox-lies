@@ -48,8 +48,8 @@ established.
 over it.
 
 **FR-10** — Where · pinned by: the tier's index, and the translation map in
-`references/detectors.md` that audits every paragraph. Partial (prose): the tier
-cut is pending, and no test or gate re-checks it.
+`references/detectors.md` that audits every paragraph. Done (prose): no test or
+gate re-checks it.
 
 **FR-11** — Where · pinned by: `tests/docs.bats` and `tests/sweep-code.bats` run
 `detect` over every other tracked regular file, split by

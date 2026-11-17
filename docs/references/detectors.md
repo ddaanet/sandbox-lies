@@ -299,7 +299,8 @@ true.
 ## Translation map
 
 Where each section of `memory/ddaanet/sandbox-effects.md` lands. Every section
-the plugin carries maps to a detector or the skill (FR-10).
+the plugin carries maps to a detector or the skill (FR-10); the file stays for
+the two that map nowhere.
 
 | memory section | lands in |
 |---|---|
@@ -320,8 +321,8 @@ the plugin carries maps to a detector or the skill (FR-10).
 | `excludedCommands` whole-call semantics | skill, corrected: an entry frees only a call whose every command it covers |
 | `ps` cannot see background tasks | skill |
 | `--resume` transcript never persisted | `resume-lost`; eval-harness consequence → skill |
-| zellij socket | skill (symptom table); `zellij-socket` is a candidate under D-15 |
-| phantom dotfiles that outlive their command (the leak) | skill (masks reference); no detector |
+| zellij socket | stays in memory: `zellij-socket` is a candidate under D-15 |
+| phantom dotfiles that outlive their command (the leak) | stays in memory: no detector |
 | sandboxed `claude -p` drops `SessionStart` | skill |
 | sandbox setup fails | `seccomp-init` |
 | `/tmp` reads full | dropped — not a sandbox effect (design, rejected alternatives) |
