@@ -1,8 +1,8 @@
 #!/usr/bin/env bats
 # lib/verdicts.sh's verdict_readonly_path under the probe's claudeonly=1 and
-# configonly=1 facts: the act for a refusal of which one path falls under a
-# .claude directory, and the act for a call whose only refusal is git's config-file
-# write. Their precedence against readfile=, the update-config act and the
+# configonly=1 facts: the act for a refusal of which one path falls under
+# a .claude directory, and the act for a call whose only refusal is git's
+# config-file write. Their precedence against readfile=, the update-config act and the
 # merge clause. The rest of the composition: tests/verdicts-readonly.bats.
 
 bats_require_minimum_version 1.5.0

@@ -157,8 +157,8 @@ scope_case() {
 }
 
 # cp names its operand as given, so a path can climb out of
-# .claude/worktrees with a .. segment: the exemption fails closed on any
-# ., .. or empty segment after .claude/.
+# .claude/worktrees with a .. segment: the path is normalised lexically
+# before the .claude test.
 @test "a .. segment out of .claude/worktrees still prints claudeonly=1" {
   local text
   mkdir -p "$REPO/.claude/worktrees"
@@ -169,8 +169,8 @@ scope_case() {
   [ "$(fact claudeonly)" = claudeonly=1 ]
 }
 
-# Only .. can climb out: a mkdir operand's trailing slash and a ./ segment
-# stay inside the worktree and keep the exemption.
+# A mkdir operand's trailing slash and a ./ segment stay inside the worktree
+# and keep the exemption.
 @test "a trailing slash or ./ inside a .claude/worktrees checkout withholds claudeonly=1" {
   local wt="$REPO/.claude/worktrees/x" text
   mkdir -p "$wt"
@@ -182,6 +182,30 @@ scope_case() {
   [ -z "$(fact claudeonly)" ]
   text="cp: cannot create regular file './a.c': $(erofs_message)"
   run_probe_command probe_readonly_path false "$wt" 'cp b ./a.c' "$text"
+  [ "$status" -eq 0 ]
+  [ "${output%%$'\n'*}" = writable ]
+  [ -z "$(fact claudeonly)" ]
+}
+
+# Normalised lexically, a .. that stays inside the worktree keeps the
+# exemption, an empty segment does not hide worktrees, and a .. that climbs
+# out of .claude leaves no .claude component.
+@test "a path normalised out of .claude, or inside a worktree, withholds claudeonly=1" {
+  local wt="$REPO/.claude/worktrees/x" text
+  mkdir -p "$wt/src" "$wt/build"
+  : >"$wt/.git"
+  text="cp: cannot create regular file '../build/a': $(erofs_message)"
+  run_probe_command probe_readonly_path false "$wt/src" 'cp b ../build/a' "$text"
+  [ "$status" -eq 0 ]
+  [ "${output%%$'\n'*}" = writable ]
+  [ -z "$(fact claudeonly)" ]
+  text="cp: cannot create regular file '.claude//worktrees/x/a.c': $(erofs_message)"
+  run_probe_command probe_readonly_path false "$REPO" 'cp b c' "$text"
+  [ "$status" -eq 0 ]
+  [ "${output%%$'\n'*}" = writable ]
+  [ -z "$(fact claudeonly)" ]
+  text="cp: cannot create regular file '.claude/agents/../../src/a.c': $(erofs_message)"
+  run_probe_command probe_readonly_path false "$REPO" 'cp b c' "$text"
   [ "$status" -eq 0 ]
   [ "${output%%$'\n'*}" = writable ]
   [ -z "$(fact claudeonly)" ]

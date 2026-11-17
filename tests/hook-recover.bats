@@ -3,9 +3,9 @@
 # fire-readonly-path-checkout-moved fixture's text: a checkout that moved HEAD
 # to main before git's unlink refusal on .claude/settings.json, cut from a
 # recorded session. Neither clause says HEAD stayed put or offers update-config.
-# The clause cases move the refused file to conf/settings.json: refused on
-# .claude paths alone, the recorded text gets the act that points at the user
-# (the last case here), which names no script.
+# The clause cases move the refused file to conf/settings.json: refused on a
+# .claude path, the recorded text gets the act that points at the user (the
+# last case here), which names no script.
 
 load helpers/bsd-stubs
 load helpers/git-env

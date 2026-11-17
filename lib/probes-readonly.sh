@@ -123,13 +123,14 @@ _probe_top_relative_line() {
 # not just the first: claudeonly=1 when any such line names a path that,
 # resolved as _probe_readonly_line_path resolves it, has a .claude
 # component, the last one not followed by worktrees (Claude Code's own
-# worktrees sit there, and their project files run no code) unless what
-# follows .claude/ holds a .. segment, the one spelling that can climb back
-# out, read unnormalised as the tool printed it; configonly=1
+# worktrees sit there, and their project files run no code), the path
+# normalised lexically first so ., .. and empty segments land where they
+# point; configonly=1
 # when each is git's config-file write refusal. A line naming no path is not
-# under .claude. The scan stops once claudeonly=1 holds and configonly=1
-# cannot, so a long refusal list costs one path read per line only until a
-# .claude path turns up.
+# under .claude. A path is read only from a line that, with the cwd, holds
+# .claude somewhere, since a join onto the cwd or its worktree top cannot
+# gain that component otherwise; the scan stops once claudeonly=1 holds and
+# configonly=1 cannot.
 _probe_readonly_scope() {
     local matched="$1" cwd="$2" path="$3" line claude=no config=yes head
     local first=yes
@@ -141,19 +142,22 @@ _probe_readonly_scope() {
             "$head"*) ;;
             *) config=no ;;
         esac
-        if [ "$claude" = no ]; then
-            [ "$first" = yes ] || path=$(_probe_readonly_line_path "$line" "$cwd")
-            case "$path" in
-                */.claude) claude=yes ;;
-                */.claude/*)
-                    case "/${path##*/.claude/}/" in
-                        */../*) claude=yes ;;
-                        /worktrees/*) ;;
-                        *) claude=yes ;;
-                    esac
-                    ;;
-            esac
-        fi
+        case "$claude/$line/${cwd:-$PWD}" in
+            no/*.claude*)
+                [ "$first" = yes ] || path=$(_probe_readonly_line_path "$line" "$cwd")
+                path=$(_probe_lexical_path "$path" && printf x)
+                path="${path%x}"
+                case "$path" in
+                    */.claude) claude=yes ;;
+                    */.claude/*)
+                        case "${path##*/.claude/}" in
+                            worktrees | worktrees/*) ;;
+                            *) claude=yes ;;
+                        esac
+                        ;;
+                esac
+                ;;
+        esac
         first=no
         [ "$claude" = no ] || [ "$config" = yes ] || break
     done < <(printf '%s\n' "$matched")
@@ -219,6 +223,28 @@ _probe_partial_checkout_text() {
 # passes the worktree top for a partial-checkout path or an unlink warning's,
 # and cwd for every other producer (cp, mv, touch, bash, Python), which
 # resolve against their own process cwd.
+# _probe_lexical_path <path> — <path> with its empty and . segments dropped
+# and each .. taking off the segment before it, printed with no trailing
+# newline; empty stays empty. Lexical only: a .. after a symlink lands where
+# the string says, not where the kernel would.
+_probe_lexical_path() {
+    local rest="$1" seg out=''
+    [ -n "$rest" ] || return 0
+    while [ -n "$rest" ]; do
+        seg="${rest%%/*}"
+        case "$rest" in
+            */*) rest="${rest#*/}" ;;
+            *) rest='' ;;
+        esac
+        case "$seg" in
+            '' | .) ;;
+            ..) out="${out%/*}" ;;
+            *) out="$out/$seg" ;;
+        esac
+    done
+    printf '%s' "${out:-/}"
+}
+
 _probe_readonly_resolve() {
     local path="$1" cwd="${2:-$PWD}"
     case "$path" in
