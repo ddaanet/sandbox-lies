@@ -10,7 +10,7 @@ mid-run and went on to complete (2026-08-15, CC version not recorded). An empty
 sandboxed `ps` is not evidence that a background job died. Restarting the work
 in the foreground to check puts two heavy runs on the box; the second times out,
 and both then look like the first one failing. Check with an unsandboxed `ps`,
-and watch the task's output file and the artifact the job writes on success; a
-completion notification may never reach a subagent, so it is never the only
-thing waited on. Key a wait on the command's exit, not on an output line that
-reads as terminal.
+and watch the task's output file and the artifact the job writes on success. How
+long a background task may run, and how its completion notification reaches a
+waiting agent, are in the `edify:dispatch` skill. Key a wait on the command's
+exit, not on an output line that reads as terminal.

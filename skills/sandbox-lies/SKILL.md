@@ -1,6 +1,6 @@
 ---
 name: sandbox-lies
-description: "What the Claude Code command sandbox does to Bash calls that no tool result reveals: whether a call ran sandboxed, what `excludedCommands` and `dangerouslyDisableSandbox` cost, why `$TMPDIR` does not survive a call, and where masks land. Use when writing a `sandbox.excludedCommands` entry, a recipe or script that must run unsandboxed, a cleanliness gate over `git status`, a `cd` into a submodule or subdirectory, a scratch path a later command or subagent reads, a `claude -p` run for a `SessionStart` hook's side effect, or a multi-turn `claude --resume` flow; when acting on a slash command's inline-shell context block or recovering a merge or checkout a sandbox write refusal hit, even one that exited 0; and when reading `ps` for a background task."
+description: "What the Claude Code command sandbox, the Bash tool's own wrapper and the auto-mode classifier do to Bash calls that no tool result explains: whether a call ran sandboxed, what `excludedCommands` and `dangerouslyDisableSandbox` cost, why `$TMPDIR` does not survive a call, where masks land, and why `set -e`, a `grep` probe or a self-configuring write misbehaves. Use when a Bash call exits oddly, is denied, or lists files nobody created; when writing a `sandbox.excludedCommands` entry, a recipe or script that must run unsandboxed, a cleanliness gate over `git status`, a `cd` into a submodule or subdirectory, a scratch path a later command or subagent reads, a `claude -p` run for a `SessionStart` hook's side effect, or a multi-turn `claude --resume` flow; when acting on a slash command's inline-shell context block or recovering a merge or checkout a sandbox write refusal hit, even one that exited 0; when reading `ps` for a background task; and when handing the human partner a `!` command."
 ---
 
 # Sandbox lies
@@ -79,6 +79,10 @@ every later sandboxed call masking inside it. In order of preference:
 - Otherwise use a subshell, `(cd <dir> && …)`, whose `cd` cannot persist.
 - Or end the call with a `cd <root>` line.
 
+The human partner's `!` commands run in the same working directory, so a `!`
+command handed over carries `git -C <abs-path>` or absolute paths too
+([references/bash-tool-wrapper.md](references/bash-tool-wrapper.md)).
+
 `git -C`, a git absolute-path argument, a `cd` and a subshell each keep the call
 sandboxed under any `excludedCommands` entry. Run with
 `dangerouslyDisableSandbox`, `git -C`, a subshell and a `cd` beside git each
@@ -150,3 +154,16 @@ evidence a job died: check with an unsandboxed `ps`, the task's output file and
 the artifact it writes. Never restart the job in the foreground to check.
 Evidence and waiting rules:
 [references/background-tasks.md](references/background-tasks.md).
+
+## The Bash tool's wrapper and the classifier
+
+- **`set -e` aborts nothing inside a Bash call**, and `grep` typed into the tool
+  is ugrep: chain with `&&` or run `bash -e -c '…'`, and probe with
+  `command grep`. Mechanism:
+  [references/bash-tool-wrapper.md](references/bash-tool-wrapper.md).
+- **A classifier denial of a self-configuring write is final**: no flag or retry
+  lifts it. Stop and hand the write to the human partner or a hook:
+  [references/classifier-denials.md](references/classifier-denials.md).
+
+Every odd result, denial name or listing, one row each, with where it is
+explained: [references/symptoms.md](references/symptoms.md).

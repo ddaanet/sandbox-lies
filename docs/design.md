@@ -123,11 +123,12 @@ authoring moments. Done.
 **FR-10 — Memory retirement, per section.** The commit that lands a detector or
 a skill section deletes the memory section it translates from
 `memory/ddaanet/sandbox-effects.md` (D-11). Every section the plugin carries is
-retired. The file keeps what it does not: the phantom-dotfile leak, and the
-zellij section, whose detector stays a candidate under D-15. One residue
-survives as prose: the `!`-expansion phantom-listing rule, folded into the
-existing phantom-dotfile bullet of `memory/ddaanet/shared-claude.md`. Done
-(prose).
+retired. The skill now carries the last two, the phantom-dotfile leak and the
+zellij case (whose detector stays a candidate under D-15), and four more tier
+facts on the Bash tool's wrapper and the classifier; a gitlore session cuts
+those tier files once a release carrying them is installed. One residue survives
+as prose: the `!`-expansion phantom-listing rule, folded into the existing
+phantom-dotfile bullet of `memory/ddaanet/shared-claude.md`. Done (prose).
 
 **FR-11 — Self-quiet.** No live file in this repository fires a detector when
 read back. Source files build each diagnostic literal from fragments so the
