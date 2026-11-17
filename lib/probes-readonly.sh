@@ -223,6 +223,21 @@ _probe_partial_checkout_text() {
 # passes the worktree top for a partial-checkout path or an unlink warning's,
 # and cwd for every other producer (cp, mv, touch, bash, Python), which
 # resolve against their own process cwd.
+_probe_readonly_resolve() {
+    local path="$1" cwd="${2:-$PWD}"
+    case "$path" in
+        /* | '')
+            printf '%s\n' "$path"
+            return
+            ;;
+    esac
+    case "$cwd" in
+        /*) ;;
+        *) cwd="$PWD/$cwd" ;;
+    esac
+    printf '%s/%s\n' "${cwd%/}" "$path"
+}
+
 # _probe_lexical_path <path> — <path> with its empty and . segments dropped
 # and each .. taking off the segment before it, printed with no trailing
 # newline; empty stays empty. Lexical only: a .. after a symlink lands where
@@ -243,21 +258,6 @@ _probe_lexical_path() {
         esac
     done
     printf '%s' "${out:-/}"
-}
-
-_probe_readonly_resolve() {
-    local path="$1" cwd="${2:-$PWD}"
-    case "$path" in
-        /* | '')
-            printf '%s\n' "$path"
-            return
-            ;;
-    esac
-    case "$cwd" in
-        /*) ;;
-        *) cwd="$PWD/$cwd" ;;
-    esac
-    printf '%s/%s\n' "${cwd%/}" "$path"
 }
 
 # Prints the path extracted from stdin (one line), nothing when none of the
