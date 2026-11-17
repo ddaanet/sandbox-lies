@@ -122,13 +122,11 @@ authoring moments. Done.
 
 **FR-10 — Memory retirement, per section.** The commit that lands a detector or
 a skill section deletes the memory section it translates from
-`memory/ddaanet/sandbox-effects.md` (D-11). Every section the plugin carries is
-retired. The skill now carries the last two, the phantom-dotfile leak and the
-zellij case (whose detector stays a candidate under D-15), and four more tier
-facts on the Bash tool's wrapper and the classifier. Those tier files are an
-exception to D-11: the tier's stubs are written in one place, so a gitlore
-session cuts them once a release carrying them is installed, and this
-requirement is done for them only then. One residue survives as prose: the
+`memory/ddaanet/sandbox-effects.md` (D-11). Every section translated before this
+release is retired. The skill now carries the last two, the phantom-dotfile leak
+and the zellij case (whose detector stays a candidate under D-15), and four more
+tier facts on the Bash tool's wrapper and the classifier, which wait for the
+tier cut (D-11): Partial until then. One residue survives as prose: the
 `!`-expansion phantom-listing rule, folded into the existing phantom-dotfile
 bullet of `memory/ddaanet/shared-claude.md`. Done (prose).
 
@@ -274,8 +272,11 @@ or of the dated pilot evidence from inside this repo annotates itself. Argued in
 section and the hook or skill text that replaces it never coexist: the commit
 that ships one deletes the other. Waiting for dogfooding would keep two sources
 of truth live, and the fixture suite plus the live reproduction are the evidence
-a detector works. Accepted tradeoff: a ddaanet repo without the plugin loses the
-fact before it gains the hook, until the plugin is released and installed there.
+a detector works. A fact in a shared tier is the exception: its stub is written
+in the tier's own repository, so a session there cuts it once the release
+carrying it is installed. Accepted tradeoff: a ddaanet repo without the plugin
+loses the fact before it gains the hook, until the plugin is released and
+installed there.
 
 **D-12 — `jq` is a dependency.** Parsing the payload by hand in bash 3.2 is
 where hooks go wrong; the release toolkit's version guard already requires it.
