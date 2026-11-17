@@ -40,28 +40,10 @@ the recipe, the gate or the directive, before any output exists.
 
 ## Writing an `excludedCommands` entry
 
-An entry is a permission-rule pattern, and CC applies it only when it covers
-every command in the call. Before writing one:
-
-- Write `git *`, a prefix; `git:*` is the legacy form. A plain `"git status"`
-  covers only the bare literal.
-- A covered call still stays sandboxed with a `sudo`, `eval` or `xargs` head, a
-  `cd`, `pushd` or `popd` anywhere, a subshell, a command substitution, an `if`
-  or `for` block, a redirection (a descriptor duplication such as `2>&1` is
-  documented as fine, but was seen to keep a call sandboxed), or a command name
-  from a variable. Nested commands never match: `sh -c '…'` and a git inside a
-  recipe or script.
-- Git stays sandboxed under any entry with `-C <dir>`, and with an absolute,
-  `~`-led or `..`-bearing path argument (`git init`, `git clone`,
-  `git worktree add`, among others).
-- It does not grant approval: the rest of the permission pipeline still judges
-  the command. A narrow allow rule covering the command clears it before the
-  classifier. So does the read-only validator, for a bare read-only command from
-  the original working directory, except where the session has server-side
-  review.
-
-The full list of forfeiting shapes, wrapper unwrapping, the read-only
-validator's refusals and the rewriting-hook alternative:
+An entry is a permission-rule pattern that applies only when it covers every
+command in the call. The pattern forms, the shapes that keep a covered call
+sandboxed, wrapper unwrapping, the read-only validator's refusals and the
+rewriting-hook alternative:
 [references/excluded-commands.md](references/excluded-commands.md).
 
 ## Leaving the sandbox for one call
