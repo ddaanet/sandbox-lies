@@ -69,6 +69,11 @@ covers, what each escape costs, why `$TMPDIR` does not survive a call, how masks
 break a cleanliness gate. The `sandbox-lies:sandbox-lies` skill carries that
 knowledge and triggers while an agent is writing an exclusion, a recipe, a
 cleanliness gate or a directive with a scratch path, before any output exists.
+It also covers what the Bash tool's own wrapper does to a command (`set -e`
+inert inside a call, `grep` typed into the tool being ugrep, the `!` shell
+sharing the agent's working directory) and the auto-mode classifier's denials of
+self-configuring writes, with a table routing each odd result, denial name or
+listing to its explanation.
 
 The plugin also puts one script on the agent's `PATH`, `sandbox-lies-recover`,
 for a `git checkout` or `git merge --ff-only` a sandbox refusal left half-done.
