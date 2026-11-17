@@ -109,5 +109,5 @@ command is `just`, which only an entry covering the recipe, such as
 `just release *`, frees. The classifier likewise judges an unsandboxed recipe by
 its top-level command: an unsandboxed `just release minor` the user had named
 went through whole, its cross-repository `git -C "$MARKETPLACE_DIR" push`
-included; the same recipe started unprompted was denied
-([classifier-denials.md](classifier-denials.md)).
+included; the same recipe started unprompted was denied (one pair of runs,
+[classifier-denials.md](classifier-denials.md)).

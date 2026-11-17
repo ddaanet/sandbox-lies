@@ -1,12 +1,12 @@
-# Auto-mode classifier denials of self-configuration
+# Auto-mode classifier denials
 
 The auto-mode permission classifier is not the sandbox:
 `dangerouslyDisableSandbox` leaves the sandbox, and the classifier has no such
 toggle. It refuses an agent's write to a path that configures or audits the
-agent itself, whatever tool carries the write. For the self-configuration paths
-(settings, a file a hook consumes) the refusal is a guardrail, not a prompt:
-approval does not lift it, and a retry fails identically. The push denials are
-lifted by what their own bullet names.
+agent itself, whatever tool carries the write; the denials below also cover
+pushes, publishing and subtrees. A denial is a guardrail, not a prompt: it is
+lifted only by what its own bullet names, and one whose bullet names nothing is
+final. Approval does not lift it and a retry fails identically.
 
 ## Denials, by the reason the classifier names
 
@@ -33,13 +33,12 @@ lifted by what their own bullet names.
 ## The verdict weighs the command as invoked, and who asked for it
 
 A cross-repository push nested inside a user-named `just release` passed; the
-same recipe, agent-initiated, was denied (one pair of runs, CC 2.1.263). So each
-denial above is an incidental write; a user-named action is unobserved, not
-known to be denied. This is not a way to launder a denied write through a
-script. How the classifier judges an unsandboxed recipe by its top-level
-command: [escapes-and-costs.md](escapes-and-costs.md).
+same recipe, agent-initiated, was denied (one pair of runs, CC 2.1.263). This is
+not a way to launder a denied write through a script. How the classifier judges
+an unsandboxed recipe by its top-level command:
+[escapes-and-costs.md](escapes-and-costs.md).
 
-## After a denial of a self-configuration write
+## After a denial
 
 Stop. Where the *path* is the objection, a write through another tool after a
 denied Bash call reads as tunnelling the same act. Where a destructive *verb*
