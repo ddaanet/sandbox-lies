@@ -165,13 +165,16 @@ _verdict_has_control() {
 #
 # writable and nopath then carry the tail readonly-path.md's readonly-path
 # Verdicts compose from the probe's other stdin facts (readfile=, merge=1,
-# partial=1, target=, recover=, repo=, match=): one act; a merge clause replaces it,
-# and a read act follows the clause as its own sentence. readonly ignores
+# partial=1, target=, recover=, repo=, match=, claudeonly=, configonly=): one
+# act; a merge clause replaces it, and a read act follows the clause as its
+# own sentence. Under claudeonly= neither the act nor the clause names an
+# unsandboxed step. readonly ignores
 # every fact but path=. An outcome with no text here prints nothing, as an
 # unmatched lock outcome does.
 verdict_readonly_path() {
   local outcome="$1" line path='' readfile='' merge='' partial='' target=''
-  local recover='' repo='' matches=() subject act clause rest
+  local recover='' repo='' claudeonly='' configonly='' matches=() subject act
+  local clause rest claude_act
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in
       path=*) path=${line#path=} ;;
@@ -182,6 +185,8 @@ verdict_readonly_path() {
       recover=*) recover=${line#recover=} ;;
       repo=*) repo=${line#repo=} ;;
       match=*) matches+=("${line#match=}") ;;
+      claudeonly=*) claudeonly=${line#claudeonly=} ;;
+      configonly=*) configonly=${line#configonly=} ;;
     esac
   done
   if _verdict_path_read "$path"; then
@@ -190,6 +195,8 @@ verdict_readonly_path() {
     subject='The path'
   fi
 
+  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+  claude_act='Every refused path is under a `.claude` directory, whose files can run code: tell the user what was refused, and leave any unsandboxed re-run or recovery to them.'
   case "$outcome" in
     writable | nopath)
       if [ -n "$readfile" ]; then
@@ -201,14 +208,23 @@ verdict_readonly_path() {
             act='Write `.claude/settings.json` through the `update-config` skill.'
             ;;
           *)
-            # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-            act='Re-run the whole call with `dangerouslyDisableSandbox: true`.'
+            if [ -n "$claudeonly" ]; then
+              act=$claude_act
+            elif [ -n "$configonly" ]; then
+              # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+              act='Only git'"'"'s config-file write was refused, and the rest of the call may already have run: make that config change alone with `dangerouslyDisableSandbox: true`, not a re-run of the whole call.'
+            else
+              # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+              act='Re-run the whole call with `dangerouslyDisableSandbox: true`.'
+            fi
             ;;
         esac
       fi
       rest=" $act"
       if [ -n "$merge" ] && { [ -n "$partial" ] || [ "${#matches[@]}" -gt 0 ]; }; then
-        if [ -n "$recover" ] && [ -n "$target" ] && [ -n "$repo" ]; then
+        if [ -n "$claudeonly" ]; then
+          clause="The git command may have stopped part-way. $claude_act"
+        elif [ -n "$recover" ] && [ -n "$target" ] && [ -n "$repo" ]; then
           # repo= is quoted by the probe; target= is raw prose elsewhere
           local target_q
           target_q=$(LC_ALL=C; printf %q "$target")

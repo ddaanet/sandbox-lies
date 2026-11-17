@@ -133,11 +133,13 @@ $(partial_checkout_unlink_error "$BATS_TEST_TMPDIR/a")"
 }
 
 # Pins for git's operation-not-permitted refusals (eperm_shape_line). Neither
-# names its path in single quotes, so both read nopath, as their read-only
-# twins do; they differ in the partial=1 fact, which follows git's three
-# partial-checkout heads and never the message. The facts print over the whole
-# text, so they hold whether or not the matcher takes the line.
-@test "an unquoted create-file refusal reads nopath with partial=1, whatever its message" {
+# names its path in single quotes: the create-file path is read in its own
+# unquoted form and the config-write one is not, so the second reads nopath,
+# as their read-only twins do. They differ in the partial=1 fact, which
+# follows git's three partial-checkout heads and never the message. The facts
+# print over the whole text, so they hold whether or not the matcher takes
+# the line.
+@test "an unquoted create-file refusal reads its path with partial=1" {
   local text
 
   text=$(eperm_shape_line 1 "$BATS_TEST_TMPDIR/a")
@@ -145,7 +147,8 @@ $(partial_checkout_unlink_error "$BATS_TEST_TMPDIR/a")"
     'git checkout x' "$text"
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  [ "${output%%$'\n'*}" = nopath ]
+  [ "${output%%$'\n'*}" = writable ]
+  printf '%s\n' "$output" | grep -qxF "path=$BATS_TEST_TMPDIR/a"
   printf '%s\n' "$output" | grep -qxF 'partial=1'
 }
 

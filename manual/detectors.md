@@ -191,6 +191,12 @@ The act is the first of these that applies:
   `merge`, `pull`, `checkout`, `switch`, `rebase` or `cherry-pick`, and the text
   holds no git partial-checkout error — write `.claude/settings.json` through
   the `update-config` skill;
+- every refused line names a path under a `.claude` directory, the project's or
+  the home one — tell the user what was refused, and leave any unsandboxed
+  re-run or recovery to them, since those files can run code;
+- every refused line is git's refusal to write its config file — make that
+  config change alone with `dangerouslyDisableSandbox: true`, not a re-run of
+  the whole call, since the rest of the git command may already have run;
 - otherwise — re-run the whole call with `dangerouslyDisableSandbox: true`.
 
 A recovery clause replaces the act when the text holds git's partial-checkout
@@ -206,7 +212,9 @@ itself a `git` command without them, and the refused path in the working
 directory's repository), with one target and no `--`, no option but `-q`,
 `--quiet` and `--ff-only`, and for a `checkout` or `switch` a local branch.
 Otherwise the clause points at the skill's recovery of a refused merge or
-checkout.
+checkout. When every refused path is under a `.claude` directory, the clause
+says only that the git command may have stopped part-way, then gives the act
+that points at the user.
 
 The clause does not say where HEAD is, since a checkout can move HEAD although
 git reported an error and exited 0. It removes nothing and never asks for the

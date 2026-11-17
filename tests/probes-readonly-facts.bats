@@ -171,7 +171,7 @@ setup() {
   text=$(partial_checkout_create_error "$BATS_TEST_TMPDIR/b")
   run_probe_command probe_readonly_path false "$BATS_TEST_TMPDIR" \
     'just sync' "$text"
-  [ "${output%%$'\n'*}" = nopath ]
+  [ "${output%%$'\n'*}" = writable ]
   printf '%s\n' "$output" | grep -qxF 'merge=1'
 
   text=$(readonly_path_text fire-readonly-path-cp-tmp "'$BATS_TEST_TMPDIR/a'")
@@ -198,7 +198,7 @@ setup() {
     'just sync' "$text"
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
-  [ "${output%%$'\n'*}" = nopath ]
+  [ "${output%%$'\n'*}" = writable ]
   printf '%s\n' "$output" | grep -qxF 'merge=1'
   printf '%s\n' "$output" | grep -qxF 'partial=1'
 

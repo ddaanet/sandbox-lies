@@ -126,8 +126,8 @@ path_line() {
   [ "${output%%$'\n'*}" = writable ]
 }
 
-# The warning is no partial-checkout needle, so it joins onto the cwd: at the
-# top that is the top. The subdirectory case is held on a decision (TODO.md).
+# git prints the warning's path from the worktree top too, though the warning
+# is no partial-checkout needle: at the top the join is the same either way.
 @test "an unlink warning worded as not permitted reads writable at the worktree top" {
   local repo="$BATS_TEST_TMPDIR/repo" text
   mkdir -p "$repo/.git" "$repo/d"
@@ -138,6 +138,36 @@ path_line() {
 
   [ "$status" -eq 0 ]
   [ -z "$stderr" ]
+  [ "$(path_line)" = "path=$repo/d/f" ]
+  [ "${output%%$'\n'*}" = writable ]
+}
+
+# From a subdirectory with no d/ of its own, a cwd join tests the absent
+# sub/d and reads readonly; the top join finds the file and reads writable.
+@test "an unlink warning worded as not permitted joins onto the worktree top from a subdirectory" {
+  local repo="$BATS_TEST_TMPDIR/repo" text
+  mkdir -p "$repo/.git" "$repo/sub" "$repo/d"
+  : >"$repo/d/f"
+
+  text=$(eperm_shape_line 3 d/f)
+  run_probe_command probe_readonly_path false "$repo/sub" 'git checkout x' "$text"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "$(path_line)" = "path=$repo/d/f" ]
+  [ "${output%%$'\n'*}" = writable ]
+}
+
+# The same warning in its read-only-filesystem wording takes the same join.
+@test "an unlink warning worded as read-only joins onto the worktree top from a subdirectory" {
+  local repo="$BATS_TEST_TMPDIR/repo" text
+  mkdir -p "$repo/.git" "$repo/sub" "$repo/d"
+  : >"$repo/d/f"
+
+  text=$(eperm_shape_line 3 d/f "$(erofs_message)")
+  run_probe_command probe_readonly_path false "$repo/sub" 'git checkout x' "$text"
+
+  [ "$status" -eq 0 ]
   [ "$(path_line)" = "path=$repo/d/f" ]
   [ "${output%%$'\n'*}" = writable ]
 }

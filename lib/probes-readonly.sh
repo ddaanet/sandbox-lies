@@ -6,7 +6,8 @@
 # on stdin, takes the sandbox flag as $1, the payload cwd as $2 and
 # tool_input.command as $3, and prints an outcome token on its first line, then
 # a path= line (printf %q form) under writable and readonly only (nopath
-# prints none), then — under writable and nopath only — the
+# prints none), then — under writable and nopath only — the claudeonly=/
+# configonly= facts and the
 # readfile=/merge=1/partial=1/target=/recover=/repo=/match= facts readonly-path.md's
 # readonly-path Probe facts table describes; exit 0. Sourced by
 # lib/probes.sh, so
@@ -38,35 +39,22 @@ unset _probes_lib_dir
 # readonly-path: line 1 `writable`, `readonly` or `nopath` (no path
 # extracted), then `path=` in printf %q form under `writable` and
 # `readonly` only, then — under `writable` and `nopath` only — the facts
+# _probe_readonly_scope reads off every matching line and those
 # _readonly_print_facts derives from the result text and <command>. <flag> is
 # part of the interface but unread here: whether the hook calls this probe at
 # all is the candidate's flag policy (the plugin repository's docs/references/readonly-path.md),
 # decided before the probe runs, not inside it.
 probe_readonly_path() {
-    local cwd="${2-}" command="${3-}" text line base start top path target outcome
+    local cwd="${2-}" command="${3-}" text line path target outcome
     text=$(cat)
     # grep's 1 on a text with no matching line is caught on its own
     # assignment, and the path pipeline ends in sed, which exits 0, so a
     # caller running under set -e still gets nopath.
     line=$(printf '%s\n' "$text" | _readonly_path_line) || line=
-    path=$(printf '%s\n' "$line" | _probe_readonly_path_from_line)
-    # A partial-checkout refusal names its path relative to the worktree top;
-    # the matching line alone decides, so another such line in the text does
-    # not move a cp refusal's join. The walk starts at the probe's
-    # working directory for an empty cwd, as the unwalked join does.
-    # $(...) strips every trailing newline, so a top whose name ends in one
-    # lost it. The walk's own newline and a trailing x are stripped by hand
-    # instead: the output ends in "\nx", and removing those two characters
-    # leaves the name exactly as the walk printed it.
-    base="$cwd"
-    if _probe_partial_checkout_text "$line"; then
-        start="$cwd"
-        [ -n "$start" ] || start="$PWD"
-        top=$(_readonly_git_dir "$start" && printf x) && base="${top%?x}"
-    fi
-    path=$(_probe_readonly_resolve "$path" "$base")
+    path=$(_probe_readonly_line_path "$line" "$cwd")
     if [ -z "$path" ]; then
         printf '%s\n' nopath
+        _probe_readonly_scope "$text" "$cwd"
         _readonly_print_facts "$text" "$command" "" "$cwd"
         return 0
     fi
@@ -92,8 +80,72 @@ probe_readonly_path() {
     printf '%s\n' "$outcome"
     _probe_path_line "$path"
     if [ "$outcome" != readonly ]; then
+        _probe_readonly_scope "$text" "$cwd"
         _readonly_print_facts "$text" "$command" "$path" "$cwd"
     fi
+}
+
+# _probe_readonly_line_path <line> <cwd> — the path <line> names, resolved:
+# empty when <line> names none. git names a partial-checkout path, and the
+# path of its unlink warning, from the worktree top; the matching line alone
+# decides, so another such line in the text does not move a cp refusal's
+# join. The walk starts at the probe's working directory for an empty cwd, as
+# the unwalked join does. $(...) strips every trailing newline, so a top
+# whose name ends in one lost it. The walk's own newline and a trailing x are
+# stripped by hand instead: the output ends in "\nx", and removing those two
+# characters leaves the name exactly as the walk printed it.
+_probe_readonly_line_path() {
+    local line="$1" cwd="$2" path base start top
+    path=$(printf '%s\n' "$line" | _probe_readonly_path_from_line)
+    base="$cwd"
+    if _probe_partial_checkout_text "$line" || _probe_unlink_warning "$line"; then
+        start="$cwd"
+        [ -n "$start" ] || start="$PWD"
+        top=$(_readonly_git_dir "$start" && printf x) && base="${top%?x}"
+    fi
+    _probe_readonly_resolve "$path" "$base"
+}
+
+# _probe_unlink_warning <line> — true when <line> is git's warning that it
+# could not unlink a file, whatever the message after the quoted path. The
+# head is built from fragments, so this file holds no refusal whole.
+_probe_unlink_warning() {
+    local head='warning: unable to'
+    head="$head unlink '"
+    case "$1" in
+        "$head"*) return 0 ;;
+    esac
+    return 1
+}
+
+# _probe_readonly_scope <text> <cwd> — the facts read off every line the
+# matcher accepts, not just the first: claudeonly=1 when each such line
+# names a path that, resolved as _probe_readonly_line_path resolves it, has
+# a .claude component; configonly=1 when each such line is git's
+# config-file write refusal. A line naming no path is not under .claude.
+# The scan stops once neither fact can hold, so a long refusal list costs
+# one path read per line only while every path so far is under .claude.
+_probe_readonly_scope() {
+    local text="$1" cwd="$2" line path any=0 claude=1 config=1 head
+    head='error: could not write'
+    head="$head config file "
+    while IFS= read -r line; do
+        any=1
+        case "$line" in
+            "$head"*) ;;
+            *) config=0 ;;
+        esac
+        if [ "$claude" = 1 ]; then
+            path=$(_probe_readonly_line_path "$line" "$cwd")
+            case "$path" in
+                */.claude | */.claude/*) ;;
+                *) claude=0 ;;
+            esac
+        fi
+        [ "$claude$config" != 00 ] || break
+    done < <(printf '%s\n' "$text" | _readonly_path_lines)
+    [ "$any$claude" != 11 ] || printf '%s\n' claudeonly=1
+    [ "$any$config" != 11 ] || printf '%s\n' configonly=1
 }
 
 # _probe_path_line <path> — the path= line: <path> in printf %q form, so a
@@ -151,9 +203,9 @@ _probe_partial_checkout_text() {
 # (or the probe's own working directory when <cwd> is missing or empty, as
 # _probe_resolve_path falls back for the lock probes); an absolute or empty
 # <path> is unchanged. It does not walk to a .git entry itself: the caller
-# passes the worktree top for a partial-checkout path, and cwd for every
-# other producer (cp, mv, touch, bash, Python), which resolve against their
-# own process cwd.
+# passes the worktree top for a partial-checkout path or an unlink warning's,
+# and cwd for every other producer (cp, mv, touch, bash, Python), which
+# resolve against their own process cwd.
 _probe_readonly_resolve() {
     local path="$1" cwd="${2:-$PWD}"
     case "$path" in
@@ -178,12 +230,13 @@ _probe_readonly_resolve() {
 # stop at any character sharing one (an em dash shares two): the curly block
 # replaces the first opening quote, then the first closing quote after it,
 # with a newline, the one byte a line cannot hold, and keeps what lies
-# between. Unquoted, the path is read in four fixed forms, each anchored at
+# between. Unquoted, the path is read in five fixed forms, each anchored at
 # the line start on the tool's own colon-free prefix (as the matcher
 # requires) and the words it prints there: bash's "line N:", dash's digit
 # locator then "cannot create" (a bare "cannot create" would also catch cp's
 # and mkdir's own wording with their quotes stripped), git's "error: could
-# not lock config file" and "fatal: cannot mkdir". Anchored there, the same
+# not lock config file", "fatal: cannot mkdir" and "error: unable to create
+# file". Anchored there, the same
 # words inside the path cannot move the capture's start, and the capture
 # runs to the last ": ", as the kernel message after it holds none: an
 # unquoted path is read whole, blanks and ": " included. LC_ALL=C for the
@@ -215,5 +268,7 @@ _probe_readonly_path_from_line() {
         -e "s/^error: could not lock config file \(.*\): .*/\1/p" \
         -e "t end" \
         -e "s/^fatal: cannot mkdir \(.*\): .*/\1/p" \
+        -e "t end" \
+        -e "s/^error: unable to create file \(.*\): .*/\1/p" \
         -e ":end"
 }

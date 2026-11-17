@@ -135,7 +135,8 @@ match_phantom_gitadd() {
 }
 
 # _readonly_path_line -- prints stdin's first line match_readonly_path
-# accepts, nothing when there is none. Shared with probe_readonly_path
+# accepts, nothing when there is none; _readonly_path_lines prints every
+# such line. Shared with probe_readonly_path
 # (lib/probes-readonly.sh, sourced there) so the discriminator lives in one
 # place rather than as two copies that could drift apart. LC_ALL=C: under a
 # UTF-8 locale GNU grep reads a line holding an invalid byte as binary, and
@@ -143,6 +144,12 @@ match_phantom_gitadd() {
 # but prints "binary file matches" to stderr in place of the line, so the
 # matcher fired while the probe read no path.
 _readonly_path_line() {
+    _readonly_path_lines -m1
+}
+
+# _readonly_path_lines [<grep option>...] -- the options go to grep;
+# ${1+"$@"}, since bash 3.2 under set -u calls an empty "$@" unbound.
+_readonly_path_lines() {
     # Git's five refusals under the macOS sandbox, one head per line, the
     # shared message below them: the heads and the message never share a
     # source line, so this file does not itself read as a refusal.
@@ -153,7 +160,7 @@ _readonly_path_line() {
     heads="$heads|fatal: Unable to create '.+/\.git/index\.lock'"
     local eperm="Operation not"
     eperm="$eperm permitted"
-    LC_ALL=C grep -m1 -E \
+    LC_ALL=C grep ${1+"$@"} -E \
         '^[^`|:[:space:]]+: .*: (Read-only file system|Device or resource busy)[[:space:]]*$'\
 '|^[A-Za-z]+Error: \[Errno (30|16)\] (Read-only file system|Device or resource busy):'\
 "|^($heads): ${eperm}[[:space:]]*\$"

@@ -61,25 +61,47 @@ checkout_case() {
     --arg d "$REPO" '.tool_input.command = $c | .cwd = $d')
   hook_fields "$payload"
   want=$(expected_text writable "path=$REPO/.claude/agents/quiet-task.md" \
-    merge=1 partial=1 target=unification recover=checkout "repo=$REPO")
+    merge=1 partial=1 target=unification recover=checkout "repo=$REPO" \
+    claudeonly=1)
   [ "$ctx" = "$(printf '%s\n' "$want" | sed -n '1p')" ]
   [ "$sys" = 'read-only — sandbox allowlist, writable outside' ]
   [ "$sys" = "$(printf '%s\n' "$want" | sed -n '2p')" ]
   [[ "$ctx" == "\`$REPO/.claude/agents/quiet-task.md\` is writable outside"* ]] || false
-  [[ "$ctx" == *"sandbox-lies-recover -C $REPO checkout unification"* ]] || false
+  [[ "$ctx" == *'tell the user'* ]] || false
+  assert_lacks "$ctx" 'sandbox-lies-recover'
+  assert_lacks "$ctx" 'dangerouslyDisableSandbox'
 }
 
-@test "a checkout refused as not permitted gets the recovery script clause and the writable line" {
+# Every refused path of the recorded checkout is under .claude/: the verdict
+# hands the call to the user, with no unsandboxed recovery or re-run.
+@test "a checkout refused on .claude paths alone points at the user, with no unsandboxed act" {
   checkout_case
 }
 
-@test "a checkout refused as not permitted gets the script clause under BSD grep, sed, stat and wc" {
+@test "a checkout refused on .claude paths alone points at the user under BSD grep, sed, stat and wc" {
   local bsd="$BATS_TEST_TMPDIR/bsdtools"
   make_bsd_stubs "$bsd" grep sed stat wc
   PATH="$bsd:$PATH" checkout_case
 }
 
-@test "a refused config write after a checkout gets the nopath act alone" {
+# The recorded checkout from a subdirectory: its first line, the unlink
+# warning, names its path from the worktree top, so the path is found and
+# reads writable rather than readonly through the absent sub/.claude.
+@test "a checkout run from a subdirectory reads its unlink warning's path from the worktree top" {
+  local text payload ctx sys
+  make_checkout_repo
+  mkdir "$REPO/sub"
+  text=$(cat "$FIXTURES/fire-readonly-path-checkout-eperm.txt")
+  payload=$(post_payload "$text" | jq --arg c 'git checkout unification' \
+    --arg d "$REPO/sub" '.tool_input.command = $c | .cwd = $d')
+  hook_fields "$payload"
+  [ "$sys" = 'read-only — sandbox allowlist, writable outside' ]
+  [[ "$ctx" == "\`$REPO/.claude/agents/quiet-task.md\` is writable outside"* ]] || false
+}
+
+# The branch was made and checked out; only its tracking config was refused,
+# so a re-run of the call would fail on the existing branch.
+@test "a refused config write after a checkout gets the config-only act" {
   local text payload ctx sys want
   assert_no_git_above "$BATS_TEST_TMPDIR"
   text=$(cat "$FIXTURES/fire-readonly-path-config-eperm.txt")
@@ -87,10 +109,12 @@ checkout_case() {
     --arg c 'git checkout origin/tmp -b tmp_checkout' \
     --arg d "$BATS_TEST_TMPDIR" '.tool_input.command = $c | .cwd = $d')
   hook_fields "$payload"
-  want=$(expected_text nopath merge=1)
+  want=$(expected_text nopath merge=1 configonly=1)
   [ "$ctx" = "$(printf '%s\n' "$want" | sed -n '1p')" ]
   [ "$sys" = 'read-only — probably the sandbox, path not checked' ]
-  [[ "$ctx" == *'Re-run the whole call with '* ]] || false
+  [[ "$ctx" == *'that config change alone'* ]] || false
+  assert_lacks "$ctx" 'Re-run the whole call'
+  assert_lacks "$ctx" 'tell the user'
   assert_lacks "$ctx" 'sandbox-lies-recover'
   assert_lacks "$ctx" 'recovery of a refused merge'
 }

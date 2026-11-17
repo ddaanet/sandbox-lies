@@ -170,7 +170,9 @@ setup() {
   # negative: the git-config-busy fixture's refusal is another write's own,
   # not one of git's three needles, so no recovery clause leads even though
   # the recorded command's own checkout still gives merge=1. The verdict
-  # must still fire, as the act alone: an empty hook output has no recovery clause.
+  # must still fire, as the act alone: an empty hook output has no recovery
+  # clause. Its only refusal is git's config-file write, after `branch -D`
+  # had deleted the branch, so the act is the config-only one.
   # shellcheck disable=SC2016 # $WT is the recorded command's literal text
   cmd_busy='cd /Users/david/code/micro/micro && git checkout -q display-golden-tests && git branch -f softwrapcolumn2 swc2-rebuild && git branch -D swc2-rebuild && git tag -d DGT_FINAL && WT="/tmp/claude-1000/-Users-david-code-micro/e0c3e94a-77e1-4c01-9ced-db2811d297d7/scratchpad/verify-wt" && git worktree remove --force "$WT" && echo "=== final status ===" && git status --short && echo "clean-if-empty" && echo "=== branches ===" && git branch | cat'
   text=$(cat "$FIXTURES/fire-readonly-path-git-config-busy.txt")
@@ -181,7 +183,8 @@ setup() {
   ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
   sys=$(printf '%s' "$output" | jq -r '.systemMessage')
   [ "$sys" = 'read-only — probably the sandbox, path not checked' ]
-  [ "$ctx" = "The sandbox's write allowlist most likely refused this write. Re-run the whole call with \`dangerouslyDisableSandbox: true\`." ]
+  [[ "$ctx" == "The sandbox's write allowlist most likely refused this write. "*'that config change alone'* ]] || false
+  assert_lacks "$ctx" 'Re-run the whole call'
 }
 
 @test "every probe receives tool_input.command byte-exact" {

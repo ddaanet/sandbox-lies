@@ -46,44 +46,40 @@ printed when the path holds such a byte. The path is the first single-quoted
 segment, straight or curly as a UTF-8 locale prints it, except in `mv`'s
 inter-device form, whose path after `to` names the target. Elsewhere a `to`
 changes nothing: `mv`'s other two-path messages give the first quoted path, the
-source. Unquoted, it is read in four fixed forms only, each right after the
+source. Unquoted, it is read in five fixed forms only, each right after the
 tool's own prefix: bash's `line N: <path>:`, dash's `N: cannot create <path>:`,
-git's `error: could not lock config file <path>:` and
-`fatal: cannot mkdir <path>:`. Any other unquoted shape is `nopath`. An unquoted
-path runs to the line's last colon and space, since the kernel message after it
-holds none, so a path holding blanks, `: ` or its form's own words is read
-whole. A relative path joins onto the payload `cwd`, except for git's
-partial-checkout refusals, which name the path from the worktree's top-level.
-Only when the matching line itself is a partial-checkout refusal, the path joins
-onto the worktree top: the nearest ancestor of `cwd`, itself included, holding a
-`.git` entry, a file (linked worktree) or a directory. With no such ancestor it
-joins onto `cwd`; another partial-checkout line elsewhere in the text moves
-nothing. Residuals: a quoted path holding its own closing quote, which the tool
-prints escaped, is cut at that quote or yields `nopath`; a curly-quoted or
-unquoted path holding two straight quotes is read as what lies between them;
-under `git -C` a relative path names the `-C` directory's tree, not the `cwd`'s,
-so it is wrong (`recover=` is withheld there), and one whose parent is missing
-reads `readonly`, which carries no merge clause. Git prints a `warning:` unlink
-line's path relative to the repository top, but that line is not a
-partial-checkout line, so the probe resolves its path against the `cwd`: from a
-subdirectory the writability test runs on a different path from the one refused,
-and the verdict follows whatever is at that other path, which can give either
-outcome. Whether to change that join is an open decision (`TODO.md`). Index
-locks under `.git/worktrees/<name>/` and `.git/modules/<name>/` do not end in
-`/.git/index.lock`, so the fifth shape does not take them.
+git's `error: could not lock config file <path>:`, `fatal: cannot mkdir <path>:`
+and `error: unable to create file <path>:`. Any other unquoted shape is
+`nopath`. An unquoted path runs to the line's last colon and space, since the
+kernel message after it holds none, so a path holding blanks, `: ` or its form's
+own words is read whole. A relative path joins onto the payload `cwd`, except
+for git's partial-checkout refusals and its `warning:` unlink line, which name
+the path from the worktree's top-level, git's own working directory (verified
+with git 2.47 from a subdirectory). Only when the matching line itself is one of
+these, the path joins onto the worktree top: the nearest ancestor of `cwd`,
+itself included, holding a `.git` entry, a file (linked worktree) or a
+directory. With no such ancestor it joins onto `cwd`; another such line
+elsewhere in the text moves nothing. Residuals: a quoted path holding its own
+closing quote, which the tool prints escaped, is cut at that quote or yields
+`nopath`; a curly-quoted or unquoted path holding two straight quotes is read as
+what lies between them; under `git -C` a relative path names the `-C`
+directory's tree, not the `cwd`'s, so it is wrong (`recover=` is withheld
+there), and one whose parent is missing reads `readonly`, which carries no merge
+clause. Index locks under `.git/worktrees/<name>/` and `.git/modules/<name>/` do
+not end in `/.git/index.lock`, so the fifth shape does not take them.
 
-The create-file and config-write lines of the third alternative read `nopath`
-like their twins, since neither path is quoted. Five `nopath` shapes stay
-unextracted; together they are 11 of the 195 hits of the 2026-09-27 dogfood:
-`tee`'s refusal of a file under `/tmp`; `sed`'s temporary file in a relative
-directory; git's refusal to write `.git/config`, which is busy rather than
-read-only; a removal warning on a dotfile; and `cp` with an empty operand, which
-names no path at all. In every recorded case a path would not change the act:
-each extractable path is writable outside the sandbox, so `writable` would give
-the same re-run `nopath` gives, and none names `.claude/settings.json`. A
-removal refused on a leaked phantom mask gets that re-run too, and the leak
-makes it futile, since the mask outlives its command and a restart clears it. A
-detector for that symptom would need a corpus replay under D-15.
+The config-write line of the third alternative reads `nopath` like its twin,
+since its path is unquoted. Five `nopath` shapes stay unextracted; together they
+are 11 of the 195 hits of the 2026-09-27 dogfood: `tee`'s refusal of a file
+under `/tmp`; `sed`'s temporary file in a relative directory; git's refusal to
+write `.git/config`, which is busy rather than read-only; a removal warning on a
+dotfile; and `cp` with an empty operand, which names no path at all. In every
+recorded case a path would not change the act: each extractable path is writable
+outside the sandbox, so `writable` would give the same re-run `nopath` gives,
+and none names `.claude/settings.json`. A removal refused on a leaked phantom
+mask gets that re-run too, and the leak makes it futile, since the mask outlives
+its command and a restart clears it. A detector for that symptom would need a
+corpus replay under D-15.
 
 | outcome | condition |
 |---|---|
@@ -103,6 +99,8 @@ on. The command shapes the wording only; detection never reads it (D-1).
 | `recover=<kind>` | with `target=`, under the `recover=` rule below: `merge` for a `merge` segment, `checkout` for a `checkout` or `switch` segment |
 | `repo=<root>` | with `recover=`: the repository root in `printf %q` form (`C` locale), so the clause's `-C` argument runs as printed |
 | `match=<repo>/<file>` | with `target=`: one line per file modified against HEAD, staged or not, whose working-tree content equals the target's, named by absolute path — the repository root, trailing slashes stripped, then the file's name within it |
+| `claudeonly=1` | every line the matcher takes names a path, and each, resolved as the probe resolves the first, has a `.claude` component |
+| `configonly=1` | every line the matcher takes is git's `error: could not write config file` refusal, whatever its message |
 | `readfile=<path>` | every command in the call's pipelines and lists is a reader — `cat`, `head`, `tail`, `grep`, `sed` without in-place editing, `awk`, `cut`, `sort`, `uniq` without a second operand, `wc`, `tr`, `less` — with no output redirection, and an input-file operand or `<` target has a command-output name: `*.log`, `*.output`, `*.out`, `*.err`; the first such. Never an input operand: a word opening with `-`; the first operand of `grep`, `sed` or `awk`, the pattern or program, unless an `-e` or `-f` came earlier in the segment; the word after a separate `-e` or `-f` |
 
 **The `recover=` rule.** It prints only when the script's invocation is exactly
@@ -202,10 +200,28 @@ The tail is one act, the first of these whose fact the probe printed:
 - `readfile=` — re-run the command that wrote `<readfile>`
 - `path=` names a `.claude/settings.json` (`writable` only) and no `merge=1` —
   write `.claude/settings.json` through the `update-config` skill
+- `claudeonly=1` — every refused path is under a `.claude` directory, whose
+  files can run code: tell the user what was refused, and leave any unsandboxed
+  re-run or recovery to them
+- `configonly=1` — only git's config-file write was refused and the rest of the
+  call may already have run: make that config change alone with
+  `dangerouslyDisableSandbox: true`, not a re-run of the whole call
 - otherwise — re-run the whole call with `dangerouslyDisableSandbox: true`
 
 The `update-config` act is for a settings edit; a checkout or merge that tripped
-on the file is not one, so with `merge=1` it falls through to the plain re-run.
+on the file is not one, so with `merge=1` it falls through to the next act.
+
+`claudeonly=1` follows Claude Code's own note on a git result refused there
+(observed on CC 2.1.326): those files can run code, so the command is not to be
+redone outside the sandbox unprompted, and the user is told. The rule is the
+path, whatever the tool or message, and a home `~/.claude` counts too, since an
+unsandboxed self-configuration write is what the permission classifier refuses.
+One refused path elsewhere keeps the re-run. `configonly=1` covers a git command
+whose own work landed before its config update was refused: a `checkout -b` that
+made and checked out its branch but not its tracking config
+(`fire-readonly-path-config-eperm`), or a `branch -D` that deleted the branch
+but not its config section (`fire-readonly-path-git-config-busy`). Re-running
+either call fails on the branch it already made or removed.
 
 The act stands alone as its own sentence, capitalised. With `merge=1`, a clause
 fires and replaces the act when `partial=1` is printed or any `match=` line is.
@@ -219,6 +235,9 @@ is one of two:
   plan; the `sandbox-lies:sandbox-lies` skill says how to carry it out. It never
   names `--apply` and instructs no removal (D-7).
 - otherwise — it points at the skill's recovery of a refused merge or checkout.
+
+Under `claudeonly=1` neither fires: the clause says the git command may have
+stopped part-way, then gives the `claudeonly=1` act, naming no script.
 
 Neither says where HEAD is: a checkout can move HEAD at exit 0 and a merge not
 (`skills/sandbox-lies/references/refused-merge-recovery.md`). With neither
@@ -235,11 +254,13 @@ does nothing and adds a reflog entry the script must skip, while the script's
 plan prints the re-run when one is needed. Recorded case:
 `fire-readonly-path-checkout-moved`, 2026-10-31 in the handoff repository, a
 `git checkout main && git merge --ff-only dev` whose unlink refusal on
-`.claude/settings.json` still switched the branch; its two merge-style segments
-get the generic clause. The reproduction table in the recovery reference gives
-the other outcomes. The clause removes nothing; a fast-forward re-run over files
-already at the target is refused (`tests/verdict-premises.bats`), and the
-untracked files the target added are left to the recovery procedure.
+`.claude/settings.json` still switched the branch; refused under `.claude`
+alone, it gets the `claudeonly=1` form, and the same text on another path gets
+the generic clause for its two merge-style segments. The reproduction table in
+the recovery reference gives the other outcomes. The clause removes nothing; a
+fast-forward re-run over files already at the target is refused
+(`tests/verdict-premises.bats`), and the untracked files the target added are
+left to the recovery procedure.
 
 The read act covers the corpus's command-output reads below: the refusal in such
 a file came from the call that wrote it, so re-running the read changes nothing.
