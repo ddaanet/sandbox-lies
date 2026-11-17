@@ -152,3 +152,16 @@ scope_case() {
   [ "${output%%$'\n'*}" = writable ]
   [ "$(fact claudeonly)" = claudeonly=1 ]
 }
+
+# cp names its operand as given, so a path can climb out of
+# .claude/worktrees with a .. segment: the exemption fails closed on any
+# ., .. or empty segment after .claude/.
+@test "a .. segment out of .claude/worktrees still prints claudeonly=1" {
+  local text
+  mkdir -p "$REPO/.claude/worktrees"
+  text="cp: cannot create regular file '.claude/worktrees/../settings.json': $(erofs_message)"
+  run_probe_command probe_readonly_path false "$REPO" 'cp a b' "$text"
+  [ "$status" -eq 0 ]
+  [ "${output%%$'\n'*}" = writable ]
+  [ "$(fact claudeonly)" = claudeonly=1 ]
+}

@@ -192,9 +192,10 @@ The act is the first of these that applies:
   holds no git partial-checkout error — write `.claude/settings.json` through
   the `update-config` skill;
 - every refused line names a path under a `.claude` directory, the project's or
-  the home one, and not in a worktree Claude Code keeps under
-  `.claude/worktrees/` — tell the user what was refused, and leave any
-  unsandboxed re-run or recovery to them, since those files can run code;
+  the home one, other than a project file of a worktree Claude Code keeps under
+  `.claude/worktrees/` (that worktree's own `.claude` directory counts) — tell
+  the user what was refused, and leave any unsandboxed re-run or recovery to
+  them, since those files can run code;
 - every refused line is git's refusal to write its config file — make that
   config change alone with `dangerouslyDisableSandbox: true`, not a re-run of
   the whole call, since the rest of the git command may already have run;

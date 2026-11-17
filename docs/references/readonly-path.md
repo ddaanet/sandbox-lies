@@ -99,7 +99,7 @@ on. The command shapes the wording only; detection never reads it (D-1).
 | `recover=<kind>` | with `target=`, under the `recover=` rule below: `merge` for a `merge` segment, `checkout` for a `checkout` or `switch` segment |
 | `repo=<root>` | with `recover=`: the repository root in `printf %q` form (`C` locale), so the clause's `-C` argument runs as printed |
 | `match=<repo>/<file>` | with `target=`: one line per file modified against HEAD, staged or not, whose working-tree content equals the target's, named by absolute path — the repository root, trailing slashes stripped, then the file's name within it |
-| `claudeonly=1` | every line the matcher takes names a path, and each, resolved as the probe resolves the first, has a `.claude` component, the last one not followed by `worktrees`: Claude Code's worktrees sit under `.claude/worktrees/`, and their project files run no code |
+| `claudeonly=1` | every line the matcher takes names a path, and each, resolved as the probe resolves the first, has a `.claude` component, the last one not followed by `worktrees`: Claude Code's worktrees sit under `.claude/worktrees/`, and their project files run no code. The path is read as the tool printed it, unnormalised, so a `.`, `..` or empty segment after `.claude/` voids the `worktrees` exception |
 | `configonly=1` | every line the matcher takes is git's `error: could not write config file` refusal, whatever its message |
 | `readfile=<path>` | every command in the call's pipelines and lists is a reader — `cat`, `head`, `tail`, `grep`, `sed` without in-place editing, `awk`, `cut`, `sort`, `uniq` without a second operand, `wc`, `tr`, `less` — with no output redirection, and an input-file operand or `<` target has a command-output name: `*.log`, `*.output`, `*.out`, `*.err`; the first such. Never an input operand: a word opening with `-`; the first operand of `grep`, `sed` or `awk`, the pattern or program, unless an `-e` or `-f` came earlier in the segment; the word after a separate `-e` or `-f` |
 
@@ -200,9 +200,10 @@ The tail is one act, the first of these whose fact the probe printed:
 - `readfile=` — re-run the command that wrote `<readfile>`
 - `path=` names a `.claude/settings.json` (`writable` only) and no `merge=1` —
   write `.claude/settings.json` through the `update-config` skill
-- `claudeonly=1` — every refused path is under a `.claude` directory, whose
-  files can run code: tell the user what was refused, and leave any unsandboxed
-  re-run or recovery to them
+- `claudeonly=1` — every refused path is under a `.claude` directory, a project
+  file of a `.claude/worktrees/` worktree aside, whose files can run code: tell
+  the user what was refused, and leave any unsandboxed re-run or recovery to
+  them
 - `configonly=1` — only git's config-file write was refused and the rest of the
   call may already have run: make that config change alone with
   `dangerouslyDisableSandbox: true`, not a re-run of the whole call
@@ -216,7 +217,8 @@ on the file is not one, so with `merge=1` it falls through to the next act.
 redone outside the sandbox unprompted, and the user is told. The rule is the
 path, whatever the tool or message, and a home `~/.claude` counts too, since an
 unsandboxed self-configuration write is what the permission classifier refuses.
-One refused path elsewhere keeps the re-run. `configonly=1` covers a git command
+One refused path elsewhere keeps the re-run, and a project file of a worktree
+under `.claude/worktrees/` is elsewhere. `configonly=1` covers a git command
 whose own work landed before its config update was refused: a `checkout -b` that
 made and checked out its branch but not its tracking config
 (`fire-readonly-path-config-eperm`), or a `branch -D` that deleted the branch
