@@ -7,7 +7,8 @@
 # 0. The key lines per probe:
 # - probe_git_lock, probe_config_lock: pid=, bytes=, age=, path=;
 # - probe_readonly_path (lib/probes-readonly.sh): path= (none on nopath),
-#   then on writable and nopath readfile=, merge=, partial=, target=, match=;
+#   then on writable and nopath claudeonly=, configonly=, readfile=, merge=,
+#   partial=, target=, recover=, repo=, match=;
 # - probe_resume_lost: none. Its outcome is lost, found or unknown.
 # path= is in printf %q form (_probe_path_line, lib/probes-readonly.sh), so no
 # byte of the path splits the line or forges a key line; an empty path prints
