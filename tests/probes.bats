@@ -391,3 +391,66 @@ teardown() {
   [ "$age" -le $((now - real_mtime + 60)) ]
   printf '%s\n' "$output" | grep -qxF "path=$lock"
 }
+
+# A zero-byte regular file with no write bit is the sandbox mask seen from
+# outside; it reads mask before any holder tool, so with neither lsof nor fuser
+# on PATH too. A write bit on the empty file keeps the ordinary reading.
+@test "git-lock zero-byte read-only regular file is mask under either flag" {
+  local repo="$BATS_TEST_TMPDIR/r" cwd="$BATS_TEST_TMPDIR/elsewhere" lock flag
+  mkdir -p "$repo/.git" "$cwd"
+  lock="$repo/.git/index.lock"
+  : >"$lock"
+  chmod 0444 "$lock"
+
+  for flag in false true; do
+    run_probe probe_git_lock "$flag" "$cwd" "$(git_lock_error "$lock")"
+
+    [ "$status" -eq 0 ]
+    [ -z "$stderr" ]
+    [ "${output%%$'\n'*}" = mask ]
+    printf '%s\n' "$output" | grep -qxF "path=$lock"
+    ! printf '%s\n' "$output" | grep -qE '^(pid|bytes|age)=' || false
+  done
+
+  chmod 0644 "$lock"
+
+  run_probe probe_git_lock false "$cwd" "$(git_lock_error "$lock")"
+
+  [ "$status" -eq 0 ]
+  [[ "${output%%$'\n'*}" != mask ]] || false
+}
+
+# Decided before the holder tool runs: a holder on the masked path still reads
+# mask, not held, and with no holder tool on PATH it reads mask, not unknown.
+@test "git-lock zero-byte read-only regular file is mask while held" {
+  local repo="$BATS_TEST_TMPDIR/r" cwd="$BATS_TEST_TMPDIR/elsewhere" lock
+  mkdir -p "$repo/.git" "$cwd"
+  lock="$repo/.git/index.lock"
+  : >"$lock"
+  chmod 0444 "$lock"
+  hold_lock "$lock"
+
+  run_probe probe_git_lock false "$cwd" "$(git_lock_error "$lock")"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = mask ]
+  ! printf '%s\n' "$output" | grep -q '^pid=' || false
+}
+
+@test "git-lock zero-byte read-only regular file is mask with no holder tool" {
+  local repo="$BATS_TEST_TMPDIR/r" cwd="$BATS_TEST_TMPDIR/elsewhere" lock
+  local toolsdir="$BATS_TEST_TMPDIR/tools-only"
+  mkdir -p "$repo/.git" "$cwd"
+  lock="$repo/.git/index.lock"
+  : >"$lock"
+  chmod 0444 "$lock"
+  tools_only_path "$toolsdir"
+
+  PATH="$toolsdir" run_probe probe_git_lock false "$cwd" "$(git_lock_error "$lock")"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = mask ]
+  printf '%s\n' "$output" | grep -qxF "path=$lock"
+}

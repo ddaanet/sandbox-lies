@@ -33,7 +33,7 @@ line or forge a key line; an empty path prints no `path=` line.
 
 | outcome | condition |
 |---|---|
-| `mask` | the path stats as a character device, under either flag |
+| `mask` | the path stats as a character device, or as an empty regular file with no write bit for anyone (mode & 0222 == 0), symlinks followed, decided before the holder check, under either flag |
 | `gone` | the path is absent, under either flag |
 | `held` | path present, a process holds it (`pid=`) |
 | `orphan` | path present, holder check ran, no holder (`bytes=`, `age=`) |
@@ -47,19 +47,21 @@ to `orphan` would hand it the instruction the plugin exists to withhold.
 
 **Flag policy.** Fires either way; the probe does not read the flag to choose an
 outcome, and keeps it as its first argument for the uniform probe signature.
-`mask` is the character-device case alone: a mask visible outside the sandbox
-while a sandboxed command runs, where re-running unsandboxed at once changes
-nothing. An absent path is `gone` under either flag, because a call that
-`excludedCommands` unsandboxed carries no flag in the payload, and a lock its
-holder has since released leaves nothing at the path, as a sandbox mask does
-(the 2026-11-01 `just release minor` failure, whose lock was gone by probe time,
-was told it had met a sandbox artefact). The verdict takes the flag as its
-second argument and words by it the re-run of `mask`, the retry of `orphan` and
-`unknown`, and `gone`: flag true keeps "git cleaned it after the failure. Retry
-once."; flag false or absent says the refusal came from a sandbox mask or from a
-lock its holder has since released, and retries with
-`dangerouslyDisableSandbox: true`, which is harmless on a covered call. It
-asserts no sandbox artefact.
+`mask` is a character device or an empty non-writable regular file: a mask
+visible outside the sandbox while a sandboxed command runs, where re-running
+unsandboxed at once changes nothing. Linux's bubblewrap shows the second shape
+(see the config-lock reproduction of 2026-11-18); git never leaves it, since it
+writes the lock's contents before copying the config file's mode onto it. An
+absent path is `gone` under either flag, because a call that `excludedCommands`
+unsandboxed carries no flag in the payload, and a lock its holder has since
+released leaves nothing at the path, as a sandbox mask does (the 2026-11-01
+`just release minor` failure, whose lock was gone by probe time, was told it had
+met a sandbox artefact). The verdict takes the flag as its second argument and
+words by it the re-run of `mask`, the retry of `orphan` and `unknown`, and
+`gone`: flag true keeps "git cleaned it after the failure. Retry once."; flag
+false or absent says the refusal came from a sandbox mask or from a lock its
+holder has since released, and retries with `dangerouslyDisableSandbox: true`,
+which is harmless on a covered call. It asserts no sandbox artefact.
 
 **Verdicts.** In the manual, [git-lock](../../manual/detectors.md#git-lock),
 with the flag's wording of the re-run and the retry. No outcome carries a
@@ -147,16 +149,26 @@ unsandboxed one showed no such file, a sandboxed
 `.git/config` relative; `probe_config_lock false <root>` run unsandboxed on that
 text printed `mask`, `path=<root>/.git/config.lock` (the rule then: an absent
 path under flag false read `mask`; it now reads `gone`, and `mask` needs the
-character device). The key was not written. The same write from a script run as
-`sh <script>`, with no `git` on the command line, gave the same error and the
-same probe output; a visible `cd <root> && git config` and a bare
-`git -C <root> config` gave the same error too. These ran in a delegated agent's
-session; the bare form did the same, key unwritten, in the main session that
-dispatched it. That they ran sandboxed despite `git:*` in the user settings'
-`sandbox.excludedCommands` needs no exclusion to have been ignored: an `sh`
-head, a `cd` and `git -C` each keep a call sandboxed under CC's every-command
-rule. The `/tmp` write test once cited for it is confounded (`git-lock`'s owed
-`mask` reproduction), and the mask they hit proves nothing about the call
-either.
+character device or the empty non-writable file). The key was not written. The
+same write from a script run as `sh <script>`, with no `git` on the command
+line, gave the same error and the same probe output; a visible
+`cd <root> && git config` and a bare `git -C <root> config` gave the same error
+too. These ran in a delegated agent's session; the bare form did the same, key
+unwritten, in the main session that dispatched it. That they ran sandboxed
+despite `git:*` in the user settings' `sandbox.excludedCommands` needs no
+exclusion to have been ignored: an `sh` head, a `cd` and `git -C` each keep a
+call sandboxed under CC's every-command rule. The `/tmp` write test once cited
+for it is confounded (`git-lock`'s owed `mask` reproduction), and the mask they
+hit proves nothing about the call either.
+
+**Live reproduction (2026-11-18): `mask` as a regular file.** Linux, where the
+command sandbox is bubblewrap. With a sandboxed `sleep 60` running in the
+background, a sandboxed `git config sandboxlies.probe 1` in this repository
+failed on the config lock error. Outside the sandbox the lock was an empty
+mode-0444 regular file, not a character device, so the probe read `orphan` (0
+bytes, age 9s), which says the lock predates the session. An unsandboxed retry
+of the same write failed identically. After the `sleep` ended the file was gone
+unsandboxed and no key had been written: a live mask, not an orphan. Under
+`.git` only `config.lock` was masked; `index.lock` was not.
 
 **Corpus.** 4 hits, 4 true. 100%, 2026-09-03.

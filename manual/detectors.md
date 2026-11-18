@@ -31,7 +31,8 @@ piped into `tail` still fires.
 **Check.** The hook looks at the lock path outside the sandbox, then asks which
 process holds it, with `lsof`, else `fuser`:
 
-- `mask` — the path is a character device, whichever way the call ran.
+- `mask` — the path is a character device, or an empty regular file nobody can
+  write to, whichever way the call ran.
 - `gone` — the lock is absent, whichever way the call ran.
 - `held` — the lock exists and a process holds it.
 - `orphan` — the lock exists and the holder check found no holder.
@@ -84,7 +85,8 @@ No outcome tells the agent to remove the lock.
 start of a line: `git config`, `git remote add` and the toolkit's
 `just update-plugin-dev` produce it.
 
-**Check and unsandboxed calls.** As `git-lock`, on the config file's lock.
+**Check and unsandboxed calls.** As `git-lock`, on the config file's lock; a
+mask is a character device or an empty non-writable file there too.
 
 **What it says.** `git-lock`'s outcomes, naming `config.lock`, without the
 `GIT_INDEX_FILE` clause. When the lock is a `.claude/settings.json.lock`, the

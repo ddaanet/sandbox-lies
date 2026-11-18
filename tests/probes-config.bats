@@ -4,6 +4,7 @@
 # falling back to the probe's own working directory). Opened as a separate
 # file: tests/probes.bats already stands at 325 lines.
 
+# shellcheck disable=SC2030,SC2031 # $output set by run in a helper is read by @test bodies too
 ROOT="${BATS_TEST_DIRNAME}/.."
 
 bats_require_minimum_version 1.5.0
@@ -330,4 +331,80 @@ config_lock_own_error_case() {
     [ "${output%%$'\n'*}" = mask ]
     printf '%s\n' "$output" | grep -qxF "path=$lock"
   done
+}
+
+# A masked lock seen from outside the sandbox is a zero-byte regular file with
+# no write bit; a real git lock never has that shape. The body is shared with
+# the BSD re-run.
+config_lock_mask_shape_case() {
+  local repo="$BATS_TEST_TMPDIR/r7" cwd="$BATS_TEST_TMPDIR/elsewhere" lock flag
+  mkdir -p "$repo/.git" "$cwd"
+  lock="$repo/.git/config.lock"
+  : >"$lock"
+  chmod 0444 "$lock"
+
+  for flag in false true; do
+    run_probe probe_config_lock "$flag" "$cwd" "$(config_lock_error "$repo/.git/config")"
+
+    [ "$status" -eq 0 ]
+    [ -z "$stderr" ]
+    [ "${output%%$'\n'*}" = mask ]
+    printf '%s\n' "$output" | grep -qxF "path=$lock"
+    ! printf '%s\n' "$output" | grep -qE '^(pid|bytes|age)=' || false
+  done
+}
+
+@test "config-lock zero-byte read-only regular file is mask under either flag" {
+  config_lock_mask_shape_case
+}
+
+@test "config-lock zero-byte read-only regular file is mask, with BSD sed, stat and wc" {
+  local bsd="$BATS_TEST_TMPDIR/bsdtools"
+  make_bsd_stubs "$bsd" sed stat wc
+  PATH="$bsd:$PATH" config_lock_mask_shape_case
+}
+
+@test "config-lock symlink to a zero-byte read-only file is mask" {
+  local repo="$BATS_TEST_TMPDIR/r8" cwd="$BATS_TEST_TMPDIR/elsewhere" lock
+  mkdir -p "$repo/.git" "$cwd"
+  lock="$repo/.git/config.lock"
+  : >"$repo/.git/target"
+  chmod 0444 "$repo/.git/target"
+  ln -s "$repo/.git/target" "$lock"
+
+  run_probe probe_config_lock false "$cwd" "$(config_lock_error "$repo/.git/config")"
+
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "${output%%$'\n'*}" = mask ]
+  printf '%s\n' "$output" | grep -qxF "path=$lock"
+}
+
+# The rule needs both zero bytes and no write bit: each counter-case drops one.
+@test "config-lock zero-byte file with a write bit, or non-empty read-only, is not mask" {
+  local repo="$BATS_TEST_TMPDIR/r9" cwd="$BATS_TEST_TMPDIR/elsewhere" lock mode
+  mkdir -p "$repo/.git" "$cwd"
+  lock="$repo/.git/config.lock"
+
+  for mode in 0644 0200 0020 0002; do
+    rm -f "$lock"
+    : >"$lock"
+    chmod "$mode" "$lock"
+
+    run_probe probe_config_lock false "$cwd" "$(config_lock_error "$repo/.git/config")"
+
+    [ "$status" -eq 0 ]
+    [[ "${output%%$'\n'*}" != mask ]] || false
+    [[ "${output%%$'\n'*}" = orphan || "${output%%$'\n'*}" = unknown ]] || false
+  done
+
+  rm -f "$lock"
+  printf '1234567' >"$lock"
+  chmod 0444 "$lock"
+
+  run_probe probe_config_lock false "$cwd" "$(config_lock_error "$repo/.git/config")"
+
+  [ "$status" -eq 0 ]
+  [[ "${output%%$'\n'*}" != mask ]] || false
+  [[ "${output%%$'\n'*}" = orphan || "${output%%$'\n'*}" = unknown ]] || false
 }

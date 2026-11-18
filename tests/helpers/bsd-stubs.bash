@@ -102,12 +102,13 @@ STUB
 }
 
 # BSD stat has no -c (macOS and FreeBSD alike) and no long options; its
-# mtime read is -f %m, the same seconds-since-epoch field GNU's -c %Y prints.
+# mtime read is -f %m, the same seconds-since-epoch field GNU's -c %Y prints,
+# and its mode read -f %Lp, the octal permission bits GNU's -c %a prints.
 # The stub parses the macOS option set with getopts, so a GNU-only option —
 # -c, --format, --printf, anywhere in the argument list or bundled — gets
-# BSD's "illegal option" line, usage line and exit 1. It serves -f %m
-# (attached or not, with or without -L, several operands, no operand meaning
-# stdin) from the real `stat -c %Y`: on Linux the real `stat -f` reports
+# BSD's "illegal option" line, usage line and exit 1. It serves -f %m and
+# -f %Lp (attached or not, with or without -L, several operands, no operand
+# meaning stdin) from the real `stat -c %Y` and `stat -c %a`: on Linux the real `stat -f` reports
 # filesystem info, not file info, so without this the BSD path would be
 # untestable here. Everything else BSD accepts — another option or -f
 # format, or no -f at all (BSD's default output is not GNU's) — exits 2
@@ -136,15 +137,20 @@ while getopts ':FLlnqrsxf:t:' o; do
   esac
 done
 shift \$((OPTIND - 1))
-if [ -n "\$other" ] || [ "\$fmt" != %m ]; then
-  printf 'make_bsd_stubs stat: only -f %%m is emulated (got: stat %s)\n' "\$args" >&2
+case "\$fmt" in
+  %m) gnu=%Y ;;
+  %Lp) gnu=%a ;;
+  *) gnu= ;;
+esac
+if [ -n "\$other" ] || [ -z "\$gnu" ]; then
+  printf 'make_bsd_stubs stat: only -f %%m and -f %%Lp are emulated (got: stat %s)\n' "\$args" >&2
   exit 2
 fi
 [ "\$#" -gt 0 ] || set -- -
 if [ -n "\$link" ]; then
-  exec "$2" -L -c %Y -- "\$@"
+  exec "$2" -L -c "\$gnu" -- "\$@"
 fi
-exec "$2" -c %Y -- "\$@"
+exec "$2" -c "\$gnu" -- "\$@"
 STUB
 }
 
