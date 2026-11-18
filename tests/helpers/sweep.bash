@@ -10,6 +10,9 @@
 
 SWEEP_CODE_DIRS=(lib hooks scripts bin tests plugin-dev)
 
+# Matcher processes sweep_side runs at once; the box has 4 cores.
+SWEEP_JOBS=4
+
 # Dated pilot evidence that quotes live diagnostics whole, frozen. Each must
 # still fire, or a sweep passing over them could be passing because the
 # matchers never ran.
@@ -20,18 +23,23 @@ EXEMPT=(
 )
 
 # sweep_side <code|docs> [root]: pipe every tracked regular file of that side
-# of root (default $ROOT) through $MATCHERS. Sets SWEPT to how many it read and
-# FIRING to a report line per file that fired or failed the matchers. Called
-# bare, not through `run`, since the results are variables.
+# of root (default $ROOT) through $MATCHERS, one process per file, SWEEP_JOBS
+# at a time. Sets SWEPT to how many it read and FIRING to a report line per
+# file that fired or failed the matchers, in index order. Called bare, not
+# through `run`, since the results are variables.
 sweep_side() {
   local side="$1" root="${2:-$ROOT}" index meta path mode verdicts status
-  local saved_trap
+  local saved_trap out n i
+  local paths=()
   SWEPT=0
   FIRING=""
   index="$BATS_TEST_TMPDIR/sweep-index"
+  out="$BATS_TEST_TMPDIR/sweep-out"
   git -C "$root" ls-files -z -s >"$index"
   [ -s "$index" ]
-  # bats' DEBUG trap fires on every command of the loop below; run it
+  rm -rf "$out"
+  mkdir "$out"
+  # bats' DEBUG trap fires on every command of the loops below; run them
   # untrapped and put the trap back for the caller's assertions.
   saved_trap=$(trap -p DEBUG)
   trap - DEBUG
@@ -51,17 +59,38 @@ sweep_side() {
     # not discard a cached pass.
     case "$path" in tests/fixtures/* | TASK.md | TODO.md) continue ;; esac
     is_exempt "$path" && continue
-    status=0
-    verdicts=$(bash "$MATCHERS" <"$root/$path") || status=$?
+    paths+=("$path")
+  done <"$index"
+  n=${#paths[@]}
+  # Waves of SWEEP_JOBS: each job leaves its stdout in $out/<i>.out and its
+  # status in $out/<i>.st, so the report below does not depend on the order
+  # the jobs finish in. Closing fd 3 keeps a job from holding bats' pipe open.
+  for ((i = 0; i < n; i++)); do
+    sweep_one "$root/${paths[i]}" "$out/$i" 3>&- &
+    if (((i + 1) % SWEEP_JOBS == 0)); then wait; fi
+  done
+  wait
+  for ((i = 0; i < n; i++)); do
+    path=${paths[i]}
     SWEPT=$((SWEPT + 1))
+    verdicts=$(<"$out/$i.out")
+    status=$(<"$out/$i.st")
     [ -z "$verdicts" ] ||
       FIRING="$FIRING"$'\n'"  $path: ${verdicts//$'\n'/, }"
     # `detect` exits 1 when quiet; above that bash itself failed on this
     # file (126, 127), which must not read as quiet.
     [ "$status" -le 1 ] ||
       FIRING="$FIRING"$'\n'"  $path: matchers exited $status"
-  done <"$index"
+  done
   eval "$saved_trap"
+}
+
+# sweep_one <file> <prefix>: run $MATCHERS over the file, its stdout into
+# <prefix>.out and its exit status into <prefix>.st.
+sweep_one() {
+  local status=0
+  bash "$MATCHERS" <"$1" >"$2.out" || status=$?
+  printf '%s\n' "$status" >"$2.st"
 }
 
 # A line that fires the phantom-chardev detector, built from fragments so the
