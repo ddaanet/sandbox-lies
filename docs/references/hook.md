@@ -72,7 +72,9 @@ not through the Bash tool, so they are outside the command sandbox; a stat from
 the hook is the "run it unsandboxed" step the memory file asked the agent to
 perform. Reopen-if: a hook is ever found sandboxed. A probe that finds a
 character device treats it as a mask, never as a file — unsandboxed readers have
-seen masks while another session's sandbox was live.
+seen masks while another session's sandbox was live. The lock probes treat an
+empty non-writable lock file the same way, the shape a Linux mask takes outside
+the sandbox ([lock-detectors.md](lock-detectors.md)).
 
 **Output annotation, not command matching (D-1).** The pilot's one `PreToolUse`
 command matcher (sandboxed `claude -p` dropping `SessionStart` hooks) found zero

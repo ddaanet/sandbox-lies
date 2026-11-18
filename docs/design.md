@@ -196,7 +196,8 @@ scripts/check-*.sh      link gate, NFR-5
 The harness starts `annotate.sh` outside the command sandbox, so a probe's stat
 is the unsandboxed step the memory file asked the agent to take (reopen-if: a
 hook is ever found sandboxed), and a character device at a probed path is a
-mask. The call flow and that argument are in
+mask, as is an empty non-writable lock file for the lock probes. The call flow
+and that argument are in
 [references/hook.md](references/hook.md).
 
 The detector-by-detector mechanism — matcher shape, discriminator, probe, corpus

@@ -50,18 +50,20 @@ outcome, and keeps it as its first argument for the uniform probe signature.
 `mask` is a character device or an empty non-writable regular file: a mask
 visible outside the sandbox while a sandboxed command runs, where re-running
 unsandboxed at once changes nothing. Linux's bubblewrap shows the second shape
-(see the config-lock reproduction of 2026-11-18); git never leaves it, since it
-writes the lock's contents before copying the config file's mode onto it. An
-absent path is `gone` under either flag, because a call that `excludedCommands`
-unsandboxed carries no flag in the payload, and a lock its holder has since
-released leaves nothing at the path, as a sandbox mask does (the 2026-11-01
-`just release minor` failure, whose lock was gone by probe time, was told it had
-met a sandbox artefact). The verdict takes the flag as its second argument and
-words by it the re-run of `mask`, the retry of `orphan` and `unknown`, and
-`gone`: flag true keeps "git cleaned it after the failure. Retry once."; flag
-false or absent says the refusal came from a sandbox mask or from a lock its
-holder has since released, and retries with `dangerouslyDisableSandbox: true`,
-which is harmless on a covered call. It asserts no sandbox artefact.
+(see the config-lock reproduction of 2026-11-18). Git gives a config lock the
+config file's mode before writing to it (`config.c`, git 2.47.3), so one of its
+own locks has that shape only while a read-only `.git/config` is being
+rewritten, and the probe reads that as `mask` too. An absent path is `gone`
+under either flag, because a call that `excludedCommands` unsandboxed carries no
+flag in the payload, and a lock its holder has since released leaves nothing at
+the path, as a sandbox mask does (the 2026-11-01 `just release minor` failure,
+whose lock was gone by probe time, was told it had met a sandbox artefact). The
+verdict takes the flag as its second argument and words by it the re-run of
+`mask`, the retry of `orphan` and `unknown`, and `gone`: flag true keeps "git
+cleaned it after the failure. Retry once."; flag false or absent says the
+refusal came from a sandbox mask or from a lock its holder has since released,
+and retries with `dangerouslyDisableSandbox: true`, which is harmless on a
+covered call. It asserts no sandbox artefact.
 
 **Verdicts.** In the manual, [git-lock](../../manual/detectors.md#git-lock),
 with the flag's wording of the re-run and the retry. No outcome carries a

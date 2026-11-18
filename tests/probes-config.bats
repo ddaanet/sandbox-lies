@@ -334,7 +334,8 @@ config_lock_own_error_case() {
 }
 
 # A masked lock seen from outside the sandbox is a zero-byte regular file with
-# no write bit; a real git lock never has that shape. The body is shared with
+# no write bit, as git's own lock is only mid-rewrite of a read-only config
+# (lib/probes.sh, _probe_lock_at). The body is shared with
 # the BSD re-run.
 config_lock_mask_shape_case() {
   local repo="$BATS_TEST_TMPDIR/r7" cwd="$BATS_TEST_TMPDIR/elsewhere" lock flag
