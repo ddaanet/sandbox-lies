@@ -10,9 +10,6 @@
 
 SWEEP_CODE_DIRS=(lib hooks scripts bin tests plugin-dev)
 
-# Matcher processes sweep_side runs at once; the box has 4 cores.
-SWEEP_JOBS=4
-
 # Dated pilot evidence that quotes live diagnostics whole, frozen. Each must
 # still fire, or a sweep passing over them could be passing because the
 # matchers never ran.
@@ -85,11 +82,14 @@ sweep_side() {
   eval "$saved_trap"
 }
 
+# Matcher processes sweep_side runs at once; the box has 4 cores.
+SWEEP_JOBS=4
+
 # sweep_one <file> <prefix>: run $MATCHERS over the file, its stdout into
 # <prefix>.out and its exit status into <prefix>.st.
 sweep_one() {
   local status=0
-  bash "$MATCHERS" <"$1" >"$2.out" || status=$?
+  bash "$MATCHERS" >"$2.out" <"$1" || status=$?
   printf '%s\n' "$status" >"$2.st"
 }
 
