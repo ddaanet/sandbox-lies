@@ -86,6 +86,20 @@ load helpers/sweep
   [[ "$FIRING" != *code.sh* && "$FIRING" != *fixtures* && "$FIRING" != *TODO.md* ]] || false
 }
 
+@test "the sweep counts a tracked file deleted from disk as quiet and completes" {
+  local dir="$BATS_TEST_TMPDIR/deleted"
+  mkdir -p "$dir/lib"
+  printf 'quiet\n' >"$dir/lib/gone.sh"
+  printf 'quiet\n' >"$dir/lib/kept.sh"
+  git -C "$dir" init -q
+  git -C "$dir" add -A
+  rm "$dir/lib/gone.sh"
+
+  sweep_side code "$dir"
+  [ "$SWEPT" -eq 2 ]
+  [ -z "$FIRING" ]
+}
+
 @test "the predicate's code dirs are the justfile's code_dirs" {
   run just --justfile "$ROOT/justfile" --evaluate code_dirs
   [ "$status" -eq 0 ]
