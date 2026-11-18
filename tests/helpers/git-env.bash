@@ -3,7 +3,9 @@
 # the picture: the system config is ignored and the global config is a file
 # this helper writes, so a host `commit.gpgsign=true`, a `gpg.program`, a
 # `core.hooksPath`, an `init.defaultBranch` or a missing identity cannot change
-# a case's outcome.
+# a case's outcome. It also turns off the detached `git maintenance run --auto`
+# a commit starts: a repack racing a later `cp -R` of the repository loses
+# object directories mid-copy.
 #
 # The export runs when the file is loaded, not from a setup() hook, so a
 # suite's own setup() cannot skip it. bats sources a test file to gather the
@@ -18,7 +20,7 @@ _git_env_dir=${BATS_TEST_TMPDIR:-${BATS_FILE_TMPDIR:-}}
 if [ -n "$_git_env_dir" ]; then
   GIT_CONFIG_NOSYSTEM=1
   GIT_CONFIG_GLOBAL="$_git_env_dir/host-gitconfig"
-  printf '[user]\n\tname = test\n\temail = test@example.invalid\n[commit]\n\tgpgsign = false\n' \
+  printf '[user]\n\tname = test\n\temail = test@example.invalid\n[commit]\n\tgpgsign = false\n[maintenance]\n\tauto = false\n' \
     >"$GIT_CONFIG_GLOBAL"
   export GIT_CONFIG_NOSYSTEM GIT_CONFIG_GLOBAL
 fi
