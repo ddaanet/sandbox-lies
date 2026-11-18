@@ -143,10 +143,9 @@ _probe_lock_at() {
     # Linux (bubblewrap), a live mask of `.git/config.lock` read outside the
     # sandbox shows as an empty mode-0444 regular file (measured 2026-11-18).
     # git gives a config lock the config file's mode before writing to it
-    # (config.c, git 2.47.3), so a git lock has that shape only while a
-    # read-only .git/config is being rewritten, and this reads it as mask
-    # too: a residual, not a case anyone has met. Tested before
-    # the holder tool, for the device reason above. The mode is read with
+    # (config.c, git 2.47.3), so git's own lock on a config file with no
+    # write bit can have that shape too, and reads as mask. Tested before
+    # the holder tool. The mode is read with
     # stat following symlinks, BSD's -f %Lp first and GNU's -c %a otherwise;
     # each value is used only if it is all octal digits, and any failure to
     # read one leaves the path unmasked.
