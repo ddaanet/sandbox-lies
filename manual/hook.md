@@ -37,7 +37,8 @@ milliseconds to that call.
 Hooks are run by Claude Code itself, outside the command sandbox, so a check
 sees the machine as an unsandboxed command would: it is the "run it unsandboxed"
 step done for the agent. A character device found at a checked path is read as a
-sandbox mask, never as a file.
+sandbox mask, never as a file, and the lock checks read an empty lock file
+nobody can write to the same way.
 
 - A lock path that git printed relative is taken from the nearest directory at
   or above the call's working directory that holds a `.git` directory, else from

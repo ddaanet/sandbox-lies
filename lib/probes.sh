@@ -105,14 +105,15 @@ probe_config_lock() {
 }
 
 # _probe_lock_at <path> — the A-3 contract once a probe has extracted
-# and resolved its own lock path: presence, character-device-ness, the
-# holder, size and mtime, then the outcome and its key=value lines. Shared by
+# and resolved its own lock path: presence, the mask shapes (a character
+# device, or an empty read-only regular file), the holder, size and mtime,
+# then the outcome and its key=value lines. Shared by
 # probe_git_lock and probe_config_lock, which differ only in how <path> is
 # extracted from their own error shape. A <path> holding a newline (a relative
 # path joined onto a newline-bearing cwd) decides the outcome as any other and
 # prints as one $'...' path= line.
 _probe_lock_at() {
-    local path="$1" pids holder_status=0 holder_pid mtime bytes=''
+    local path="$1" pids holder_status=0 holder_pid mtime bytes='' mode
     local now age outcome
 
     # Absent reads gone under either flag: a call an exclusion unsandboxed
@@ -130,11 +131,39 @@ _probe_lock_at() {
     # wrote: mask under either flag. Tested before the holder tool, stat or
     # wc touches the path: /dev/null is open in many processes and would
     # read held. `[ -c ]`
-    # follows a symlink, so a link to a device masks too.
+    # follows a symlink, so a link to a device masks too. It is one of two
+    # mask shapes; the empty read-only file below is the other.
     if [ -c "$path" ]; then
         printf '%s\n' mask
         _probe_path_line "$path"
         return 0
+    fi
+
+    # An empty regular file with no write bit is the other mask shape: on
+    # Linux (bubblewrap), a live mask of `.git/config.lock` read outside the
+    # sandbox shows as an empty mode-0444 regular file (measured 2026-11-18).
+    # git gives a config lock the config file's mode before writing to it
+    # (config.c, git 2.47.3), so git's own lock on a config file with no
+    # write bit can have that shape too, and reads as mask. Tested before
+    # the holder tool. The mode is read with
+    # stat following symlinks, BSD's -f %Lp first and GNU's -c %a otherwise;
+    # each value is used only if it is all octal digits, and any failure to
+    # read one leaves the path unmasked.
+    if [ -f "$path" ] && [ ! -s "$path" ]; then
+        mode=$(stat -L -f %Lp "$path" 2>/dev/null) || mode=''
+        case $mode in
+            ''|*[!0-7]*) mode=$(stat -L -c %a "$path" 2>/dev/null) || mode='' ;;
+        esac
+        case $mode in
+            ''|*[!0-7]*) ;;
+            *)
+                if (( (8#$mode & 8#222) == 0 )); then
+                    printf '%s\n' mask
+                    _probe_path_line "$path"
+                    return 0
+                fi
+                ;;
+        esac
     fi
 
     # Runs before the size and age reads, so a lock removed while this

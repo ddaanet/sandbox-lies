@@ -100,7 +100,15 @@ reached() {
 find_pre() {
   local reflog line sha msg want=
   reflog=$(git -C "$top" log -g --format='%H %gs' HEAD) || return 1
-  while IFS= read -r line; do
+  # Walk the lines by parameter expansion: Apple bash 3.2 writes a here-string
+  # to a temp file in the current directory under the command sandbox.
+  while [ -n "$reflog" ]; do
+    line=${reflog%%$'\n'*}
+    if [ "$line" = "$reflog" ]; then
+      reflog=
+    else
+      reflog=${reflog#*$'\n'}
+    fi
     sha=${line%% *}
     msg=${line#* }
     if [ -n "$want" ]; then
@@ -110,7 +118,7 @@ find_pre() {
     ! same_branch "$msg" || continue
     moved_onto "$sha" "$msg" || return 1
     want=1
-  done <<<"$reflog"
+  done
   return 1
 }
 
@@ -140,21 +148,21 @@ moved_onto() {
 
 # Every path the refused command changed, read NUL-delimited. No status filter:
 # a path git did not get to may still match neither version and must be kept.
-# A path is never empty, so an empty record ends the list and carries git
-# diff's exit status, which process substitution would otherwise lose.
+# The list goes through a temp file named in $TMPDIR, not a here-string, a
+# process substitution or a pipe: Apple bash 3.2 puts its own here-document
+# files in the current directory under the command sandbox, fails on
+# /dev/fd there, and a pipe would run the loop in a subshell. The list is
+# NUL-delimited, so it cannot live in a variable either.
 walk_paths() {
-  local p rc=
+  local p
+  LIST=$(mktemp "${TMPDIR:-/tmp}/sandbox-lies-recover.XXXXXX") ||
+    usage "cannot create a temp file in ${TMPDIR:-/tmp}."
+  trap 'rm -f "$LIST"' EXIT
+  git -C "$top" diff --no-renames --name-only -z "$PRE" "$TARGET" >"$LIST" ||
+    usage "git diff $PRE $TARGET exited $?: cannot list the paths."
   while IFS= read -r -d '' p; do
-    if [ -z "$p" ]; then
-      IFS= read -r -d '' rc
-      break
-    fi
     classify "$p"
-  done < <(
-    git -C "$top" diff --no-renames --name-only -z "$PRE" "$TARGET"
-    printf '\0%s\0' "$?"
-  )
-  [ "$rc" = 0 ] || usage "git diff $PRE $TARGET exited ${rc:-?}: cannot list the paths."
+  done <"$LIST"
 }
 
 # The working copy's version of a path: restore it, remove it, or keep it. A

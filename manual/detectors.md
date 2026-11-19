@@ -31,7 +31,8 @@ piped into `tail` still fires.
 **Check.** The hook looks at the lock path outside the sandbox, then asks which
 process holds it, with `lsof`, else `fuser`:
 
-- `mask` — the path is a character device, whichever way the call ran.
+- `mask` — the path is a character device, or an empty regular file nobody can
+  write to, whichever way the call ran.
 - `gone` — the lock is absent, whichever way the call ran.
 - `held` — the lock exists and a process holds it.
 - `orphan` — the lock exists and the holder check found no holder.
@@ -55,10 +56,11 @@ as flag absent. *Re-run* and *Retry* below stand for:
 
 **What it says.**
 
-- `mask` — The lock in this error is a sandbox artefact and the repository is
-  healthy. *Re-run*. A repeat failure on a commit whose hook stages files is
-  that hook leaking `GIT_INDEX_FILE`, not the sandbox. ·
-  `index.lock — sandbox mask, not a real lock`
+- `mask` — The lock in this error has the shape of a sandbox mask and most
+  likely is one. *Re-run*. If it refuses again, it is a real file: report its
+  path to the user and leave it in place. A repeat failure on a commit whose
+  hook stages files is that hook leaking `GIT_INDEX_FILE`, not the sandbox. ·
+  `index.lock — shaped like a sandbox mask`
 - `gone`, flag true — No lock exists now; git cleaned it after the failure.
   Retry once. A repeat failure on a commit whose hook stages files is that hook
   leaking `GIT_INDEX_FILE`, not the sandbox. ·
@@ -84,7 +86,8 @@ No outcome tells the agent to remove the lock.
 start of a line: `git config`, `git remote add` and the toolkit's
 `just update-plugin-dev` produce it.
 
-**Check and unsandboxed calls.** As `git-lock`, on the config file's lock.
+**Check and unsandboxed calls.** As `git-lock`, on the config file's lock; a
+mask is a character device or an empty non-writable file there too.
 
 **What it says.** `git-lock`'s outcomes, naming `config.lock`, without the
 `GIT_INDEX_FILE` clause. When the lock is a `.claude/settings.json.lock`, the
@@ -92,9 +95,10 @@ start of a line: `git config`, `git remote add` and the toolkit's
 absent or false, say to write `.claude/settings.json` through the
 `update-config` skill instead of *Re-run* or *Retry*.
 
-- `mask` — The `config.lock` behind this error is a sandbox artefact and the
-  repository is healthy. *Re-run*. ·
-  `config.lock — sandbox mask, not a real lock`
+- `mask` — The `config.lock` behind this error has the shape of a sandbox mask
+  and most likely is one. *Re-run*. If it refuses again, it is a real file:
+  report its path to the user and leave it in place. ·
+  `config.lock — shaped like a sandbox mask`
 - `gone`, flag true — No lock exists now; git cleaned it after the failure.
   Retry once. · `config.lock — cleared after failure`
 - `gone`, flag absent or false — No lock exists now: this refusal came from a
