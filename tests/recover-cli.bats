@@ -44,6 +44,23 @@ teardown() {
   [ "$before" = "$after" ]
 }
 
+@test "a dry run under BSD mktemp prints the plan of the plain run and leaves no temp file" {
+  scenario checkout change
+  local plain bsd="$BATS_TEST_TMPDIR/bsdtools" tmp="$BATS_TEST_TMPDIR/tmp"
+  # walk_paths is the only mktemp caller; the script calls no sed or grep.
+  # The stub refuses a template that does not end in X only when its literal
+  # path already exists, so the case also checks the temp file is removed.
+  make_bsd_stubs "$bsd" mktemp
+  mkdir "$tmp"
+  run rec dry checkout feat
+  [ "$status" -eq 0 ]
+  plain=$output
+  TMPDIR=$tmp PATH="$bsd:$PATH" run rec dry checkout feat
+  [ "$status" -eq 0 ]
+  [ "$output" = "$plain" ]
+  [ -z "$(ls -A "$tmp")" ]
+}
+
 @test "a dry run changes nothing under merge and ends the plan with the re-run" {
   scenario merge m1
   local before after
