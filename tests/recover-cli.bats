@@ -48,8 +48,8 @@ teardown() {
   scenario checkout change
   local plain bsd="$BATS_TEST_TMPDIR/bsdtools" tmp="$BATS_TEST_TMPDIR/tmp"
   # walk_paths is the only mktemp caller; the script calls no sed or grep.
-  # The stub refuses a template that does not end in X only when its literal
-  # path already exists, so the case also checks the temp file is removed.
+  # Its template ends in X, which the stub hands to the real mktemp; the
+  # emptiness check on $tmp is what pins the temp file's removal.
   make_bsd_stubs "$bsd" mktemp
   mkdir "$tmp"
   run rec dry checkout feat

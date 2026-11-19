@@ -151,8 +151,8 @@ moved_onto() {
 # The list goes through a temp file named in $TMPDIR, not a here-string, a
 # process substitution or a pipe: Apple bash 3.2 puts its own here-document
 # files in the current directory under the command sandbox, fails on
-# /dev/fd there, and a pipe would run the loop in a subshell. A path holds
-# NUL, so the list cannot live in a variable either.
+# /dev/fd there, and a pipe would run the loop in a subshell. The list is
+# NUL-delimited, so it cannot live in a variable either.
 walk_paths() {
   local p
   LIST=$(mktemp "${TMPDIR:-/tmp}/sandbox-lies-recover.XXXXXX") ||
