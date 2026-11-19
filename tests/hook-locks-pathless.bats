@@ -39,7 +39,7 @@ setup() {
     [ -f "$PROBE_CALLED" ]
     ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
     sys=$(printf '%s' "$output" | jq -r '.systemMessage')
-    [ "$sys" = 'config.lock — sandbox mask, not a real lock' ]
+    [ "$sys" = 'config.lock — shaped like a sandbox mask' ]
     printf '%s' "$ctx" | grep -qF -- "$rerun"
     assert_lacks "$ctx" "$other"
     assert_lacks "$ctx" 'update-config'
@@ -93,5 +93,5 @@ setup() {
   [ "$status" -eq 0 ]
   [ -f "$PROBE_CALLED" ]
   sys=$(printf '%s' "$output" | jq -r '.systemMessage')
-  [ "$sys" = 'config.lock — sandbox mask, not a real lock' ]
+  [ "$sys" = 'config.lock — shaped like a sandbox mask' ]
 }

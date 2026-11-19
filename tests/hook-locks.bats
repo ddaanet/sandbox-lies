@@ -35,7 +35,7 @@ setup() {
   sys=$(printf '%s' "$output" | jq -r '.systemMessage')
   printf '%s' "$ctx" | grep -qF 'Once no sandboxed command is running, re-run the same command with'
   printf '%s' "$ctx" | grep -qF 'GIT_INDEX_FILE'
-  [ "$sys" = 'index.lock — sandbox mask, not a real lock' ]
+  [ "$sys" = 'index.lock — shaped like a sandbox mask' ]
 }
 
 @test "mask paragraph words the re-run by the flag" {
@@ -86,7 +86,7 @@ setup() {
   [ "$status" -eq 0 ]
   [ -f "$PROBE_CALLED" ]
   sys=$(printf '%s' "$output" | jq -r '.systemMessage')
-  [ "$sys" = 'index.lock — sandbox mask, not a real lock' ]
+  [ "$sys" = 'index.lock — shaped like a sandbox mask' ]
 }
 
 @test "held interpolates the pid" {
@@ -208,7 +208,7 @@ setup() {
     ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
     # The human line also names config.lock: context carrying it would
     # satisfy the first grep without the paragraph naming the file.
-    assert_lacks "$ctx" 'sandbox mask, not a real lock'
+    assert_lacks "$ctx" 'shaped like a sandbox mask'
     printf '%s' "$ctx" | grep -qF 'config.lock'
     assert_lacks "$ctx" 'update-config'
     printf '%s' "$ctx" | grep -qF -- "$rerun"
@@ -290,10 +290,10 @@ setup() {
     text=$(cat "$f")
     case "$f" in
       */fire-configlock-*)
-        expected='config.lock — sandbox mask, not a real lock'
+        expected='config.lock — shaped like a sandbox mask'
         called=$config_called ;;
       *)
-        expected='index.lock — sandbox mask, not a real lock'
+        expected='index.lock — shaped like a sandbox mask'
         called=$lock_called ;;
     esac
 

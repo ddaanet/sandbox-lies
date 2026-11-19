@@ -63,7 +63,10 @@ second argument and words by it the re-run of `mask`, the retry of `orphan` and
 once."; flag false or absent says the refusal came from a sandbox mask or from a
 lock its holder has since released, and retries with
 `dangerouslyDisableSandbox: true`, which is harmless on a covered call. It
-asserts no sandbox artefact.
+asserts no sandbox artefact. `mask` asserts none either: it says the lock has
+the shape of a sandbox mask and most likely is one, and that a lock which
+refuses again after the re-run is a real file with that shape, to report to the
+user by path and not delete (the remedy for a leftover is an open design item).
 
 **Verdicts.** In the manual, [git-lock](../../manual/detectors.md#git-lock),
 with the flag's wording of the re-run and the retry. No outcome carries a

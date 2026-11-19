@@ -56,10 +56,11 @@ as flag absent. *Re-run* and *Retry* below stand for:
 
 **What it says.**
 
-- `mask` — The lock in this error is a sandbox artefact and the repository is
-  healthy. *Re-run*. A repeat failure on a commit whose hook stages files is
-  that hook leaking `GIT_INDEX_FILE`, not the sandbox. ·
-  `index.lock — sandbox mask, not a real lock`
+- `mask` — The lock in this error has the shape of a sandbox mask and most
+  likely is one. *Re-run*. If it refuses again, it is a real file: report its
+  path to the user and leave it in place. A repeat failure on a commit whose
+  hook stages files is that hook leaking `GIT_INDEX_FILE`, not the sandbox. ·
+  `index.lock — shaped like a sandbox mask`
 - `gone`, flag true — No lock exists now; git cleaned it after the failure.
   Retry once. A repeat failure on a commit whose hook stages files is that hook
   leaking `GIT_INDEX_FILE`, not the sandbox. ·
@@ -94,9 +95,10 @@ mask is a character device or an empty non-writable file there too.
 absent or false, say to write `.claude/settings.json` through the
 `update-config` skill instead of *Re-run* or *Retry*.
 
-- `mask` — The `config.lock` behind this error is a sandbox artefact and the
-  repository is healthy. *Re-run*. ·
-  `config.lock — sandbox mask, not a real lock`
+- `mask` — The `config.lock` behind this error has the shape of a sandbox mask
+  and most likely is one. *Re-run*. If it refuses again, it is a real file:
+  report its path to the user and leave it in place. ·
+  `config.lock — shaped like a sandbox mask`
 - `gone`, flag true — No lock exists now; git cleaned it after the failure.
   Retry once. · `config.lock — cleared after failure`
 - `gone`, flag absent or false — No lock exists now: this refusal came from a

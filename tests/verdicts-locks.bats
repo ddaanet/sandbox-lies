@@ -21,14 +21,14 @@ load helpers/verdicts
   line1=$(verdict_text git_lock mask false | sed -n '1p')
   line2=$(verdict_text git_lock mask false | sed -n '2p')
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  [ "$line1" = 'The lock in this error is a sandbox artefact and the repository is healthy. Once no sandboxed command is running, re-run the same command with `dangerouslyDisableSandbox: true`. A repeat failure on a commit whose hook stages files is that hook leaking `GIT_INDEX_FILE`, not the sandbox.' ]
-  [ "$line2" = 'index.lock — sandbox mask, not a real lock' ]
+  [ "$line1" = 'The lock in this error has the shape of a sandbox mask and most likely is one. Once no sandboxed command is running, re-run the same command with `dangerouslyDisableSandbox: true`. If it refuses again, it is a real file: report its path to the user and leave it in place. A repeat failure on a commit whose hook stages files is that hook leaking `GIT_INDEX_FILE`, not the sandbox.' ]
+  [ "$line2" = 'index.lock — shaped like a sandbox mask' ]
 
   line1=$(verdict_text git_lock mask true | sed -n '1p')
   line2=$(verdict_text git_lock mask true | sed -n '2p')
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  [ "$line1" = 'The lock in this error is a sandbox artefact and the repository is healthy. Re-run the same command once no sandboxed command is running. A repeat failure on a commit whose hook stages files is that hook leaking `GIT_INDEX_FILE`, not the sandbox.' ]
-  [ "$line2" = 'index.lock — sandbox mask, not a real lock' ]
+  [ "$line1" = 'The lock in this error has the shape of a sandbox mask and most likely is one. Re-run the same command once no sandboxed command is running. If it refuses again, it is a real file: report its path to the user and leave it in place. A repeat failure on a commit whose hook stages files is that hook leaking `GIT_INDEX_FILE`, not the sandbox.' ]
+  [ "$line2" = 'index.lock — shaped like a sandbox mask' ]
 
   # Absent $2 reads false (D-17).
   [ "$(verdict_text git_lock mask - | sed -n '1p')" = "$(verdict_text git_lock mask false | sed -n '1p')" ]
@@ -53,14 +53,14 @@ load helpers/verdicts
   line1=$(verdict_text config_lock mask false | sed -n '1p')
   line2=$(verdict_text config_lock mask false | sed -n '2p')
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  [ "$line1" = 'The `config.lock` behind this error is a sandbox artefact and the repository is healthy. Once no sandboxed command is running, re-run the same command with `dangerouslyDisableSandbox: true`.' ]
-  [ "$line2" = 'config.lock — sandbox mask, not a real lock' ]
+  [ "$line1" = 'The `config.lock` behind this error has the shape of a sandbox mask and most likely is one. Once no sandboxed command is running, re-run the same command with `dangerouslyDisableSandbox: true`. If it refuses again, it is a real file: report its path to the user and leave it in place.' ]
+  [ "$line2" = 'config.lock — shaped like a sandbox mask' ]
 
   line1=$(verdict_text config_lock mask true | sed -n '1p')
   line2=$(verdict_text config_lock mask true | sed -n '2p')
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  [ "$line1" = 'The `config.lock` behind this error is a sandbox artefact and the repository is healthy. Re-run the same command once no sandboxed command is running.' ]
-  [ "$line2" = 'config.lock — sandbox mask, not a real lock' ]
+  [ "$line1" = 'The `config.lock` behind this error has the shape of a sandbox mask and most likely is one. Re-run the same command once no sandboxed command is running. If it refuses again, it is a real file: report its path to the user and leave it in place.' ]
+  [ "$line2" = 'config.lock — shaped like a sandbox mask' ]
 
   # The config-lock settings act: a `.claude/settings.json.lock` path
   # replaces *Re-run* with the update-config act, under either flag.
@@ -71,15 +71,15 @@ load helpers/verdicts
   line1=$(printf '%s\n' "$settings_text" | sed -n '1p')
   line2=$(printf '%s\n' "$settings_text" | sed -n '2p')
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  [ "$line1" = 'The `config.lock` behind this error is a sandbox artefact and the repository is healthy. Write `.claude/settings.json` through the `update-config` skill.' ]
-  [ "$line2" = 'config.lock — sandbox mask, not a real lock' ]
+  [ "$line1" = 'The `config.lock` behind this error has the shape of a sandbox mask and most likely is one. Write `.claude/settings.json` through the `update-config` skill. If it refuses again, it is a real file: report its path to the user and leave it in place.' ]
+  [ "$line2" = 'config.lock — shaped like a sandbox mask' ]
 
   # shellcheck disable=SC1090
   settings_text=$(printf '%s\n' 'path=/r/.claude/settings.json.lock' \
     | ( . "$VERDICTS"; verdict_config_lock mask true ))
   line1=$(printf '%s\n' "$settings_text" | sed -n '1p')
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  [ "$line1" = 'The `config.lock` behind this error is a sandbox artefact and the repository is healthy. Write `.claude/settings.json` through the `update-config` skill.' ]
+  [ "$line1" = 'The `config.lock` behind this error has the shape of a sandbox mask and most likely is one. Write `.claude/settings.json` through the `update-config` skill. If it refuses again, it is a real file: report its path to the user and leave it in place.' ]
 
   line1=$(verdict_text config_lock gone true | sed -n '1p')
   line2=$(verdict_text config_lock gone true | sed -n '2p')
@@ -254,7 +254,7 @@ load helpers/verdicts
     # shellcheck disable=SC2016 # the script is for the child shell
     out=$(printf '%s\n' "$stdin" | bash -c 'set -e; . "$1"; verdict_config_lock mask; echo "reached rc=$?"' _ "$VERDICTS") || true
     # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-    printf '%s\n' "$out" | grep -qF 'The `config.lock` behind this error is a sandbox artefact' \
+    printf '%s\n' "$out" | grep -qF 'The `config.lock` behind this error has the shape of a sandbox mask' \
       || { printf 'stdin [%s] gave: [%s]\n' "$stdin" "$out" >&2; return 1; }
     printf '%s\n' "$out" | grep -qF 'reached rc=0' \
       || { printf 'stdin [%s] gave: [%s]\n' "$stdin" "$out" >&2; return 1; }

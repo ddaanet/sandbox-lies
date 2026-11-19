@@ -33,8 +33,8 @@ verdict_git_lock() {
   local outcome="$1" flag="${2:-false}"
   case "$outcome" in
     mask)
-      printf '%s\n' "The lock in this error is a sandbox artefact and the repository is healthy. $(_lock_rerun "$flag") A repeat failure on a commit whose hook stages files is that hook leaking \`GIT_INDEX_FILE\`, not the sandbox."
-      printf '%s\n' 'index.lock — sandbox mask, not a real lock'
+      printf '%s\n' "The lock in this error has the shape of a sandbox mask and most likely is one. $(_lock_rerun "$flag") If it refuses again, it is a real file: report its path to the user and leave it in place. A repeat failure on a commit whose hook stages files is that hook leaking \`GIT_INDEX_FILE\`, not the sandbox."
+      printf '%s\n' 'index.lock — shaped like a sandbox mask'
       ;;
     gone)
       if [ "$flag" = true ]; then
@@ -64,8 +64,8 @@ verdict_config_lock() {
       else
         act=$(_lock_rerun "$flag")
       fi
-      printf '%s\n' "The \`config.lock\` behind this error is a sandbox artefact and the repository is healthy. ${act}"
-      printf '%s\n' 'config.lock — sandbox mask, not a real lock'
+      printf '%s\n' "The \`config.lock\` behind this error has the shape of a sandbox mask and most likely is one. ${act} If it refuses again, it is a real file: report its path to the user and leave it in place."
+      printf '%s\n' 'config.lock — shaped like a sandbox mask'
       ;;
     gone)
       if [ "$flag" = true ]; then
