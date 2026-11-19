@@ -68,14 +68,18 @@ under the macOS command sandbox:
   temp file for the here-document and the command fails.
 - Outside the sandbox the same bash runs the same here-string from a read-only
   directory.
-- Homebrew's bash 5 under the same sandbox honours `$TMPDIR` and succeeds.
+- Homebrew's bash 5 runs the same here-string under the same sandbox and
+  succeeds.
 
 A script with `#!/usr/bin/env bash` that resolves to Apple's 3.2, or with
-`#!/bin/bash`, run sandboxed from inside a repository therefore writes and
-removes a temp file at the repository top, so that directory's mtime changes,
-and it fails in a read-only directory. For a script that must work sandboxed on
-a Mac, run it from a writable directory or avoid here-documents and here-strings
-(`printf '%s\n' "$x" | cmd`).
+`#!/bin/bash`, run sandboxed from inside a repository therefore writes a temp
+file into its working directory (the repository top when run from there), so
+that directory's mtime changes, and it fails in a read-only directory. For a
+script that must work sandboxed on a Mac, run it from a writable directory or
+avoid here-documents and here-strings: write the input to a file made with
+`mktemp` under `$TMPDIR` and redirect from it, or loop over the string with
+parameter expansion. A pipe into `read` is no substitute, since bash 3.2 has no
+`lastpipe` and the variable is set in a subshell.
 
 ## Cost: the classifier denies benign compounds unpredictably
 

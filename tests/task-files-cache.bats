@@ -6,7 +6,9 @@
 # holding what the working tree holds (tests/helpers/gate-tree.bash), so
 # uncommitted work is what is tested and no commit of this repository is an
 # input, with its own quiet TODO.md and TASK.md, so the real ones' content does
-# not reach this suite. Which gate an edit reruns is in tests/gate-coverage.bats;
+# not reach this suite. The gate tree's scripts/check-links.sh is a stub that
+# passes (tests/helpers/gate-tree.bash), so the link check over TODO.md and
+# TASK.md (`--task-files`) is not exercised here. Which gate an edit reruns is in tests/gate-coverage.bats;
 # the script and recipe cases are in tests/task-files.bats.
 
 # shellcheck disable=SC2034 # read by tests/helpers/gate-tree.bash
