@@ -72,12 +72,12 @@ setup_file() {
   expect_ran 1 1
 }
 
-# A copy that lost its sentinels or its spy log would run both gates again and
-# fail here, not as a case that expects a gate cached.
+# A copy that lost its sentinels or its spy log would run both gates again, so
+# it fails here, not as a case that expects a gate cached. A case expecting both
+# gates to run, which a lost sentinel would satisfy, gates its copy cached first.
 setup() {
   clone_gate_tree "$BATS_FILE_TMPDIR/built"
-  run_gates
-  expect_ran 0 0
+  expect_clone_intact "$BATS_FILE_TMPDIR/built"
 }
 
 @test "a file in a code dir reruns gate-code alone" {
@@ -99,6 +99,8 @@ setup() {
 }
 
 @test "the justfile and plugin-dev/ rerun both gates" {
+  run_gates
+  expect_ran 0 0
   edit_expecting justfile 1 1
   edit_expecting plugin-dev/README.md 1 1
 }
@@ -248,6 +250,9 @@ setup() {
   local bsd="$BATS_TEST_TMPDIR/bsdtools"
   make_bsd_stubs "$bsd" sed grep mktemp stat wc
   PATH="$bsd:$PATH"
+  # The real link check, not the gate tree's stub: its tools are among those
+  # this case puts under the stubs.
+  real_link_check
   # Edits that rerun each gate, so both recipes run their bodies under the stubs.
   touch_file justfile
   run_gates

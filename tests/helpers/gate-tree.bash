@@ -45,9 +45,11 @@ copy_work_tree() {
 # of the tracked-only checks in both. TODO.md and TASK.md are replaced by a
 # quiet line. shellcheck and rumdl are stubs, each printing the contents of a
 # `<stub>.version` file beside it for `--version` so a case can change a tool
-# version, and the tree's bats runner a spy appending its arguments as one line
-# to $SPY_LOG: the cases are about whether a gate runs, and the slow checks are
-# not what they assert. Built under $1, $BATS_TEST_TMPDIR by default, which
+# version, the tree's link check a script that passes, and the tree's bats
+# runner a spy appending its arguments as one line to $SPY_LOG: the cases are
+# about whether a gate runs, and the slow checks are not what they assert; a
+# case that needs the real link check copies it back with real_link_check.
+# Built under $1, $BATS_TEST_TMPDIR by default, which
 # setup_file has not got. The spy appends to the bats-runs file beside the tree
 # (the gates run with the tree as their working directory), and STUBS and
 # SPY_LOG name the stubs directory and that file beside it, so the tree holds no
@@ -74,7 +76,14 @@ make_gate_tree() {
   # shellcheck disable=SC2016 # $PWD expands in the spy, not here
   printf '#!/bin/sh\necho "$*" >>"$PWD/../bats-runs"\nexit 0\n' \
     >"$GATE_TREE/plugin-dev/run-bats.sh"
+  # Written over the copy, so the mode stays the real script's.
+  printf '#!/bin/sh\nexit 0\n' >"$GATE_TREE/scripts/check-links.sh"
   : >"$SPY_LOG"
+}
+
+# The working tree's scripts/check-links.sh in place of the gate tree's stub.
+real_link_check() {
+  cp "$ROOT/scripts/check-links.sh" "$GATE_TREE/scripts/check-links.sh"
 }
 
 # A private copy, in $BATS_TEST_TMPDIR, of the tree, stubs and spy log that
@@ -86,6 +95,19 @@ clone_gate_tree() {
   GATE_TREE="$BATS_TEST_TMPDIR/gate-tree"
   STUBS="$BATS_TEST_TMPDIR/stubs"
   SPY_LOG="$BATS_TEST_TMPDIR/bats-runs"
+}
+
+# Fails unless the copy clone_gate_tree made of the tree built under $1 holds
+# the same sentinels and spy log: a copy that lost either would run a gate the
+# case expects cached. Cheaper than gating the copy; a case whose expectation a
+# lost sentinel would satisfy still runs the gates instead.
+expect_clone_intact() {
+  local from="$1" gate
+  for gate in gate-docs gate-code; do
+    cmp -- "$from/gate-tree/.git/plugin-dev/gates/$gate" \
+      "$GATE_TREE/.git/plugin-dev/gates/$gate" || return 1
+  done
+  cmp -- "$from/bats-runs" "$SPY_LOG"
 }
 
 # The real `just precommit` in the gate tree, on a PATH with the stubs first and
