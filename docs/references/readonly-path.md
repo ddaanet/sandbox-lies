@@ -27,11 +27,13 @@ whole line from its start, trailing blanks allowed: `error:` failing to create a
 file, `error:` failing to unlink an old file and `warning:` failing to unlink a
 file (both with the path single-quoted), `error:` failing to write the config
 file, and `fatal:` failing to create an index lock (the path single-quoted and
-ending in `/.git/index.lock`). That message is taken from no other line, so
-another tool's refusal ending in it stays quiet, as does a git line outside the
-five. The evidence for this alternative is macOS transcript records only; no
-live reproduction exists for it. The store quotes the messages mid-line.
-Expected residual: a path not writable outside the sandbox either.
+ending in `/.git/index.lock`). No test pins the quotes on the two unlink shapes:
+a matcher also taking them unquoted passes every test, and git always quotes
+those paths. That message is taken from no other line, so another tool's refusal
+ending in it stays quiet, as does a git line outside the five. The evidence for
+this alternative is macOS transcript records only; no live reproduction exists
+for it. The store quotes the messages mid-line. Expected residual: a path not
+writable outside the sandbox either.
 
 **Flag policy.** Silent when the flag is true.
 
