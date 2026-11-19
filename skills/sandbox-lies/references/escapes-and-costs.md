@@ -55,6 +55,28 @@ are a backup restored by a *later* call â€” a mutation check, a staged fixture â
 where a restore path that silently resolves elsewhere lets the check report
 success while the original is never put back.
 
+## Apple's bash 3.2 here-documents ignore `$TMPDIR`
+
+Recorded 2026-11-18 on macOS 26, Apple `/bin/bash` 3.2.57, CC 2.1.327, Bash tool
+under the macOS command sandbox:
+
+- A here-document or here-string creates its temp file in the current working
+  directory, not in `$TMPDIR`. Setting `$TMPDIR` to a sandbox-writable
+  directory, or to its resolved `/private/tmp` path, changes nothing, and
+  `[ -w "$TMPDIR" ]` is true at the same moment.
+- With a read-only current directory, bash reports that it cannot create the
+  temp file for the here-document and the command fails.
+- Outside the sandbox the same bash runs the same here-string from a read-only
+  directory.
+- Homebrew's bash 5 under the same sandbox honours `$TMPDIR` and succeeds.
+
+A script with `#!/usr/bin/env bash` that resolves to Apple's 3.2, or with
+`#!/bin/bash`, run sandboxed from inside a repository therefore writes and
+removes a temp file at the repository top, so that directory's mtime changes,
+and it fails in a read-only directory. For a script that must work sandboxed on
+a Mac, run it from a writable directory or avoid here-documents and here-strings
+(`printf '%s\n' "$x" | cmd`).
+
 ## Cost: the classifier denies benign compounds unpredictably
 
 Sandboxed commands are auto-allowed (`autoAllowBashIfSandboxed`) with no

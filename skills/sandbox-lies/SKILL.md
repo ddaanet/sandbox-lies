@@ -114,8 +114,8 @@ hardcode the literal scratch path (`/tmp/claude/<job>/…`, created with
 `mkdir -p`), since a subagent shell inherits neither the environment nor the
 working directory.
 
-Why a restore path that resolves elsewhere is the expensive case, and the
-observed collapse:
+Restore paths resolving elsewhere, the observed collapse, and macOS bash 3.2
+here-documents ignoring `$TMPDIR`:
 [references/escapes-and-costs.md](references/escapes-and-costs.md).
 
 ## Writing a cleanliness gate
