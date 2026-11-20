@@ -68,7 +68,8 @@ read-only regular file, not a mount: a leftover `.git/config.lock` fails every
 a live mask. When the write still refuses after the re-run the hook's
 `config-lock` paragraph asks for, leave the lock and give the user the `rm` that
 paragraph names, to run once they have checked no sandboxed command is running
-in any session.
+in any session. When the paragraph names no `rm`, report the lock's path to the
+user and compose no command for it.
 
 ## A porcelain gate reports DIRTY against a clean tree
 

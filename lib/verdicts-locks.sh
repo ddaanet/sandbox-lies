@@ -113,23 +113,36 @@ _config_lock_is_settings() {
 # the decoded path in _verdict_path_raw: the mask paragraph's closing
 # sentence. It hands a lock that refuses the re-run to the user as a possible
 # leftover of a sandbox that died uncleanly, with `rm` of the path in single
-# quotes. The user pastes that into their own shell, and a single-quoted word
-# reads the same in bash, zsh, dash and fish only when it holds no single
-# quote, no backslash (fish reads one as an escape there) and no control
-# byte: a path holding any of them, like no path at all, gets no command and
-# keeps git-lock's report-and-leave sentence. A backtick in the path still
-# closes the code span early, as in verdict_readonly_path.
+# quotes, which the user pastes into their own shell. Only a path
+# _config_lock_pastes passes gets the command: any other, like no path at
+# all, keeps git-lock's report-and-leave sentence.
 # shellcheck disable=SC2016 # backticks are literal prose, not expansion
 _config_lock_refused_again() {
   local path=$_verdict_path_raw
-  case "$path" in
-    *\'* | *\\*) path='' ;;
-  esac
-  if [ -z "$path" ] || _verdict_has_control "$path"; then
+  if [ -z "$path" ] || ! _config_lock_pastes "$path"; then
     printf 'If it refuses again, it is a real file: report its path to the user and leave it in place.'
     return 0
   fi
   printf 'If it refuses again, leave it and tell the user it may be left over from a sandbox that died uncleanly, giving them `rm '\''%s'\''` to run once they have checked no sandboxed command is running in any session.' "$path"
+}
+
+# `_config_lock_pastes <path>` — succeeds when every byte of path is printable
+# ASCII (0x20-0x7E) and none is a single quote, a backslash or a backtick.
+# Such a path, single-quoted inside a code span, reaches the user's shell as
+# printed and reads the same in bash, zsh, dash and fish. A single quote ends
+# the quoted word, fish reads a backslash inside one as an escape, and a
+# backtick closes the code span. A byte outside the range is not sure to
+# arrive: jq writes U+FFFD for one that is not valid UTF-8, and a control
+# byte does not survive a paste. LC_ALL=C makes the range a byte range; the
+# caller's locale is put back on return (see _verdict_unescape).
+_config_lock_pastes() {
+  local saved=${LC_ALL-} had=${LC_ALL+x} rc=0
+  LC_ALL=C
+  case "$1" in
+    *[!\ -~]* | *[\'\\\`]*) rc=1 ;;
+  esac
+  if [ -n "$had" ]; then LC_ALL=$saved; else unset LC_ALL; fi
+  return "$rc"
 }
 
 # shellcheck disable=SC2016 # backticks are literal prose, not expansion

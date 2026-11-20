@@ -154,10 +154,15 @@ read. So `mask`, given a decoded `path=`, tells the agent to leave the lock and
 hand the user `rm` of that path, to run once they have checked that no sandboxed
 command is running in any session. This is D-7's one exception: the `rm` is
 handed to the user, and the agent is told to remove nothing. The user pastes the
-command into their own shell, so the path is printed in single quotes, a form
-bash, zsh, dash and fish read alike as long as it holds no single quote, no
-backslash (fish reads one as an escape there) and no control byte. A path
-holding any of those, or a value that decodes to no path, gets no `rm` and keeps
+command into their own shell, so the path is printed in single quotes, and only
+when every byte of it is printable ASCII (0x20 to 0x7E) other than a single
+quote, a backslash and a backtick. Such a word reads the same in bash, zsh, dash
+and fish and reaches the user as printed. Outside that set, a single quote ends
+the word, fish reads a backslash inside it as an escape, a backtick closes the
+code span around the command, a byte that is not valid UTF-8 is replaced on the
+way to the agent, and a control byte does not survive a paste; the rule names
+the bytes known to arrive instead of listing those that do not. Any other path,
+non-ASCII included, or a value that decodes to no path, gets no `rm` and keeps
 `git-lock`'s report-and-leave sentence. Recorded case: a 2026-11-13 session
 elsewhere, where an unsandboxed `just sync` met a nine-day-old empty mode-0444
 `.git/config.lock` listed in no mountinfo, and `rm` cleared it. `git-lock` keeps

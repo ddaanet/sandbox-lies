@@ -40,7 +40,10 @@ does updates it there.
   file under `tests/fixtures/` is a recorded tool result cut by
   `tests/extract-fixtures.py` from the transcript corpus; add a `SPEC` entry and
   cut it, since a hand-written fixture encodes what the output was expected to
-  look like.
+  look like. The corpus spans every project and this repository is public:
+  before committing a cut, grep it for host names, `@` logins, IP addresses,
+  home-directory paths and other repositories' content (a recorded `just sync`
+  from another repo printed all of them); a hit means no fixture from that call.
 - **Every new bats file loads `helpers/bsd-stubs`**, and a suite whose code
   under test calls a stubbed tool (`sed`, `grep`, `mktemp`, `stat`, `wc`) keeps
   one case re-run with `make_bsd_stubs` on `PATH`. The code under test is what

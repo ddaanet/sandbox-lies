@@ -10,42 +10,23 @@ load helpers/verdicts
 
 @test "config-lock mask hands a lock refused again to the user as an rm" {
   # The user pastes the rm into their own shell, so the path is in single
-  # quotes, where a blank, a `$` and non-ASCII bytes are literal in bash, zsh,
-  # dash and fish alike, whichever wire form the probe wrote them in. Each
-  # case is a path= value, then the path the rm must show. Line 1 stays under
-  # FR-6's 400 characters before the path.
-  local flag wire path line1 n
-  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  local pre='If it refuses again, leave it and tell the user it may be left over from a sandbox that died uncleanly, giving them `rm '
-  # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  local post='` to run once they have checked no sandboxed command is running in any session.'
+  # quotes, where a blank and a `$` are literal in bash, zsh, dash and fish
+  # alike. Line 1 stays under FR-6's 400 characters before the path.
+  local flag line1
+  # shellcheck disable=SC2016 # backticks and $HOME are literal text
   for flag in false true; do
-    n=0
-    while IFS= read -r wire && IFS= read -r path; do
-      line1=$(config_lock_mask_line1 "$wire" "$flag")
-      [ "If it refuses again${line1##*If it refuses again}" = "$pre'$path'$post" ]
-      line1=${line1/"$path"/}
-      [ "${#line1}" -lt 400 ]
-      n=$((n + 1))
-    done <<'CASES'
-/r/a\ b/\$HOME/.git/config.lock
-/r/a b/$HOME/.git/config.lock
-/r/Dév/.git/config.lock
-/r/Dév/.git/config.lock
-$'/r/D\303\251v/.git/config.lock'
-/r/Dév/.git/config.lock
-/r/.claude/settings.json.lock
-/r/.claude/settings.json.lock
-CASES
-    # A loop that read no case would have asserted nothing.
-    [ "$n" -eq 4 ]
+    line1=$(config_lock_mask_line1 '/r/a\ b/\$HOME/.git/config.lock' "$flag")
+    [ "If it refuses again${line1##*If it refuses again}" = 'If it refuses again, leave it and tell the user it may be left over from a sandbox that died uncleanly, giving them `rm '\''/r/a b/$HOME/.git/config.lock'\''` to run once they have checked no sandboxed command is running in any session.' ]
+    line1=${line1/'/r/a b/$HOME/.git/config.lock'/}
+    [ "${#line1}" -lt 400 ]
   done
 }
 
-@test "config-lock mask prints no rm for a path single quotes cannot carry" {
-  # A single quote ends the quoted word, fish reads a backslash inside one as
-  # an escape, and a control byte does not survive a paste: each path= value
-  # below, like no path= at all, keeps the report-and-leave sentence.
+@test "config-lock mask prints no rm for a path outside plain printable ASCII" {
+  # The rm is printed only for a path of printable ASCII bytes with no single
+  # quote, backslash or backtick. Each path= value below, like no path= at
+  # all, keeps the report-and-leave sentence: non-ASCII, a byte that is not
+  # valid UTF-8, a backtick, a single quote, a backslash, a newline and DEL.
   local flag wire line1 n
   for flag in false true; do
     n=0
@@ -54,12 +35,16 @@ CASES
       [ "If it refuses again${line1##*If it refuses again}" = 'If it refuses again, it is a real file: report its path to the user and leave it in place.' ]
       n=$((n + 1))
     done <<'CASES'
+/r/Dév/.git/config.lock
+$'/r/caf\351/.git/config.lock'
+/r/a\`b/.git/config.lock
 /r/it\'s/.git/config.lock
 /r/a\\b/.git/config.lock
 $'/r/a\nb/.git/config.lock'
 $'/r/a\177b/.git/config.lock'
 CASES
-    [ "$n" -eq 4 ]
+    # A loop that read no case would have asserted nothing.
+    [ "$n" -eq 7 ]
   done
 }
 
