@@ -66,7 +66,8 @@ lock its holder has since released, and retries with
 asserts no sandbox artefact. `mask` asserts none either: it says the lock has
 the shape of a sandbox mask and most likely is one, and that a lock which
 refuses again after the re-run is a real file with that shape, to report to the
-user by path and not delete (the remedy for a leftover is an open design item).
+user by path and not delete. `config-lock` instead hands such a lock to the
+user, below.
 
 **Verdicts.** In the manual, [git-lock](../../manual/detectors.md#git-lock),
 with the flag's wording of the re-run and the retry. No outcome carries a
@@ -144,6 +145,20 @@ when the flag is absent or false, never to `gone` under flag true. It runs on
 the decoded value of `path=`, not on the wire form (the printed value, defined
 in [readonly-path.md](readonly-path.md), Probe); a value that decodes to no path
 keeps the re-run, or for `gone` the retry.
+
+**A lock that refuses again.** On Linux a sandbox that dies uncleanly can leave
+its mask of `.git/config.lock` on disk, an empty read-only file that fails every
+config write, sandboxed or not, until removed; a live mask has the same shape,
+and only `/proc/*/mountinfo` would tell them apart, which the hook does not
+read. So `mask`, given a decoded `path=`, tells the agent to leave the lock and
+hand the user `rm` of that path, in `printf %q` form, to run once they have
+checked that no sandboxed command is running in any session; the agent removes
+nothing, so D-7 holds. A value that decodes to no path keeps `git-lock`'s
+report-and-leave sentence. Recorded case: a 2026-11-13 session elsewhere, where
+an unsandboxed `just sync` met a nine-day-old empty mode-0444 `.git/config.lock`
+listed in no mountinfo, and `rm` cleared it. `git-lock` keeps report-and-leave:
+its paragraph's `GIT_INDEX_FILE` sentence leaves no room for the hand-off under
+FR-6's 400 characters.
 
 **Flag policy.** As `git-lock`.
 

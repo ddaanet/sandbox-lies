@@ -71,7 +71,7 @@ load helpers/verdicts
   line1=$(printf '%s\n' "$settings_text" | sed -n '1p')
   line2=$(printf '%s\n' "$settings_text" | sed -n '2p')
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  [ "$line1" = 'The `config.lock` behind this error has the shape of a sandbox mask and most likely is one. Write `.claude/settings.json` through the `update-config` skill. If it refuses again, it is a real file: report its path to the user and leave it in place.' ]
+  [ "$line1" = 'The `config.lock` behind this error has the shape of a sandbox mask and most likely is one. Write `.claude/settings.json` through the `update-config` skill. If it refuses again, leave it and tell the user it may be left over from a sandbox that died uncleanly, giving them `rm /r/.claude/settings.json.lock` to run once they have checked no sandboxed command is running in any session.' ]
   [ "$line2" = 'config.lock — shaped like a sandbox mask' ]
 
   # shellcheck disable=SC1090
@@ -79,7 +79,7 @@ load helpers/verdicts
     | ( . "$VERDICTS"; verdict_config_lock mask true ))
   line1=$(printf '%s\n' "$settings_text" | sed -n '1p')
   # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-  [ "$line1" = 'The `config.lock` behind this error has the shape of a sandbox mask and most likely is one. Write `.claude/settings.json` through the `update-config` skill. If it refuses again, it is a real file: report its path to the user and leave it in place.' ]
+  [ "$line1" = 'The `config.lock` behind this error has the shape of a sandbox mask and most likely is one. Write `.claude/settings.json` through the `update-config` skill. If it refuses again, leave it and tell the user it may be left over from a sandbox that died uncleanly, giving them `rm /r/.claude/settings.json.lock` to run once they have checked no sandboxed command is running in any session.' ]
 
   line1=$(verdict_text config_lock gone true | sed -n '1p')
   line2=$(verdict_text config_lock gone true | sed -n '2p')
@@ -113,6 +113,24 @@ load helpers/verdicts
   line2=$(printf '%s\n' "$settings_text" | sed -n '2p')
   [ "$line1" = 'No lock exists now; git cleaned it after the failure. Retry once.' ]
   [ "$line2" = 'config.lock — cleared after failure' ]
+}
+
+@test "config-lock mask hands a lock refused again to the user as an rm" {
+  # The rm is of the probe's path= in printf %q form, so it runs as printed
+  # on a spaced path; line 1 stays under FR-6's 400 characters without it.
+  # With no path= (above) the paragraph keeps its pathless sentence.
+  local flag path text
+  for path in '/r/a b/.git/config.lock' /r/.claude/settings.json.lock; do
+    for flag in false true; do
+      # shellcheck disable=SC1090 # $VERDICTS is lib/verdicts.sh, resolved above
+      text=$(printf 'path=%s\n' "$(printf %q "$path")" \
+        | ( . "$VERDICTS"; verdict_config_lock mask "$flag" ) | sed -n '1p')
+      # shellcheck disable=SC2016 # backticks are literal prose, not expansion
+      printf '%s' "$text" | grep -qF "If it refuses again, leave it and tell the user it may be left over from a sandbox that died uncleanly, giving them \`rm $(printf %q "$path")\` to run once they have checked no sandboxed command is running in any session."
+      text=${text/"$(printf %q "$path")"/}
+      [ "${#text}" -lt 400 ]
+    done
+  done
 }
 
 @test "verdict_git_lock held|orphan|unknown interpolate probe values" {

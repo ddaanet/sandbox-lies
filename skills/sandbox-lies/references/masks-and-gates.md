@@ -54,6 +54,14 @@ removing nothing. Asked to remove stray untracked files, read the tree with an
 unsandboxed `git status` first and report that there is nothing to remove; if
 masks show there with nothing running, restart Claude Code rather than delete.
 
+On Linux a sandbox that dies uncleanly can leave a mask on disk as an empty
+read-only regular file, not a mount: a leftover `.git/config.lock` fails every
+`git config` write, sandboxed or not, until it is removed. It looks the same as
+a live mask. When the write still refuses after the re-run the hook's
+`config-lock` paragraph asks for, leave the lock and give the user the `rm` that
+paragraph names, to run once they have checked no sandboxed command is running
+in any session.
+
 ## A porcelain gate reports DIRTY against a clean tree
 
 A mask the repository does not ignore is reported as a `??` line whatever else

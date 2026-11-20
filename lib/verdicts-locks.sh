@@ -64,7 +64,7 @@ verdict_config_lock() {
       else
         act=$(_lock_rerun "$flag")
       fi
-      printf '%s\n' "The \`config.lock\` behind this error has the shape of a sandbox mask and most likely is one. ${act} If it refuses again, it is a real file: report its path to the user and leave it in place."
+      printf '%s\n' "The \`config.lock\` behind this error has the shape of a sandbox mask and most likely is one. ${act} $(_config_lock_refused_again)"
       printf '%s\n' 'config.lock — shaped like a sandbox mask'
       ;;
     gone)
@@ -107,6 +107,24 @@ _config_lock_is_settings() {
     */.claude/settings.json.lock) return 0 ;;
     *) return 1 ;;
   esac
+}
+
+# `_config_lock_refused_again` — after _config_lock_is_settings, which leaves
+# the decoded path in _verdict_path_raw: the mask paragraph's closing
+# sentence. With a path it hands a lock that refuses the re-run to the user
+# as a possible leftover of a sandbox that died uncleanly, with `rm` of the
+# path in printf %q form under LC_ALL=C, so a blank, quote or control byte
+# stays one bash word; a backtick in the path still closes the code span
+# early, as in verdict_readonly_path. With none, no command is printed.
+# shellcheck disable=SC2016 # backticks are literal prose, not expansion
+_config_lock_refused_again() {
+  local cmd
+  if [ -z "$_verdict_path_raw" ]; then
+    printf 'If it refuses again, it is a real file: report its path to the user and leave it in place.'
+    return 0
+  fi
+  cmd=$(LC_ALL=C; printf 'rm %q' "$_verdict_path_raw")
+  printf 'If it refuses again, leave it and tell the user it may be left over from a sandbox that died uncleanly, giving them `%s` to run once they have checked no sandboxed command is running in any session.' "$cmd"
 }
 
 # shellcheck disable=SC2016 # backticks are literal prose, not expansion
