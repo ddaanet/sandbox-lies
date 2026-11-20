@@ -111,20 +111,25 @@ _config_lock_is_settings() {
 
 # `_config_lock_refused_again` — after _config_lock_is_settings, which leaves
 # the decoded path in _verdict_path_raw: the mask paragraph's closing
-# sentence. With a path it hands a lock that refuses the re-run to the user
-# as a possible leftover of a sandbox that died uncleanly, with `rm` of the
-# path in printf %q form under LC_ALL=C, so a blank, quote or control byte
-# stays one bash word; a backtick in the path still closes the code span
-# early, as in verdict_readonly_path. With none, no command is printed.
+# sentence. It hands a lock that refuses the re-run to the user as a possible
+# leftover of a sandbox that died uncleanly, with `rm` of the path in single
+# quotes. The user pastes that into their own shell, and a single-quoted word
+# reads the same in bash, zsh, dash and fish only when it holds no single
+# quote, no backslash (fish reads one as an escape there) and no control
+# byte: a path holding any of them, like no path at all, gets no command and
+# keeps git-lock's report-and-leave sentence. A backtick in the path still
+# closes the code span early, as in verdict_readonly_path.
 # shellcheck disable=SC2016 # backticks are literal prose, not expansion
 _config_lock_refused_again() {
-  local cmd
-  if [ -z "$_verdict_path_raw" ]; then
+  local path=$_verdict_path_raw
+  case "$path" in
+    *\'* | *\\*) path='' ;;
+  esac
+  if [ -z "$path" ] || _verdict_has_control "$path"; then
     printf 'If it refuses again, it is a real file: report its path to the user and leave it in place.'
     return 0
   fi
-  cmd=$(LC_ALL=C; printf 'rm %q' "$_verdict_path_raw")
-  printf 'If it refuses again, leave it and tell the user it may be left over from a sandbox that died uncleanly, giving them `%s` to run once they have checked no sandboxed command is running in any session.' "$cmd"
+  printf 'If it refuses again, leave it and tell the user it may be left over from a sandbox that died uncleanly, giving them `rm '\''%s'\''` to run once they have checked no sandboxed command is running in any session.' "$path"
 }
 
 # shellcheck disable=SC2016 # backticks are literal prose, not expansion

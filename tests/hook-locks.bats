@@ -214,7 +214,7 @@ setup() {
     printf '%s' "$ctx" | grep -qF -- "$rerun"
     assert_lacks "$ctx" "$other"
     # shellcheck disable=SC2016 # backticks are literal prose, not expansion
-    printf '%s' "$ctx" | grep -qF 'giving them `rm /r/.git/config.lock` to run'
+    printf '%s' "$ctx" | grep -qF 'giving them `rm '\''/r/.git/config.lock'\''` to run'
 
     rm -f "$PROBE_CALLED"
     stub_probe_kv config_lock mask 'path=/r/.claude/settings.json.lock'

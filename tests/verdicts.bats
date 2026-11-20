@@ -196,8 +196,11 @@ load helpers/verdicts
   all=$(all_verdict_text)
   # An empty verdict set must fail here, not read as vacuously clean.
   [ -n "$(printf '%s' "$all" | tr -d '[:space:]')" ]
-  # D-7: the one sanctioned "delete" (detectors.md's phantom-chardev
-  # verdict, "every add, delete and report") is stripped before checking.
+  # D-7, over the rows as called here, with no probe path: the word "delete"
+  # in detectors.md's phantom-chardev verdict ("every add, delete and
+  # report") instructs nothing and is stripped before checking. The `rm`
+  # config-lock's mask verdict hands the user needs a path, so it is not in
+  # this text; tests/verdicts-locks-handoff.bats holds it.
   phrase="add, delete and report"
   stripped=$(printf '%s' "$all" | sed "s/${phrase}//g")
   # `rm ` only as a word: "confirm " and "form " are not instructions. Status

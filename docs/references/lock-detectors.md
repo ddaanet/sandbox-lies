@@ -151,14 +151,18 @@ its mask of `.git/config.lock` on disk, an empty read-only file that fails every
 config write, sandboxed or not, until removed; a live mask has the same shape,
 and only `/proc/*/mountinfo` would tell them apart, which the hook does not
 read. So `mask`, given a decoded `path=`, tells the agent to leave the lock and
-hand the user `rm` of that path, in `printf %q` form, to run once they have
-checked that no sandboxed command is running in any session; the agent removes
-nothing, so D-7 holds. A value that decodes to no path keeps `git-lock`'s
-report-and-leave sentence. Recorded case: a 2026-11-13 session elsewhere, where
-an unsandboxed `just sync` met a nine-day-old empty mode-0444 `.git/config.lock`
-listed in no mountinfo, and `rm` cleared it. `git-lock` keeps report-and-leave:
-its paragraph's `GIT_INDEX_FILE` sentence leaves no room for the hand-off under
-FR-6's 400 characters.
+hand the user `rm` of that path, to run once they have checked that no sandboxed
+command is running in any session. This is D-7's one exception: the `rm` is
+handed to the user, and the agent is told to remove nothing. The user pastes the
+command into their own shell, so the path is printed in single quotes, a form
+bash, zsh, dash and fish read alike as long as it holds no single quote, no
+backslash (fish reads one as an escape there) and no control byte. A path
+holding any of those, or a value that decodes to no path, gets no `rm` and keeps
+`git-lock`'s report-and-leave sentence. Recorded case: a 2026-11-13 session
+elsewhere, where an unsandboxed `just sync` met a nine-day-old empty mode-0444
+`.git/config.lock` listed in no mountinfo, and `rm` cleared it. `git-lock` keeps
+report-and-leave: its paragraph's `GIT_INDEX_FILE` sentence leaves no room for
+the hand-off under FR-6's 400 characters.
 
 **Flag policy.** As `git-lock`.
 

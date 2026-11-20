@@ -22,9 +22,9 @@ behavioural claim from this hub that a node does not carry.
 
 - **Do not re-litigate:** output annotation over command matching (D-1); hooks
   do not block or rewrite (D-2); exit status is not a gate (D-4); the skill
-  lives here, not in `craft` (D-9); no verdict instructs a removal (D-7);
-  retirement is immediate per section (D-11); the script decides conditions
-  (D-17).
+  lives here, not in `craft` (D-9); no verdict tells the agent to remove
+  anything, though one hands the user an `rm` (D-7); retirement is immediate per
+  section (D-11); the script decides conditions (D-17).
 
 Status legend — `Done`: implemented and pinned by a test or a gate that
 re-checks it on every commit. `Done (prose)`: instructions with nothing
@@ -95,11 +95,12 @@ Done.
 **FR-6 — Verdict text.** Each verdict is a short paragraph of acts the agent
 performs, under 400 characters before a probe value (a path, a pid) is
 interpolated, stating only the acts the script found apply (D-17), and no
-verdict instructs removing anything (D-7). Verdicts compose in catalogue order;
-the two `phantom-*` listing verdicts share one paragraph when both fire, and a
-paragraph that would push `additionalContext` past 2 KB is dropped while its
-human line is kept. The human line on `systemMessage` is one lowercase clause.
-No verdict quotes a diagnostic together with its follow-on sentence. Done.
+verdict tells the agent to remove anything, one handing the user an `rm` (D-7).
+Verdicts compose in catalogue order; the two `phantom-*` listing verdicts share
+one paragraph when both fire, and a paragraph that would push
+`additionalContext` past 2 KB is dropped while its human line is kept. The human
+line on `systemMessage` is one lowercase clause. No verdict quotes a diagnostic
+together with its follow-on sentence. Done.
 
 **FR-7 — Detector catalogue.** Ten detectors, in
 [references/detectors.md](references/detectors.md): five measured and shipped
@@ -242,8 +243,10 @@ pilot's own reports echo the strings behind a `> ` marker.
 probe is proved once live before it ships. Argued in
 [references/hook.md](references/hook.md).
 
-**D-7 — Verdict wording follows the directive rules.** No verdict instructs a
-removal; `additionalContext` is a directive channel, so imperative acts are
+**D-7 — Verdict wording follows the directive rules.** No verdict tells the
+agent to remove anything. The one exception: a verdict may hand the user an `rm`
+of a lock that refused the re-run, the agent leaving it (`config-lock`'s
+`mask`). `additionalContext` is a directive channel, so imperative acts are
 correct there. Argued in
 [references/verdict-wording.md](references/verdict-wording.md).
 
