@@ -36,12 +36,29 @@ touch_file() {
   printf '\n' >>"$GATE_TREE/$1"
 }
 
-# touch_file <path>, run both gates, and expect_ran <docs> <code>.
+# touch_file <path>, run the gates not given as -, and expect_ran <docs> <code>.
+# A loop whose edits all leave one gate cached runs that gate once after the
+# last of them, with expect_still_cached, rather than once an edit: every edit
+# appends, so a hash none of them moved is one no single edit moved.
 edit_expecting() {
-  local path="$1"
+  local path="$1" gates=()
   touch_file "$path"
-  run_gates
+  [ "$2" = - ] || gates+=(docs)
+  [ "$3" = - ] || gates+=(code)
+  run_gates "${gates[@]}"
   expect_ran "$2" "$3" || { echo "edited: $path" >&2; return 1; }
+}
+
+# expect_still_cached <docs|code> <path>...: the gate, last run before the
+# edits to the paths, prints "cached".
+expect_still_cached() {
+  local gate="$1"
+  shift
+  run_gates "$gate"
+  if [ "$gate" = docs ]; then expect_ran 0 -; else expect_ran - 0; fi || {
+    printf 'edited: %s\n' "$@" >&2
+    return 1
+  }
 }
 
 # The first tracked file of the gate tree's top-level directory $1 that only
@@ -68,6 +85,14 @@ top_level_entries() {
 
 setup_file() {
   make_gate_tree "$BATS_FILE_TMPDIR/built"
+  # Version commands no case asserts on, run on every gate: GNU parallel's,
+  # which `just _bats` runs to pick -j for the spy, is a perl start-up of a
+  # quarter second each gate-code run (the stub keeps the GNU branch), and
+  # bats's, a tool line of both hashes, a bash start-up of a few hundredths
+  # each hash (the gates run bats only through the spy).
+  printf '#!/bin/sh\necho "GNU parallel (stub)"\n' >"$STUBS/parallel"
+  printf '#!/bin/sh\necho "Bats (stub)"\n' >"$STUBS/bats"
+  chmod 755 "$STUBS/parallel" "$STUBS/bats"
   run_gates
   expect_ran 1 1
 }
@@ -81,12 +106,13 @@ setup() {
 }
 
 @test "a file in a code dir reruns gate-code alone" {
-  local path
-  for path in lib/verdicts.sh hooks/annotate.sh scripts/run-bats-under.sh \
-    bin/sandbox-lies-recover tests/matchers.bats tests/helpers/hook.bash \
-    tests/extract-fixtures.py; do
-    edit_expecting "$path" 0 1
+  local path paths=(lib/verdicts.sh hooks/annotate.sh scripts/run-bats-under.sh
+    bin/sandbox-lies-recover tests/matchers.bats tests/helpers/hook.bash
+    tests/extract-fixtures.py)
+  for path in "${paths[@]}"; do
+    edit_expecting "$path" - 1
   done
+  expect_still_cached docs "${paths[@]}"
 }
 
 @test "the code files gate-docs's checks run and the frozen plans files gate-code reads rerun both gates" {
@@ -106,29 +132,41 @@ setup() {
 }
 
 @test "every tracked top-level directory that is not a code dir reruns gate-docs alone" {
-  local top sample seen=0
+  local top sample seen=0 samples=()
   while IFS= read -r -d '' top; do
     is_code_path "$top/" && continue
     [ -d "$GATE_TREE/$top" ] || continue
     sample=$(first_file_under "$top")
-    edit_expecting "$sample" 1 0
+    edit_expecting "$sample" 1 -
+    samples+=("$sample")
     seen=$((seen + 1))
   done < <(top_level_entries)
+  expect_still_cached code "${samples[@]}"
   # plans/ and the dot-directories among them: a sample, not a hand list.
   [ "$seen" -ge 5 ]
 }
 
 @test "every tracked root file reruns gate-docs alone, the justfile both, TASK.md and TODO.md neither" {
-  local top seen=0
+  local top seen=0 docs=() neither=() justfile=
   while IFS= read -r -d '' top; do
     [ -f "$GATE_TREE/$top" ] || continue
     case "$top" in
-      justfile) edit_expecting "$top" 1 1 ;;
-      TASK.md | TODO.md) edit_expecting "$top" 0 0 ;;
-      *) edit_expecting "$top" 1 0 ;;
+      justfile) justfile=$top ;;
+      TASK.md | TODO.md) neither+=("$top") ;;
+      *)
+        edit_expecting "$top" 1 -
+        docs+=("$top")
+        ;;
     esac
     seen=$((seen + 1))
   done < <(top_level_entries)
+  # After the gate-docs runs, which would otherwise absorb their edits, and
+  # before the justfile reruns gate-code: one run of both gates covers them and
+  # every file above.
+  for top in "${neither[@]}"; do touch_file "$top"; done
+  run_gates
+  expect_ran 0 0 || { printf 'edited: %s\n' "${docs[@]}" "${neither[@]}" >&2; return 1; }
+  [ -z "$justfile" ] || edit_expecting "$justfile" 1 1
   [ "$seen" -ge 10 ]
 }
 

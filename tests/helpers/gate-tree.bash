@@ -131,17 +131,20 @@ spy_code_runs() {
   echo $(($(spy_runs) - $(spy_docs_runs)))
 }
 
-# run_gates: gate-docs then gate-code directly, the uncached checks left out.
-# Sets RAN_DOCS and RAN_CODE to 1 for a gate that ran its checks and 0 for one
-# that printed "cached", and fails when the printed line and the spy's log
+# run_gates [docs|code]...: the gates named, gate-docs then gate-code by
+# default, run directly, the uncached checks left out. Sets RAN_DOCS and
+# RAN_CODE to 1 for a gate that ran its checks, 0 for one that printed "cached"
+# and - for one not named, and fails when the printed line and the spy's log
 # disagree, so a gate cannot be taken for having run on its say-so.
 run_gates() {
   local gate out docs_before code_before
+  [ "$#" -gt 0 ] || set -- docs code
   docs_before=$(spy_docs_runs)
   code_before=$(spy_code_runs)
-  RAN_DOCS=0
-  RAN_CODE=0
-  for gate in docs code; do
+  RAN_DOCS=-
+  RAN_CODE=-
+  for gate in "$@"; do
+    if [ "$gate" = docs ]; then RAN_DOCS=0; else RAN_CODE=0; fi
     out=$(cd "$GATE_TREE" && PATH="$STUBS:$PATH" env -u PLUGIN_DEV_GATE_FORCE \
       -u PLUGIN_DEV_GATE_DIR just "gate-$gate" 2>&1) || {
       printf '%s\n' "$out" >&2
@@ -155,13 +158,13 @@ run_gates() {
       *) printf 'unexpected gate-%s output: %s\n' "$gate" "$out" >&2; return 1 ;;
     esac
   done
-  [ "$(spy_docs_runs)" -eq $((docs_before + RAN_DOCS)) ]
-  [ "$(spy_code_runs)" -eq $((code_before + RAN_CODE)) ]
+  [ "$(spy_docs_runs)" -eq $((docs_before + ${RAN_DOCS/-/0})) ]
+  [ "$(spy_code_runs)" -eq $((code_before + ${RAN_CODE/-/0})) ]
 }
 
-# expect_ran <docs> <code>: what the last run_gates ran, 1 or 0 each.
+# expect_ran <docs> <code>: what the last run_gates ran, 1, 0 or - each.
 expect_ran() {
-  if [ "$RAN_DOCS" -ne "$1" ] || [ "$RAN_CODE" -ne "$2" ]; then
+  if [ "$RAN_DOCS" != "$1" ] || [ "$RAN_CODE" != "$2" ]; then
     printf 'gate-docs ran=%s (want %s), gate-code ran=%s (want %s)\n' \
       "$RAN_DOCS" "$1" "$RAN_CODE" "$2" >&2
     return 1
