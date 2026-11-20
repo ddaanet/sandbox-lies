@@ -20,14 +20,18 @@ load helpers/git-env
 load helpers/gate-tree
 load helpers/sweep
 
-# One build for the file, no gate run in it: each case's copy holds no
-# sentinel, so its first run_gate is a cold one.
+# One build for the file, kept cold: a case cloning "built" holds no sentinel,
+# so its first run_gate is a cold one and the spy shows whether either gate
+# ran. A copy of it, "warm", is gated once here through the real precommit, so
+# the cases about a cached pass clone a tree both gates have passed on and pay
+# only for the run after their edit; a cold pass that ran neither gate, or
+# either short of its checks, fails every case here.
 setup_file() {
-  make_gate_tree "$BATS_FILE_TMPDIR/built"
-}
-
-@test "editing TODO.md or TASK.md leaves both gates cached; a root markdown file reruns gate-docs alone" {
-  clone_gate_tree "$BATS_FILE_TMPDIR/built"
+  local built="$BATS_FILE_TMPDIR/built" warm="$BATS_FILE_TMPDIR/warm"
+  make_gate_tree "$built"
+  mkdir -p "$warm"
+  cp -R "$built/gate-tree" "$built/stubs" "$built/bats-runs" "$warm/"
+  GATE_TREE="$warm/gate-tree" STUBS="$warm/stubs" SPY_LOG="$warm/bats-runs"
   run_gate
   [ "$status" -eq 0 ] || { echo "$output" >&2; return 1; }
   [[ "$output" == *"gate-docs passed:"* ]] || false
@@ -35,22 +39,35 @@ setup_file() {
   [[ "$output" == *"precommit passed: check-refs, check-size, check-frontmatter, check-modes, task-files, gate-docs, gate-code"* ]] || false
   [ "$(spy_docs_runs)" -eq 1 ]
   [ "$(spy_code_runs)" -eq 1 ]
+}
 
-  local f
-  for f in TODO.md TASK.md; do
-    printf 'one more line\n' >>"$GATE_TREE/$f"
-    run_gate
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"gate-docs: cached"* ]] || false
-    [[ "$output" == *"gate-code: cached"* ]] || false
-    [[ "$output" == *"task-files passed"* ]] || false
-    [[ "$output" == *"precommit passed:"* ]] || false
-    [ "$(spy_runs)" -eq 2 ]
-  done
+# A private copy of the warm tree; one that lost its sentinels or spy log would
+# run a gate the case expects cached, so it fails here instead.
+clone_warm() {
+  clone_gate_tree "$BATS_FILE_TMPDIR/warm"
+  expect_clone_intact "$BATS_FILE_TMPDIR/warm"
+}
 
-  # Control: an edit to another root markdown file reruns gate-docs, or the
-  # assertions above would hold of gates that never rerun, and leaves gate-code
-  # cached.
+# Both files in one edit and one run: a gate whose hash took in either would
+# rerun and print no "cached".
+@test "editing TODO.md and TASK.md leaves both gates cached and task-files still runs" {
+  clone_warm
+  printf 'one more line\n' >>"$GATE_TREE/TODO.md"
+  printf 'one more line\n' >>"$GATE_TREE/TASK.md"
+  run_gate
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"gate-docs: cached"* ]] || false
+  [[ "$output" == *"gate-code: cached"* ]] || false
+  [[ "$output" == *"task-files passed"* ]] || false
+  [[ "$output" == *"precommit passed:"* ]] || false
+  [ "$(spy_runs)" -eq 2 ]
+}
+
+# Control, in a case of its own so it runs beside the one above under
+# `bats -j`: an edit to another root markdown file reruns gate-docs, or the
+# case above would hold of gates that never rerun, and leaves gate-code cached.
+@test "editing a root markdown file reruns gate-docs alone" {
+  clone_warm
   printf 'one more line\n' >>"$GATE_TREE/README.md"
   run_gate
   [ "$status" -eq 0 ]
@@ -85,10 +102,7 @@ setup_file() {
 }
 
 @test "precommit refuses a TODO.md past the byte cap after a cached pass" {
-  clone_gate_tree "$BATS_FILE_TMPDIR/built"
-  run_gate
-  [ "$status" -eq 0 ] || { echo "$output" >&2; return 1; }
-  [ "$(spy_runs)" -eq 2 ]
+  clone_warm
 
   # Built at run time: this file stays under the cap itself. A check inside a
   # guarded body would not see this edit: the gates' hashes exclude TODO.md.
