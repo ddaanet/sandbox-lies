@@ -1,10 +1,11 @@
 #!/usr/bin/env bats
 # lib/probes.sh: a relative lock path resolved against a directory the Bash
-# command names (`cd <dir>`, `git -C <dir>`) when a lock exists there, so a
-# command that runs git in another repository has its lock stat'ed in that
-# repository, not in the one holding the payload cwd. Every case builds repo A
-# (the cwd, no lock) and repo B (an empty, writable `.git/config.lock`), so a
-# probe resolving against the cwd answers gone with A's path. Opened as a
+# command names (`cd <dir>`, `git -C <dir>`) when no lock exists under the
+# cwd's repository and one exists there, so a command that runs git in another
+# repository has its lock stat'ed in that repository. Every case builds repo A
+# (the cwd, no lock unless the case adds one) and repo B (an empty, writable
+# `.git/config.lock`), so a probe resolving against the cwd answers gone with
+# A's path. Opened as a
 # separate file: tests/probes-config.bats stands at 410 lines.
 
 ROOT="${BATS_TEST_DIRNAME}/.."
