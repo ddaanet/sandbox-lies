@@ -89,7 +89,7 @@ probe_git_lock() {
     local text path
     text=$(cat)
     path=$(printf '%s\n' "$text" | _probe_lock_path)
-    path=$(_probe_resolve_path "$path" "${2-}")
+    path=$(_probe_resolve_path "$path" "${2-}" "${3-}")
     _probe_lock_at "$path"
 }
 
@@ -104,7 +104,7 @@ probe_config_lock() {
     if [ -n "$path" ]; then
         path="$path.lock"
     fi
-    path=$(_probe_resolve_path "$path" "${2-}")
+    path=$(_probe_resolve_path "$path" "${2-}" "${3-}")
     _probe_lock_at "$path"
 }
 

@@ -25,11 +25,18 @@ failures were piped through `tail` and report 0.
 **Probe.** `stat` the lock path named in the error — git prints it absolute; a
 relative one resolves against the nearest ancestor of the payload `cwd` (itself
 included) holding a `.git` directory, else against the `cwd`, and a missing or
-empty `cwd` falls back to the probe's own working directory, never `/` — then a
-holder check: `lsof -t`, else `fuser`. Size and age come from a portable `stat`
-form (BSD and GNU differ). Every outcome also prints the resolved lock path as
-`path=` in `printf %q` form, so a newline in it is escaped and cannot split the
-line or forge a key line; an empty path prints no `path=` line.
+empty `cwd` falls back to the probe's own working directory, never `/`. A
+directory the Bash command names as `cd <dir>` or `git -C <dir>` (one literal
+word, quoted or bare; a relative one taken from the `cwd`, a leading `~` from
+`HOME`) resolves the same way, and the last such directory under which the lock
+exists wins over the `cwd`, since the command may have run git in another
+repository; a lock under none of them keeps the `cwd` result. A target in a
+variable or a substitution names no directory, nor does a recipe or script that
+runs git elsewhere. Then a holder check: `lsof -t`, else `fuser`. Size and age
+come from a portable `stat` form (BSD and GNU differ). Every outcome also prints
+the resolved lock path as `path=` in `printf %q` form, so a newline in it is
+escaped and cannot split the line or forge a key line; an empty path prints no
+`path=` line.
 
 | outcome | condition |
 |---|---|
@@ -133,7 +140,8 @@ report echoes the same text behind a `> ` marker.
 `.lock`. Git prints that path relative to the main worktree's top-level even
 from a subdirectory, and absolute from a linked worktree or a submodule, which
 is why a relative path resolves from the nearest `.git` directory rather than
-from the `cwd`. Note `.git/config.lock` is itself in the masked set, so the
+from the `cwd`, or from a `cd` or `git -C` directory in the command, as for
+`git-lock`. Note `.git/config.lock` is itself in the masked set, so the
 sandboxed write fails on a bind-mount, not on a file.
 
 **Verdicts.** In the manual,
