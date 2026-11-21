@@ -16,7 +16,6 @@ bats_require_minimum_version 1.5.0
 
 load helpers/bsd-stubs
 load helpers/verdicts
-load helpers/locale
 
 # path_verdict <outcome> <wire> — verdict_readonly_path's two-line text over a
 # probe stdin holding the one path=<wire> line.

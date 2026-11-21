@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Shared by tests/hook-cap.bats, tests/probes.bats,
-# tests/probes-lock-newline.bats, tests/probes-readonly-tokenize-time.bats,
-# tests/verdicts-readonly-path.bats and tests/verdicts-path-read.bats: the cases
-# that need a UTF-8 locale.
+# tests/probes-lock-newline.bats, tests/probes-readonly-tokenize-time.bats and
+# tests/verdicts-path-read.bats: the cases that need a UTF-8 locale.
 # Its own file because tests/hook-cap.bats loads helpers/hook, not
 # helpers/probes, so the function has no home that all of them already load.
 
