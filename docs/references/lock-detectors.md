@@ -28,15 +28,16 @@ included) holding a `.git` directory, else against the `cwd`, and a missing or
 empty `cwd` falls back to the probe's own working directory, never `/`. A
 directory the Bash command names as `cd <dir>` or `git -C <dir>` (one literal
 word, quoted or bare; a relative one taken from the `cwd`, a leading `~` from
-`HOME`) resolves the same way, and the last such directory under which the lock
-exists wins over the `cwd`, since the command may have run git in another
-repository; a lock under none of them keeps the `cwd` result. A target in a
-variable or a substitution names no directory, nor does a recipe or script that
-runs git elsewhere. Then a holder check: `lsof -t`, else `fuser`. Size and age
-come from a portable `stat` form (BSD and GNU differ). Every outcome also prints
-the resolved lock path as `path=` in `printf %q` form, so a newline in it is
-escaped and cannot split the line or forge a key line; an empty path prints no
-`path=` line.
+`HOME`) resolves the same way when no lock exists at the `cwd` result, and the
+last such directory under which the lock exists wins, since the command may have
+run git in another repository; a lock at the `cwd` result always stands, and a
+lock under none of them keeps it. Only the first `-C` after `git` is read. A
+target in a variable or a substitution names no directory, nor does a recipe or
+script that runs git elsewhere. Then a holder check: `lsof -t`, else `fuser`.
+Size and age come from a portable `stat` form (BSD and GNU differ). Every
+outcome also prints the resolved lock path as `path=` in `printf %q` form, so a
+newline in it is escaped and cannot split the line or forge a key line; an empty
+path prints no `path=` line.
 
 | outcome | condition |
 |---|---|

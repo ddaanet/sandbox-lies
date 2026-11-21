@@ -58,9 +58,9 @@ cd_other_repo_case() {
   cd_other_repo_case
 }
 
-@test "cd into another repository, with BSD sed, stat and wc" {
+@test "cd into another repository, with BSD sed, stat, wc and grep" {
   local bsd="$BATS_TEST_TMPDIR/bsdtools"
-  make_bsd_stubs "$bsd" sed stat wc
+  make_bsd_stubs "$bsd" sed stat wc grep
   PATH="$bsd:$PATH" cd_other_repo_case
 }
 
@@ -139,6 +139,38 @@ cd_other_repo_case() {
   : >"$c/.git/config.lock"
   run_config "cd $B && git remote add origin x; cd $c && git status"
   assert_lock_at "$c/.git/config.lock"
+}
+
+# A cwd lock that exists is the one the error most likely named: a lock left
+# in a directory the command also names does not displace it.
+@test "an existing cwd lock stands over a candidate's" {
+  : >"$A/.git/config.lock"
+  run_config "cd $B && git remote add origin x"
+  assert_lock_at "$A/.git/config.lock"
+}
+
+# A single separator byte between two items is both the first one's follower
+# and the second one's boundary.
+@test "items chained by one separator byte each name a candidate" {
+  local c="$BATS_TEST_TMPDIR/c"
+  mkdir -p "$c/.git"
+  run_config "cd $c;cd $B&&git remote add origin x"
+  assert_lock_at "$B/.git/config.lock"
+  run_config "cd $c;git -C $B config x y"
+  assert_lock_at "$B/.git/config.lock"
+}
+
+# The scan is linear in the command: a large heredoc ahead of the cd took the
+# former per-match prefix strip past the hook's 10 s timeout. The bound is
+# whole seconds, loose against load, and far under the quadratic time.
+@test "a cd after an 80 KB heredoc resolves within 3 s" {
+  local body cmd start
+  body=$(head -c 80000 /dev/zero | tr '\0' x)
+  cmd=$(printf 'cat >f <<EOF\n%s\nEOF\ncd %s && git config x y' "$body" "$B")
+  start=$SECONDS
+  run_config "$cmd"
+  assert_lock_at "$B/.git/config.lock"
+  [ $((SECONDS - start)) -lt 3 ]
 }
 
 @test "no candidate holding a lock keeps the cwd resolution" {

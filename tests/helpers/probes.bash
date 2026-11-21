@@ -218,7 +218,7 @@ run_probe_command() {
 tools_only_path() {
   local dir="$1" tool
   mkdir -p "$dir"
-  for tool in cat sed head stat wc tr date mktemp; do
+  for tool in cat sed head stat wc tr date mktemp grep; do
     ln -s "$(command -v "$tool")" "$dir/$tool"
   done
 }

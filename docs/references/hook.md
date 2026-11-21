@@ -98,12 +98,12 @@ a hook that otherwise costs nothing.
 [manual](../../manual/hook.md#where-a-check-looks). A lock probe takes its path
 from the error text and resolves a relative one from the nearest `.git`
 directory, not the payload's `cwd`, because git prints it from the main
-worktree's top-level; a `cd` or `git -C` directory in the command takes over
-when the lock exists there. Phantom masks sit under the sandboxed call's working
-directory: the session's project root, or a subdirectory a persisted `cd` left
-the Bash tool in (seen on CC 2.1.281), which is why the `phantom-*` verdicts
-name no location. The `readonly-path` walk onto the worktree top is in
-[readonly-path.md](readonly-path.md), Probe.
+worktree's top-level; when no lock exists there, a `cd` or `git -C` directory in
+the command takes over if the lock exists under it. Phantom masks sit under the
+sandboxed call's working directory: the session's project root, or a
+subdirectory a persisted `cd` left the Bash tool in (seen on CC 2.1.281), which
+is why the `phantom-*` verdicts name no location. The `readonly-path` walk onto
+the worktree top is in [readonly-path.md](readonly-path.md), Probe.
 
 **Failures arrive on `PostToolUseFailure` (D-13).** In the CC 2.1.280 bundle the
 Bash tool raises on a non-zero exit, and the tool-failure path dispatches

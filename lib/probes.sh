@@ -2,9 +2,9 @@
 # lib/probes.sh — probe_<verdict> functions the hook runs outside the sandbox
 # (A-3 contract, the plugin repository's docs/design.md FR-4): each probe reads the Bash tool result
 # text on stdin, takes the sandbox flag as $1, the payload cwd as $2 and the
-# payload's `tool_input.command` as $3 (read by probe_readonly_path only), and
-# prints an outcome token on its first line followed by key=value lines; exit
-# 0. The key lines per probe:
+# payload's `tool_input.command` as $3 (read by probe_readonly_path and the
+# two lock probes), and prints an outcome token on its first line followed by
+# key=value lines; exit 0. The key lines per probe:
 # - probe_git_lock, probe_config_lock: pid=, bytes=, age=, path=;
 # - probe_readonly_path (lib/probes-readonly.sh): path= (none on nopath),
 #   then on writable and nopath claudeonly=, configonly=, readfile=, merge=,

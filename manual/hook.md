@@ -43,10 +43,10 @@ nobody can write to the same way.
 - A lock path that git printed relative is taken from the nearest directory at
   or above the call's working directory that holds a `.git` directory, else from
   that working directory; with none known, from the hook's own, never `/`. When
-  the command names a directory in a `cd` or a `git -C` and the lock exists
-  under that directory's repository, the lock is taken from there instead, the
-  last such directory winning; a directory held in a variable, or a recipe that
-  runs git elsewhere, is not seen.
+  no lock exists there but the command names a directory in a `cd` or a `git -C`
+  under whose repository the lock exists, the lock is taken from there instead,
+  the last such directory winning; a directory held in a variable, or a recipe
+  that runs git elsewhere, is not seen.
 - `readonly-path` joins a relative path onto the call's working directory,
   except when git reported a partially written checkout, whose paths are
   relative to the worktree's top-level.
