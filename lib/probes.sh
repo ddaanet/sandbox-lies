@@ -19,12 +19,16 @@
 # variable an error when a test sources this file directly.
 set -u
 
-# lib/probes.sh sources lib/probes-readonly.sh by a BASH_SOURCE-relative
-# path, so a caller that sources this file alone (the probes*.bats family)
-# still gets probe_readonly_path defined; hooks/annotate.sh needs no
-# separate source line for it. Sourcing an already-sourced
-# lib/probes-readonly.sh just redefines the same functions.
+# lib/probes.sh sources lib/probes-readonly.sh and lib/probes-resolve.sh by a
+# BASH_SOURCE-relative path, so a caller that sources this file alone (the
+# probes*.bats family) still gets probe_readonly_path and
+# _probe_resolve_path defined; hooks/annotate.sh needs no separate source
+# line for them. Sourcing an already-sourced one just redefines the same
+# functions.
 _probes_lib_dir=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd) || return 1
+# shellcheck disable=SC1091 # lib/ sits beside this file; path is dynamic
+. "$_probes_lib_dir/probes-resolve.sh" || return 1
+# lib/probes-readonly.sh unsets _probes_lib_dir, so it is sourced last.
 # shellcheck disable=SC1091 # lib/ sits beside this file; path is dynamic
 . "$_probes_lib_dir/probes-readonly.sh" || return 1
 unset _probes_lib_dir
@@ -271,49 +275,6 @@ _probe_lock_path() {
 _probe_config_lock_path() {
     LC_ALL=C sed -n 's/^error: could not lock config file \(.*\): File exists.*/\1/p' \
         | head -n 1
-}
-
-# Resolves <path> against a base directory: an absolute or empty <path>
-# prints unchanged. An empty one is not joined either, because joined it
-# would name the base itself, a directory the holder check would then read
-# as held by whatever sits in it. A relative <path> is joined onto the
-# nearest directory at or above the base holding a `.git` directory, else
-# onto the base unchanged. Git prints a relative lock path only from a
-# `.git` directory's top-level; from a linked worktree or a submodule, whose
-# `.git` is a file, it prints the path absolute, so a `.git` file is walked
-# past. The base is <cwd-arg> (the probe's own $2), or the probe's own
-# working directory when <cwd-arg> is missing or empty — never `/`; a
-# relative base is taken from that working directory too, so each step
-# drops one component of an absolute path and the walk ends at `/`, one
-# `[ -d ]` per ancestor and no process. Lexical, not canonical. Residuals: a
-# base reached through a symlink walks the link's parents, not the target's,
-# where git would find the top-level; a base inside a gitdir (bare, or
-# `.git` itself), where git prints paths relative to that gitdir, resolves
-# against an enclosing worktree when one exists.
-_probe_resolve_path() {
-    local base dir
-    case "$1" in
-        /* | '')
-            printf '%s\n' "$1"
-            return
-            ;;
-    esac
-    dir="${2:-$PWD}"
-    case "$dir" in
-        /*) ;;
-        *) dir="$PWD/$dir" ;;
-    esac
-    base="$dir"
-    while :; do
-        if [ -d "$dir/.git" ]; then
-            base="$dir"
-            break
-        fi
-        [ "$dir" = / ] && break
-        dir="${dir%/*}"
-        [ -n "$dir" ] || dir=/
-    done
-    printf '%s/%s\n' "${base%/}" "$1"
 }
 
 # Prints the pids holding <path> open as the holder tool prints them (lsof -t
