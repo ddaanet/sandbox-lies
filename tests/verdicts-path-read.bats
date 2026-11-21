@@ -13,27 +13,33 @@ load helpers/bsd-stubs
 load helpers/verdicts
 load helpers/locale
 
-# decode_seconds <locale> <wire> — wall seconds a fresh bash takes to source
-# lib/verdicts.sh and run _verdict_path_read on <wire>: the least of three
-# runs, so a loaded box (other sessions share it) inflates neither side of
-# the ratio. python3's perf_counter is the clock: bash 3.2 has no
+# decode_seconds <locale> <wire> — CPU seconds (user + system) a fresh bash
+# spends sourcing lib/verdicts.sh and running _verdict_path_read on <wire>: the
+# least of five runs. CPU time, not wall time: sibling suites share the cores
+# under `bats -j`, and a run descheduled for a while inflates wall time but not
+# CPU time. python3's resource module is the clock: bash 3.2 has no
 # EPOCHREALTIME and BSD date no %N.
 decode_seconds() {
   # shellcheck disable=SC2016 # the Python source holds $1/$2 for bash -c
   python3 -I -c '
-import os, subprocess, sys, time
+import os, resource, subprocess, sys
 env = dict(os.environ, LC_ALL=sys.argv[1])
 best = None
-for _ in range(3):
-    t0 = time.perf_counter()
+for _ in range(5):
+    r0 = resource.getrusage(resource.RUSAGE_CHILDREN)
     subprocess.run(["bash", "-c", ". \"$1\"; _verdict_path_read \"$2\"", "_", sys.argv[3], sys.argv[2]], env=env, check=True)
-    dt = time.perf_counter() - t0
+    r1 = resource.getrusage(resource.RUSAGE_CHILDREN)
+    dt = (r1.ru_utime - r0.ru_utime) + (r1.ru_stime - r0.ru_stime)
     best = dt if best is None else min(best, dt)
 print("%.4f" % best)
 ' "$1" "$2" "$VERDICTS"
 }
 
-# N is 300 CJK characters (900 octal escapes on the wire), 4N is 1200.
+# N is 300 CJK characters (900 octal escapes on the wire), 4N is 1200. Measured
+# on CPU time, 12 busy loops on 4 cores: the linear decoder gives a ratio of
+# 3.3 to 4.4 and the quadratic one it replaced (re-slicing the remaining body
+# per escape) 11 to 12.5, so the limit of 7 sits in the gap with margin both
+# ways.
 @test "_verdict_path_read time grows no faster than linearly in the escape count" {
   local loc wire_n wire_4n t_n t_4n ratio p_n p_4n
   loc=$(utf8_locale)
@@ -54,10 +60,10 @@ print("%.4f" % best)
 
   t_n=$(decode_seconds "$loc" "$wire_n")
   t_4n=$(decode_seconds "$loc" "$wire_4n")
-  # Linear is 4, quadratic 16. Process start-up only pulls the ratio down.
+  # Linear is 4, quadratic 16; start-up cost only pulls either ratio down.
   ratio=$(python3 -I -c 'import sys; print("%.2f" % (float(sys.argv[2]) / float(sys.argv[1])))' "$t_n" "$t_4n")
   printf 't(N)=%s s t(4N)=%s s ratio=%s\n' "$t_n" "$t_4n" "$ratio" >&2
-  python3 -I -c 'import sys; sys.exit(0 if float(sys.argv[1]) < 9 else 1)' "$ratio"
+  python3 -I -c 'import sys; sys.exit(0 if float(sys.argv[1]) < 7 else 1)' "$ratio"
 }
 
 @test "_verdict_path_read keeps a literal newline inside the quoted body" {
