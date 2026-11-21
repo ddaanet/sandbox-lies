@@ -31,8 +31,8 @@ length with no probe lines on stdin and runs `detect` over every verdict text
 expecting silence; `tests/verdicts-locks-flags.bats` asserts the D-17 flag
 wording for the lock verdicts, `tests/verdicts-readonly.bats` each
 `readonly-path` composition and its length, `tests/verdicts-readonly-path.bats`
-the `path=` decode and display rule; `tests/hook-cap.bats` asserts the 2 KB cap
-with stub paragraphs.
+the `path=` display rule, `tests/verdicts-path-read.bats` the decode;
+`tests/hook-cap.bats` asserts the 2 KB cap with stub paragraphs.
 
 **FR-7** — Where · pinned by: the reference's per-detector table ·
 `tests/matchers.bats` has a `fire-*` and a `quiet-*` fixture per shipped
