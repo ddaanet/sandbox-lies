@@ -119,7 +119,8 @@ authoring moments. Done.
 
 **FR-10 — Memory retirement, per section.** The commit that lands a detector or
 a skill section deletes the memory section it translates from
-`memory/ddaanet/sandbox-effects.md` (D-11).
+`memory/ddaanet/sandbox-effects.md` (D-11; the shared tier's cut follows the
+release).
 [Detail](references/requirement-details.md#fr-10--memory-retirement-per-section).
 Done (prose).
 
@@ -264,8 +265,11 @@ or of the dated pilot evidence from inside this repo annotates itself. Argued in
 section and the hook or skill text that replaces it never coexist: the commit
 that ships one deletes the other. Waiting for dogfooding would keep two sources
 of truth live, and the fixture suite plus the live reproduction are the evidence
-a detector works. Accepted tradeoff: a ddaanet repo without the plugin loses the
-fact before it gains the hook, until the plugin is released and installed there.
+a detector works. Exception: the shared memory tier is cut after the release
+rather than in the commit that ships the translation, since a ddaanet repo
+without the released plugin would lose the fact before it can install the
+replacement. Accepted tradeoff: the translation and the tier section coexist
+from that commit until the release.
 
 **D-12 — `jq` is a dependency.** Parsing the payload by hand in bash 3.2 is
 where hooks go wrong; the release toolkit's version guard already requires it.

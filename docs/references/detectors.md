@@ -300,7 +300,7 @@ true.
 
 Where each section of `memory/ddaanet/sandbox-effects.md` lands. Every section
 the plugin carries maps to a detector or the skill (FR-10); the file stays for
-the two that map nowhere.
+the one section that maps nowhere (zellij).
 
 | memory section | lands in |
 |---|---|
@@ -322,7 +322,7 @@ the two that map nowhere.
 | `ps` cannot see background tasks | skill |
 | `--resume` transcript never persisted | `resume-lost`; eval-harness consequence → skill |
 | zellij socket | stays in memory: `zellij-socket` is a candidate under D-15 |
-| phantom dotfiles that outlive their command (the leak) | stays in memory: no detector |
+| phantom dotfiles that outlive their command (the leak) | skill; no detector |
 | sandboxed `claude -p` drops `SessionStart` | skill |
 | sandbox setup fails | `seccomp-init` |
 | `/tmp` reads full | dropped — not a sandbox effect (design, rejected alternatives) |
