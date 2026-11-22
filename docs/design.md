@@ -25,8 +25,8 @@ make a behavioural claim from this hub that a node does not carry.
 - **Do not re-litigate:** output annotation over command matching (D-1); hooks
   do not block or rewrite (D-2); exit status is not a gate (D-4); the skill
   lives here, not in `craft` (D-9); no verdict tells the agent to remove
-  anything, though one hands the user an `rm` (D-7); retirement is immediate per
-  section (D-11); the script decides conditions (D-17).
+  anything, though one hands the user an `rm` (D-7); retirement is per section,
+  right after release (D-11); the script decides conditions (D-17).
 
 Status legend — `Done`: implemented and pinned by a test or a gate that
 re-checks it on every commit. `Done (prose)`: instructions with nothing
@@ -117,10 +117,9 @@ masks fire while an agent is *writing* something, not while reading output. That
 is the plugin's one skill, `skills/sandbox-lies/SKILL.md`, triggered on those
 authoring moments. Done.
 
-**FR-10 — Memory retirement, per section.** The commit that lands a detector or
-a skill section deletes the memory section it translates from
-`memory/ddaanet/sandbox-effects.md` (D-11; the shared tier's cut follows the
-release).
+**FR-10 — Memory retirement, per section.** Each section of
+`memory/ddaanet/sandbox-effects.md` that a detector or a skill section
+translates is cut after the release that ships the translation (D-11).
 [Detail](references/requirement-details.md#fr-10--memory-retirement-per-section).
 Done (prose).
 
@@ -261,15 +260,14 @@ not special-case self-reading. Accepted tradeoff: a read of a `fire-*` fixture
 or of the dated pilot evidence from inside this repo annotates itself. Argued in
 [references/self-quiet.md](references/self-quiet.md).
 
-**D-11 — Retire each section the moment its translation lands.** A memory
-section and the hook or skill text that replaces it never coexist: the commit
-that ships one deletes the other. Waiting for dogfooding would keep two sources
+**D-11 — Retire each section once its translation is released.** A memory
+section is cut from the tier right after the release that ships the hook or
+skill text replacing it, not held for dogfooding: waiting would keep two sources
 of truth live, and the fixture suite plus the live reproduction are the evidence
-a detector works. Exception: the shared memory tier is cut after the release
-rather than in the commit that ships the translation, since a ddaanet repo
-without the released plugin would lose the fact before it can install the
-replacement. Accepted tradeoff: the translation and the tier section coexist
-from that commit until the release.
+a detector works. The cut does not ride the commit that ships the translation,
+because the tier is shared: a ddaanet repo would lose the fact before the
+released plugin could reach it. Accepted tradeoff: the section and its
+translation coexist from that commit until the release.
 
 **D-12 — `jq` is a dependency.** Parsing the payload by hand in bash 3.2 is
 where hooks go wrong; the release toolkit's version guard already requires it.

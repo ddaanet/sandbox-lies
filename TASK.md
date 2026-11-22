@@ -1,0 +1,3 @@
+## Current task
+
+Release `dev` onto `main` through `edify:release`, once my human partner says go. The inbox brief on FR-10 and D-11 is resolved (D-11 now states the release-ordered tier cut as its rule, reviewed down to lows), the inbox is empty, and `TODO.md` holds only the release item plus four items that each wait on a named trigger, which my human partner exempted from the empty-todo-at-release goal. First action: on go, load `edify:release` and start its cascade.
