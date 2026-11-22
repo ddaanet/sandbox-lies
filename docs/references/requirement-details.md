@@ -18,11 +18,11 @@ files its acts depend on (D-17), and transcript existence (`resume-lost`).
 
 ## FR-10 — Memory retirement, per section
 
-Every section the plugin carries is retired. The file keeps what it does not:
-the phantom-dotfile leak, and the zellij section, whose detector stays a
-candidate under D-15. One residue survives as prose: the `!`-expansion
-phantom-listing rule, folded into the existing phantom-dotfile bullet of
-`memory/ddaanet/shared-claude.md`.
+Every section the plugin carries is retired. `memory/ddaanet/sandbox-effects.md`
+keeps what it does not: the phantom-dotfile leak, and the zellij section, whose
+detector stays a candidate under D-15. One residue survives as prose: the
+`!`-expansion phantom-listing rule, folded into the existing phantom-dotfile
+bullet of `memory/ddaanet/shared-claude.md`.
 
 ## FR-12 — Recovery script
 
