@@ -14,7 +14,7 @@ time in [references/hook.md](references/hook.md), each requirement's pins in
 [references/requirements-coverage.md](references/requirements-coverage.md),
 verdict wording in
 [references/verdict-wording.md](references/verdict-wording.md), self-quiet files
-in [references/self-quiet.md](references/self-quiet.md), the tails of nine
+in [references/self-quiet.md](references/self-quiet.md), the tails of four
 requirements in
 [references/requirement-details.md](references/requirement-details.md). Read the
 node before making a claim about, or changing, the mechanism it argues; never
@@ -75,21 +75,28 @@ document. Any parse or runtime failure exits 0 with no output. Done.
 
 **FR-4 — Probes.** For each verdict whose correct action depends on state the
 tool could not see, the hook runs a discriminator outside the sandbox and the
-verdict names the outcome.
-[Detail](references/requirement-details.md#fr-4--probes). Done.
+verdict names the outcome. Each probe is proved once against a live reproduction
+before it ships; the reproduction is recorded in `references/` (for
+`resume-lost`, CC's behaviour its probe reads, not a run of the probe on a live
+refusal). [Detail](references/requirement-details.md#fr-4--probes). Done.
 
 **FR-5 — Sandbox-state awareness.** The payload's
 `tool_input.dangerouslyDisableSandbox` (absent means false) decides wording: a
 symptom on a call that ran unsandboxed has a different cause, and the verdict
 says so or the detector stays silent, except `resume-lost`, whose probe decides
-under either value (D-8).
-[Detail](references/requirement-details.md#fr-5--sandbox-state-awareness). Done.
+under either value (D-8). Every detector states its flag policy in
+`references/`; the gating lives in the hook or the verdict, never in a matcher.
+Done.
 
 **FR-6 — Verdict text.** Each verdict is a short paragraph of acts the agent
 performs, under 400 characters before a probe value (a path, a pid) is
 interpolated, stating only the acts the script found apply (D-17), and no
 verdict tells the agent to remove anything, one handing the user an `rm` (D-7).
-[Detail](references/requirement-details.md#fr-6--verdict-text). Done.
+Verdicts compose in catalogue order; the two `phantom-*` listing verdicts share
+one paragraph when both fire, and a paragraph that would push
+`additionalContext` past 2 KB is dropped while its human line is kept. The human
+line on `systemMessage` is one lowercase clause. No verdict quotes a diagnostic
+together with its follow-on sentence. Done.
 
 **FR-7 — Detector catalogue.** Ten detectors, in
 [references/detectors.md](references/detectors.md): five measured and shipped
@@ -106,9 +113,9 @@ the output was expected to look like. Done.
 `excludedCommands` entry unsandboxes (only one whose every command it covers),
 the two escapes and their costs, strict mode, `$TMPDIR` scoping, a `claude` or
 `git` inside a recipe, and how to write a cleanliness gate that survives the
-masks fire while an agent is *writing* something, not while reading output.
-[Detail](references/requirement-details.md#fr-9--the-symptom-less-knowledge-is-a-skill).
-Done.
+masks fire while an agent is *writing* something, not while reading output. That
+is the plugin's one skill, `skills/sandbox-lies/SKILL.md`, triggered on those
+authoring moments. Done.
 
 **FR-10 — Memory retirement, per section.** The commit that lands a detector or
 a skill section deletes the memory section it translates from
@@ -124,7 +131,8 @@ Done.
 
 **FR-12 — Recovery script.** `bin/sandbox-lies-recover` carries out the recovery
 of a `git checkout <branch>` or `git merge --ff-only <commit-ish>` that a
-sandbox refusal killed part-way.
+sandbox refusal killed part-way. Without `--apply` it prints the plan and
+changes nothing; with `--apply` it runs each act as it prints it.
 [Detail](references/requirement-details.md#fr-12--recovery-script). Done.
 
 ## Non-functional requirements
@@ -135,16 +143,21 @@ date and how much pilot traffic the corpus had absorbed, because the corpus is
 self-polluting. Done (not gated).
 
 **NFR-2 — Portability.** bash 3.2, BSD `grep`/`sed`/`mktemp`/`stat`/`wc`, `jq`.
+A suite whose code under test calls one of those five tools keeps one case
+re-run with BSD-strict stubs on `PATH`.
 [Detail](references/requirement-details.md#nfr-2--portability). Done.
 
 **NFR-3 — Cost.** No verdict, no output: the hook exits 0 silently, and that
-path runs after every Bash call.
-[Detail](references/requirement-details.md#nfr-3--cost). Done (not gated).
+path runs after every Bash call. With a verdict and no probe, a mean under 100
+ms. Probes are bounded: no recursive `du`, no network, hook timeout 10 s, the
+`SessionStart` check's too. Done (not gated).
 
 **NFR-4 — Hermetic.** The hook writes nothing (it runs outside the sandbox,
-where `$TMPDIR` may be unset).
-[Detail](references/requirement-details.md#nfr-4--hermetic). Done (partly not
-gated).
+where `$TMPDIR` may be unset). It reads only what the result names: the
+repository holding a refused path, possibly a sibling worktree rather than the
+call's, or with no path the payload `cwd`'s; the lock paths the error names; and
+whether each session id a `--resume` refusal names has a transcript, never
+opening one. Done (partly not gated).
 
 **NFR-5 — Size and links.** Every file `just check-size` reads is at most 20000
 bytes (a `SKILL.md` at most 10000), and every relative link resolves, inline or
