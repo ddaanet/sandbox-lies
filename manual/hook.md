@@ -45,9 +45,10 @@ nobody can write to the same way.
   that working directory; with none known, from the hook's own, never `/`. When
   no lock exists there but the command names a directory in a `cd` or a `git -C`
   under whose repository the lock exists, the lock is taken from there instead,
-  the last such directory winning; a directory held in a variable, or a recipe
-  that runs git elsewhere, is not seen. Options before the directory, such as
-  `cd -P` or `git -c key=value -C`, are skipped.
+  the last such directory winning, wherever in the command it stands, a `cd`
+  after the failed git call included; a directory held in a variable, or a
+  recipe that runs git elsewhere, is not seen. Options before the directory,
+  such as `cd -P` or `git -c key=value -C`, are skipped.
 - `readonly-path` joins a relative path onto the call's working directory,
   except when git reported a partially written checkout, whose paths are
   relative to the worktree's top-level.

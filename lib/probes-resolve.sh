@@ -47,8 +47,10 @@ set -u
 # a target in a variable or a substitution names no candidate, nor does a
 # recipe or script that runs git elsewhere; chained relative cds each resolve
 # against the base, not the previous cd; only the first `-C` after `git` is
-# read; a cd after the failing git call wins only if a lock exists there too,
-# and makes the result ambiguous if one exists at the chosen path as well.
+# read; the scan is order-blind: a cd after the failing git call is a candidate
+# like any other, so with no lock at the cwd result and one there, it wins
+# unambiguously (`git config x y; cd B && ls` names B's lock), and it makes the
+# result ambiguous if a lock exists at the chosen path as well.
 _probe_resolve_path() {
     local base dir _probe_top lock last=''
     _probe_ambiguous=''

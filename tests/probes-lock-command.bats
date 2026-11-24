@@ -28,9 +28,11 @@ setup() {
 # not answer gone, and named <lock> on its path= line.
 assert_lock_at() {
   local want
-  [ "$status" -eq 0 ]
-  [ -z "$stderr" ]
-  [ "${output%%$'\n'*}" != gone ]
+  # `|| return 1` on each check: a caller may put this on the left of `||`,
+  # where errexit is off and a bare failing `[` would not stop the function.
+  [ "$status" -eq 0 ] || return 1
+  [ -z "$stderr" ] || return 1
+  [ "${output%%$'\n'*}" != gone ] || return 1
   # shellcheck disable=SC2030 # LC_ALL=C is for this substitution alone
   want=$(LC_ALL=C; printf 'path=%q' "$1")
   printf '%s\n' "$output" | grep -qxF -- "$want"
@@ -263,7 +265,9 @@ CASES
 # verdicts-path-read.bats's decode_seconds: sibling suites share the cores
 # under `just precommit`, and a descheduled run inflates wall time but not CPU
 # time. python3's resource module is the clock: bash 3.2 has no EPOCHREALTIME
-# and BSD date no %N.
+# and BSD date no %N. The trailing `wait` makes the shell reap the greps behind
+# the probe's process substitution, whose CPU RUSAGE_CHILDREN otherwise misses
+# (checked: a 0.65 s burner behind `< <(...)` reads 0.00 s without it).
 probe_cpu_seconds() {
   local text
   text=$(config_lock_error .git/config)
@@ -273,7 +277,7 @@ import resource, subprocess, sys
 best = None
 for _ in range(3):
     r0 = resource.getrusage(resource.RUSAGE_CHILDREN)
-    subprocess.run(["bash", "-c", ". \"$1\"; probe_config_lock false \"$2\" \"$3\" <<<\"$4\" >/dev/null", "_"] + sys.argv[1:], check=True)
+    subprocess.run(["bash", "-c", ". \"$1\"; probe_config_lock false \"$2\" \"$3\" <<<\"$4\" >/dev/null; wait", "_"] + sys.argv[1:], check=True)
     r1 = resource.getrusage(resource.RUSAGE_CHILDREN)
     dt = (r1.ru_utime - r0.ru_utime) + (r1.ru_stime - r0.ru_stime)
     best = dt if best is None else min(best, dt)
@@ -284,7 +288,7 @@ print("%.4f" % best)
 # The scan is linear in the command: a large heredoc ahead of the cd took the
 # former per-match prefix strip past the hook's 10 s timeout. The linear scan
 # measured 0.11 s of CPU on the 4-vCPU dev box, bash start-up and both greps
-# included, so the bound of 2 s leaves an 18-fold margin for a slower host
+# included (see probe_cpu_seconds), so the bound of 2 s leaves an 18-fold margin for a slower host
 # while sitting far under the quadratic time.
 @test "a cd after an 80 KB heredoc resolves in linear time" {
   local body cmd t

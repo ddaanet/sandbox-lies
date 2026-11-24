@@ -33,16 +33,16 @@ last such directory under which the lock exists wins, since the command may have
 run git in another repository; a lock at the `cwd` result always stands, and a
 lock under none of them keeps it. Between `cd` and `<dir>`, `--` and options
 made of `L`, `P`, `e` and `@` are skipped; between `git` and `-C`, every word
-starting with `-` is, and the separate value of `-c`, `--git-dir`,
-`--work-tree`, `--namespace` and `--config-env`. A word not starting with `-`
-ends git's options, so a `-C` after a subcommand names nothing. Only the first
-`-C` after `git` is read, and a `<dir>` starting with `-` is skipped. A target
-in a variable or a substitution names no directory, nor does a recipe or script
-that runs git elsewhere. Then a holder check: `lsof -t`, else `fuser`. Size and
-age come from a portable `stat` form (BSD and GNU differ). Every outcome also
-prints the resolved lock path as `path=` in `printf %q` form, so a newline in it
-is escaped and cannot split the line or forge a key line; an empty path prints
-no `path=` line.
+starting with `-` other than one starting with `-C` is, and the separate value
+of `-c`, `--git-dir`, `--work-tree`, `--namespace` and `--config-env`. A word
+not starting with `-` ends git's options, so a `-C` after a subcommand names
+nothing. Only the first `-C` after `git` is read, and a `<dir>` starting with
+`-` is skipped. A target in a variable or a substitution names no directory, nor
+does a recipe or script that runs git elsewhere. Then a holder check: `lsof -t`,
+else `fuser`. Size and age come from a portable `stat` form (BSD and GNU
+differ). Every outcome also prints the resolved lock path as `path=` in
+`printf %q` form, so a newline in it is escaped and cannot split the line or
+forge a key line; an empty path prints no `path=` line.
 
 | outcome | condition |
 |---|---|
@@ -181,12 +181,14 @@ way to the agent, and a control byte does not survive a paste; the rule names
 the bytes known to arrive instead of listing those that do not. Any other path,
 non-ASCII included, a value that decodes to no path, or a path the probe marked
 `ambiguous=1`, gets no `rm` and keeps `git-lock`'s report-and-leave sentence: an
-`rm` must never name one repository's lock when the call may have failed on
-another's. Recorded case: a 2026-11-13 session elsewhere, where an unsandboxed
-`just sync` met a nine-day-old empty mode-0444 `.git/config.lock` listed in no
-mountinfo, and `rm` cleared it. `git-lock` keeps report-and-leave: its
-paragraph's `GIT_INDEX_FILE` sentence leaves no room for the hand-off under
-FR-6's 400 characters.
+`rm` must not name one repository's lock when the call may have failed on
+another's, as far as the command shows it. Residual: a directory named anywhere
+in the command counts, a `cd` after the git call that failed included, so
+`git config x y; cd B && ls` hands over B's lock when only B holds one. Recorded
+case: a 2026-11-13 session elsewhere, where an unsandboxed `just sync` met a
+nine-day-old empty mode-0444 `.git/config.lock` listed in no mountinfo, and `rm`
+cleared it. `git-lock` keeps report-and-leave: its paragraph's `GIT_INDEX_FILE`
+sentence leaves no room for the hand-off under FR-6's 400 characters.
 
 **Flag policy.** As `git-lock`.
 
