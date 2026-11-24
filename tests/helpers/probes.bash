@@ -203,7 +203,8 @@ run_probe() {
 
 # run_probe_command <probe> <flag> <cwd> <command> <text> — as run_probe, but
 # also passing <command> as the probe's third argument, as hooks/annotate.sh
-# passes tool_input.command to probe_readonly_path.
+# passes tool_input.command to every probe; probe_readonly_path and the two
+# lock probes read it.
 run_probe_command() {
   run --separate-stderr "$1" "$2" "$3" "$4" <<<"$5"
 }

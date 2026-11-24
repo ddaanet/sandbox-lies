@@ -228,6 +228,20 @@ setup() {
   done
 }
 
+# The probe's ambiguous=1 line reaches the verdict through the hook: the
+# path is not the only lock the command names, so no rm is handed over.
+@test "config-lock mask with ambiguous=1 hands over no rm" {
+  local text ctx
+  text=$(cat "$FIXTURES/fire-configlock-remote-add.txt")
+  stub_probe_kv config_lock mask 'path=/r/.git/config.lock' 'ambiguous=1'
+  run_hook "$(failure_payload "$text" false)"
+  [ "$status" -eq 0 ]
+  [ -f "$PROBE_CALLED" ]
+  ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
+  printf '%s' "$ctx" | grep -qF 'report its path to the user and leave it in place'
+  assert_lacks "$ctx" 'rm '
+}
+
 @test "piped lock failure on a success payload" {
   stub_probe git_lock mask
   local text payload ctx

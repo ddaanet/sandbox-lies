@@ -104,9 +104,10 @@ absent or false, say to write `.claude/settings.json` through the
   `<path>` is the lock's absolute path, in single quotes so that the command
   runs as printed in bash, zsh, dash and fish. The command is printed only when
   every character of the path is printable ASCII other than a single quote, a
-  backslash and a backtick. For any other path, as without a path from the
-  probe, the last sentence is `git-lock`'s, to report its path to the user and
-  leave it in place.
+  backslash and a backtick, and only when the command names no other directory
+  holding a lock of its own, where the call may have failed instead. For any
+  other path, as without a path from the probe, the last sentence is
+  `git-lock`'s, to report its path to the user and leave it in place.
 - `gone`, flag true — No lock exists now; git cleaned it after the failure.
   Retry once. · `config.lock — cleared after failure`
 - `gone`, flag absent or false — No lock exists now: this refusal came from a

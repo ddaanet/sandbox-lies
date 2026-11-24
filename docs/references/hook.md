@@ -99,7 +99,8 @@ a hook that otherwise costs nothing.
 from the error text and resolves a relative one from the nearest `.git`
 directory, not the payload's `cwd`, because git prints it from the main
 worktree's top-level; when no lock exists there, a `cd` or `git -C` directory in
-the command takes over if the lock exists under it. Phantom masks sit under the
+the command takes over if the lock exists under it, and when locks exist in more
+than one, `config-lock` hands the user no `rm`. Phantom masks sit under the
 sandboxed call's working directory: the session's project root, or a
 subdirectory a persisted `cd` left the Bash tool in (seen on CC 2.1.281), which
 is why the `phantom-*` verdicts name no location. The `readonly-path` walk onto

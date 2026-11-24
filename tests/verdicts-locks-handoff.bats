@@ -49,6 +49,19 @@ CASES
   done
 }
 
+@test "config-lock mask prints no rm when the probe found another lock" {
+  # ambiguous=1: the command named another directory whose lock also exists,
+  # so the path may not be the lock the call met. A plain path that would
+  # otherwise get the rm keeps the report-and-leave sentence.
+  local flag line1
+  for flag in false true; do
+    # shellcheck disable=SC1090 # $VERDICTS is lib/verdicts.sh, from the helper
+    IFS= read -r line1 < <(printf 'path=/r/.git/config.lock\nambiguous=1\n' \
+      | ( . "$VERDICTS"; verdict_config_lock mask "$flag" ))
+    [ "If it refuses again${line1##*If it refuses again}" = 'If it refuses again, it is a real file: report its path to the user and leave it in place.' ]
+  done
+}
+
 # config_lock_mask_line1 <wire> <flag> — the agent paragraph of
 # verdict_config_lock mask for a probe line path=<wire>.
 config_lock_mask_line1() {

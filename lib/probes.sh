@@ -5,7 +5,8 @@
 # payload's `tool_input.command` as $3 (read by probe_readonly_path and the
 # two lock probes), and prints an outcome token on its first line followed by
 # key=value lines; exit 0. The key lines per probe:
-# - probe_git_lock, probe_config_lock: pid=, bytes=, age=, path=;
+# - probe_git_lock, probe_config_lock: pid=, bytes=, age=, path=, and
+#   probe_config_lock's ambiguous=1 when the command names another lock;
 # - probe_readonly_path (lib/probes-readonly.sh): path= (none on nopath),
 #   then on writable and nopath claudeonly=, configonly=, readfile=, merge=,
 #   partial=, target=, recover=, repo=, match=;
@@ -86,15 +87,15 @@ probe_resume_lost() (
 )
 
 probe_git_lock() {
-    local text path
+    local text path _probe_resolved _probe_ambiguous
     text=$(cat)
     path=$(printf '%s\n' "$text" | _probe_lock_path)
-    path=$(_probe_resolve_path "$path" "${2-}" "${3-}")
-    _probe_lock_at "$path"
+    _probe_resolve_path "$path" "${2-}" "${3-}"
+    _probe_lock_at "$_probe_resolved"
 }
 
 probe_config_lock() {
-    local text path
+    local text path _probe_resolved _probe_ambiguous
     text=$(cat)
     path=$(printf '%s\n' "$text" | _probe_config_lock_path)
     # Empty means no config-lock line in the text: it stays empty, the
@@ -104,8 +105,13 @@ probe_config_lock() {
     if [ -n "$path" ]; then
         path="$path.lock"
     fi
-    path=$(_probe_resolve_path "$path" "${2-}" "${3-}")
-    _probe_lock_at "$path"
+    _probe_resolve_path "$path" "${2-}" "${3-}"
+    _probe_lock_at "$_probe_resolved"
+    # ambiguous=1: the command names another existing lock this error may
+    # have meant, so the verdict hands the user no rm of path=.
+    if [ -n "$_probe_ambiguous" ]; then
+        printf '%s\n' ambiguous=1
+    fi
 }
 
 # _probe_lock_at <path> — the A-3 contract once a probe has extracted
