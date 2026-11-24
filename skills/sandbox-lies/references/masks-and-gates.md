@@ -51,8 +51,25 @@ Trying to delete one looks like a real failure. Inside a sandboxed command the
 mask is a mount point in that command's own namespace, so `rm` reports the
 device as busy and `git clean -f` prints one removal warning per mask while
 removing nothing. Asked to remove stray untracked files, read the tree with an
-unsandboxed `git status` first and report that there is nothing to remove; if
-masks show there with nothing running, restart Claude Code rather than delete.
+unsandboxed `git status` first and report that there is nothing to remove.
+
+Masks that show there are handled by what is running, and the agent deletes none
+in either case:
+
+- **A sandboxed command is still running, in any session.** The masks are live.
+  Wait for it to finish and read the tree again.
+- **Nothing is running.** The masks are left over, and removing one is the
+  user's act. A Claude Code restart cleared the set observed above; whether it
+  clears every leftover has not been tested.
+
+On Linux a sandbox that dies uncleanly can leave a mask on disk as an empty
+read-only regular file, not a mount: a leftover `.git/config.lock` fails every
+`git config` write, sandboxed or not, until it is removed. It looks the same as
+a live mask. When the write still refuses after the re-run the hook's
+`config-lock` paragraph asks for, leave the lock and give the user the `rm` that
+paragraph names, to run once they have checked no sandboxed command is running
+in any session. When the paragraph names no `rm`, report the lock's path to the
+user and compose no command for it.
 
 ## A porcelain gate reports DIRTY against a clean tree
 

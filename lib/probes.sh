@@ -2,10 +2,11 @@
 # lib/probes.sh — probe_<verdict> functions the hook runs outside the sandbox
 # (A-3 contract, the plugin repository's docs/design.md FR-4): each probe reads the Bash tool result
 # text on stdin, takes the sandbox flag as $1, the payload cwd as $2 and the
-# payload's `tool_input.command` as $3 (read by probe_readonly_path only), and
-# prints an outcome token on its first line followed by key=value lines; exit
-# 0. The key lines per probe:
-# - probe_git_lock, probe_config_lock: pid=, bytes=, age=, path=;
+# payload's `tool_input.command` as $3 (read by probe_readonly_path and the
+# two lock probes), and prints an outcome token on its first line followed by
+# key=value lines; exit 0. The key lines per probe:
+# - probe_git_lock, probe_config_lock: pid=, bytes=, age=, path=, and
+#   probe_config_lock's ambiguous=1 when the command names another lock;
 # - probe_readonly_path (lib/probes-readonly.sh): path= (none on nopath),
 #   then on writable and nopath claudeonly=, configonly=, readfile=, merge=,
 #   partial=, target=, recover=, repo=, match=;
@@ -19,12 +20,16 @@
 # variable an error when a test sources this file directly.
 set -u
 
-# lib/probes.sh sources lib/probes-readonly.sh by a BASH_SOURCE-relative
-# path, so a caller that sources this file alone (the probes*.bats family)
-# still gets probe_readonly_path defined; hooks/annotate.sh needs no
-# separate source line for it. Sourcing an already-sourced
-# lib/probes-readonly.sh just redefines the same functions.
+# lib/probes.sh sources lib/probes-readonly.sh and lib/probes-resolve.sh by a
+# BASH_SOURCE-relative path, so a caller that sources this file alone (the
+# probes*.bats family) still gets probe_readonly_path and
+# _probe_resolve_path defined; hooks/annotate.sh needs no separate source
+# line for them. Sourcing an already-sourced one just redefines the same
+# functions.
 _probes_lib_dir=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd) || return 1
+# shellcheck disable=SC1091 # lib/ sits beside this file; path is dynamic
+. "$_probes_lib_dir/probes-resolve.sh" || return 1
+# lib/probes-readonly.sh unsets _probes_lib_dir, so it is sourced last.
 # shellcheck disable=SC1091 # lib/ sits beside this file; path is dynamic
 . "$_probes_lib_dir/probes-readonly.sh" || return 1
 unset _probes_lib_dir
@@ -82,15 +87,15 @@ probe_resume_lost() (
 )
 
 probe_git_lock() {
-    local text path
+    local text path _probe_resolved _probe_ambiguous
     text=$(cat)
     path=$(printf '%s\n' "$text" | _probe_lock_path)
-    path=$(_probe_resolve_path "$path" "${2-}")
-    _probe_lock_at "$path"
+    _probe_resolve_path "$path" "${2-}" "${3-}"
+    _probe_lock_at "$_probe_resolved"
 }
 
 probe_config_lock() {
-    local text path
+    local text path _probe_resolved _probe_ambiguous
     text=$(cat)
     path=$(printf '%s\n' "$text" | _probe_config_lock_path)
     # Empty means no config-lock line in the text: it stays empty, the
@@ -100,8 +105,13 @@ probe_config_lock() {
     if [ -n "$path" ]; then
         path="$path.lock"
     fi
-    path=$(_probe_resolve_path "$path" "${2-}")
-    _probe_lock_at "$path"
+    _probe_resolve_path "$path" "${2-}" "${3-}"
+    _probe_lock_at "$_probe_resolved"
+    # ambiguous=1: the command names another existing lock this error may
+    # have meant, so the verdict hands the user no rm of path=.
+    if [ -n "$_probe_ambiguous" ]; then
+        printf '%s\n' ambiguous=1
+    fi
 }
 
 # _probe_lock_at <path> — the A-3 contract once a probe has extracted
@@ -271,49 +281,6 @@ _probe_lock_path() {
 _probe_config_lock_path() {
     LC_ALL=C sed -n 's/^error: could not lock config file \(.*\): File exists.*/\1/p' \
         | head -n 1
-}
-
-# Resolves <path> against a base directory: an absolute or empty <path>
-# prints unchanged. An empty one is not joined either, because joined it
-# would name the base itself, a directory the holder check would then read
-# as held by whatever sits in it. A relative <path> is joined onto the
-# nearest directory at or above the base holding a `.git` directory, else
-# onto the base unchanged. Git prints a relative lock path only from a
-# `.git` directory's top-level; from a linked worktree or a submodule, whose
-# `.git` is a file, it prints the path absolute, so a `.git` file is walked
-# past. The base is <cwd-arg> (the probe's own $2), or the probe's own
-# working directory when <cwd-arg> is missing or empty — never `/`; a
-# relative base is taken from that working directory too, so each step
-# drops one component of an absolute path and the walk ends at `/`, one
-# `[ -d ]` per ancestor and no process. Lexical, not canonical. Residuals: a
-# base reached through a symlink walks the link's parents, not the target's,
-# where git would find the top-level; a base inside a gitdir (bare, or
-# `.git` itself), where git prints paths relative to that gitdir, resolves
-# against an enclosing worktree when one exists.
-_probe_resolve_path() {
-    local base dir
-    case "$1" in
-        /* | '')
-            printf '%s\n' "$1"
-            return
-            ;;
-    esac
-    dir="${2:-$PWD}"
-    case "$dir" in
-        /*) ;;
-        *) dir="$PWD/$dir" ;;
-    esac
-    base="$dir"
-    while :; do
-        if [ -d "$dir/.git" ]; then
-            base="$dir"
-            break
-        fi
-        [ "$dir" = / ] && break
-        dir="${dir%/*}"
-        [ -n "$dir" ] || dir=/
-    done
-    printf '%s/%s\n' "${base%/}" "$1"
 }
 
 # Prints the pids holding <path> open as the holder tool prints them (lsof -t

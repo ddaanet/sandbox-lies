@@ -56,7 +56,7 @@ verdict_git_lock() {
 # other path, or none, keeps the re-run or retry, worded by the flag as
 # git_lock's is.
 verdict_config_lock() {
-  local outcome="$1" flag="${2:-false}" act
+  local outcome="$1" flag="${2:-false}" act _config_lock_ambiguous=''
   case "$outcome" in
     mask)
       if _config_lock_is_settings; then
@@ -64,7 +64,7 @@ verdict_config_lock() {
       else
         act=$(_lock_rerun "$flag")
       fi
-      printf '%s\n' "The \`config.lock\` behind this error has the shape of a sandbox mask and most likely is one. ${act} If it refuses again, it is a real file: report its path to the user and leave it in place."
+      printf '%s\n' "The \`config.lock\` behind this error has the shape of a sandbox mask and most likely is one. ${act} $(_config_lock_refused_again)"
       printf '%s\n' 'config.lock — shaped like a sandbox mask'
       ;;
     gone)
@@ -93,12 +93,15 @@ _lock_absent_cause() {
 }
 
 # `_config_lock_is_settings` — reads the probe's lines on stdin; true when
-# path= names `.claude/settings.json.lock`. No decodable path is false.
+# path= names `.claude/settings.json.lock`. No decodable path is false. Also
+# sets _config_lock_ambiguous (verdict_config_lock's local) from the probe's
+# ambiguous= line.
 _config_lock_is_settings() {
   local line wire=''
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in
       path=*) wire=${line#path=} ;;
+      ambiguous=*) _config_lock_ambiguous=1 ;;
     esac
   done
   _verdict_path_read "$wire" || :
@@ -107,6 +110,44 @@ _config_lock_is_settings() {
     */.claude/settings.json.lock) return 0 ;;
     *) return 1 ;;
   esac
+}
+
+# `_config_lock_refused_again` — after _config_lock_is_settings, which leaves
+# the decoded path in _verdict_path_raw: the mask paragraph's closing
+# sentence. It hands a lock that refuses the re-run to the user as a possible
+# leftover of a sandbox that died uncleanly, with `rm` of the path in single
+# quotes, which the user pastes into their own shell. Only a path
+# _config_lock_pastes passes, from a probe that printed no ambiguous= line,
+# gets the command: any other, like no path at all, keeps git-lock's
+# report-and-leave sentence.
+# shellcheck disable=SC2016 # backticks are literal prose, not expansion
+_config_lock_refused_again() {
+  local path=$_verdict_path_raw
+  if [ -z "$path" ] || [ -n "${_config_lock_ambiguous-}" ] \
+    || ! _config_lock_pastes "$path"; then
+    printf 'If it refuses again, it is a real file: report its path to the user and leave it in place.'
+    return 0
+  fi
+  printf 'If it refuses again, leave it and tell the user it may be left over from a sandbox that died uncleanly, giving them `rm '\''%s'\''` to run once they have checked no sandboxed command is running in any session.' "$path"
+}
+
+# `_config_lock_pastes <path>` — succeeds when every byte of path is printable
+# ASCII (0x20-0x7E) and none is a single quote, a backslash or a backtick.
+# Such a path, single-quoted inside a code span, reaches the user's shell as
+# printed and reads the same in bash, zsh, dash and fish. A single quote ends
+# the quoted word, fish reads a backslash inside one as an escape, and a
+# backtick closes the code span. A byte outside the range is not sure to
+# arrive: jq writes U+FFFD for one that is not valid UTF-8, and a control
+# byte does not survive a paste. LC_ALL=C makes the range a byte range; the
+# caller's locale is put back on return (see _verdict_unescape).
+_config_lock_pastes() {
+  local saved=${LC_ALL-} had=${LC_ALL+x} rc=0
+  LC_ALL=C
+  case "$1" in
+    *[!\ -~]* | *[\'\\\`]*) rc=1 ;;
+  esac
+  if [ -n "$had" ]; then LC_ALL=$saved; else unset LC_ALL; fi
+  return "$rc"
 }
 
 # shellcheck disable=SC2016 # backticks are literal prose, not expansion
