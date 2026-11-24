@@ -124,7 +124,8 @@ _probe_git_top() {
 # (git after a line start or a byte other than a letter, digit or `_`).
 # Between cd and <dir> any run of `--` and of `-` followed by letters from
 # `LPe@` is skipped (`cd -P dir`, `cd -- dir`). Between git and `-C` any run
-# of global options is skipped: a word starting with `-` other than `-C`, and
+# of global options is skipped: a word starting with `-` other than one starting
+# with `-C`, and
 # the separate value word after `-c`, `--git-dir`, `--work-tree`,
 # `--namespace` or `--config-env` (`git -c k=v -C dir`, `git --no-pager -C
 # dir`); a word not starting with `-` ends the options, so `git log -C dir`

@@ -267,7 +267,10 @@ CASES
 # time. python3's resource module is the clock: bash 3.2 has no EPOCHREALTIME
 # and BSD date no %N. The trailing `wait` makes the shell reap the greps behind
 # the probe's process substitution, whose CPU RUSAGE_CHILDREN otherwise misses
-# (checked: a 0.65 s burner behind `< <(...)` reads 0.00 s without it).
+# (checked on bash 5.2: a 0.65 s burner behind `< <(...)` reads 0.00 s
+# without it). Bash before 4.4 cannot `wait` on a process substitution, so
+# under Apple's bash 3.2 the greps may go uncounted and the case bounds the
+# shell alone.
 probe_cpu_seconds() {
   local text
   text=$(config_lock_error .git/config)
@@ -287,9 +290,10 @@ print("%.4f" % best)
 
 # The scan is linear in the command: a large heredoc ahead of the cd took the
 # former per-match prefix strip past the hook's 10 s timeout. The linear scan
-# measured 0.11 s of CPU on the 4-vCPU dev box, bash start-up and both greps
-# included (see probe_cpu_seconds), so the bound of 2 s leaves an 18-fold margin for a slower host
-# while sitting far under the quadratic time.
+# measured 0.10 s of CPU on the 4-vCPU dev box under bash 5.2, bash start-up
+# and both greps included (see probe_cpu_seconds), so the bound of 2 s leaves
+# a 20-fold margin for a slower host while sitting far under the quadratic
+# time.
 @test "a cd after an 80 KB heredoc resolves in linear time" {
   local body cmd t
   body=$(head -c 80000 /dev/zero | tr '\0' x)
