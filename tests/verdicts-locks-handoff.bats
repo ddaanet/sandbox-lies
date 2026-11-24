@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# shellcheck disable=SC2218 # bats sources the whole file before any @test runs
 # lib/verdicts.sh's config-lock mask verdict, its closing sentence: the rm it
 # hands the user for a lock that refuses the re-run, by what the path holds.
 # The paragraph's other sentences are in verdicts-locks.bats.
@@ -12,12 +13,12 @@ load helpers/verdicts
   # The user pastes the rm into their own shell, so the path is in single
   # quotes, where a blank and a `$` are literal in bash, zsh, dash and fish
   # alike. Line 1 stays under FR-6's 400 characters before the path.
-  local flag line1
+  local flag line1 path="/r/a b/\$HOME/.git/config.lock"
   # shellcheck disable=SC2016 # backticks and $HOME are literal text
   for flag in false true; do
     line1=$(config_lock_mask_line1 '/r/a\ b/\$HOME/.git/config.lock' "$flag")
     [ "If it refuses again${line1##*If it refuses again}" = 'If it refuses again, leave it and tell the user it may be left over from a sandbox that died uncleanly, giving them `rm '\''/r/a b/$HOME/.git/config.lock'\''` to run once they have checked no sandboxed command is running in any session.' ]
-    line1=${line1/'/r/a b/$HOME/.git/config.lock'/}
+    line1=${line1/"$path"/}
     [ "${#line1}" -lt 400 ]
   done
 }
