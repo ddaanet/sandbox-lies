@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Node names cited here (lock-detectors.md) are files of the plugin
-# repository's docs/references/, which the plugin does not ship.
 # lib/probes-resolve.sh — _probe_resolve_path, the relative lock path
 # resolution shared by probe_git_lock and probe_config_lock. Sourced by
 # lib/probes.sh, so no other caller needs a source line of its own for it.
+#
+# Node names cited here (lock-detectors.md) are files of the plugin
+# repository's docs/references/, which the plugin does not ship.
 #
 # set -u as in lib/probes.sh; bats does not set it, so setting it here keeps
 # an unset variable an error when a caller sources this file directly.
@@ -40,7 +41,7 @@ set -u
 # against the base, not the previous cd; only the first `-C` after `git` is
 # read; a cd after the failing git call wins only if a lock exists there too.
 _probe_resolve_path() {
-    local base dir _probe_top joined chosen
+    local base dir _probe_top chosen
     case "$1" in
         /* | '')
             printf '%s\n' "$1"
@@ -54,7 +55,7 @@ _probe_resolve_path() {
     esac
     _probe_git_top "$base"
     chosen="${_probe_top%/}/$1"
-    if [ -n "${3-}" ] && [ ! -e "$chosen" ] && [ ! -L "$chosen" ]; then
+    if [ -n "${3-}" ] && ! _probe_path_exists "$chosen"; then
         local _probe_dirs=()
         _probe_command_dirs "$3"
         for dir in ${_probe_dirs[@]+"${_probe_dirs[@]}"}; do
@@ -63,13 +64,17 @@ _probe_resolve_path() {
                 *) dir="$base/$dir" ;;
             esac
             _probe_git_top "$dir"
-            joined="${_probe_top%/}/$1"
-            if [ -e "$joined" ] || [ -L "$joined" ]; then
-                chosen="$joined"
+            if _probe_path_exists "${_probe_top%/}/$1"; then
+                chosen="${_probe_top%/}/$1"
             fi
         done
     fi
     printf '%s\n' "$chosen"
+}
+
+# _probe_path_exists <path> — whether <path> exists; a dangling symlink counts.
+_probe_path_exists() {
+    [ -e "$1" ] || [ -L "$1" ]
 }
 
 # _probe_git_top <dir> — sets _probe_top (the caller's local) to the nearest
@@ -115,6 +120,10 @@ _probe_git_top() {
 # none. Bash 3.2 apart from the two greps: the regexes sit in variables, and
 # the EREs are ones GNU and BSD grep read alike.
 _probe_command_dirs() {
+    case $1 in
+        *cd* | *-C*) ;;
+        *) return 0 ;;
+    esac
     local q="'" line word
     local w="(\"[^\"\$\`\\]*\"|${q}[^${q}]*${q}|[^[:space:];&|()<>\"${q}\`\$\\]+)"
     local c="cd[[:space:]]+$w" g="git[[:space:]]+-C[[:space:]]+$w"
@@ -124,8 +133,7 @@ _probe_command_dirs() {
         [[ $line =~ ^($c|$g)$ ]] || continue
         word="${BASH_REMATCH[2]}${BASH_REMATCH[3]}"
         case "$word" in
-            \"*) word="${word:1:${#word}-2}" ;;
-            "$q"*) word="${word:1:${#word}-2}" ;;
+            \"* | "$q"*) word="${word:1:${#word}-2}" ;;
         esac
         case "$word" in
             \~ | \~/*)

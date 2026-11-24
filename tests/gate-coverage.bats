@@ -36,17 +36,18 @@ touch_file() {
   printf '\n' >>"$GATE_TREE/$1"
 }
 
-# touch_file <path>, run the gates not given as -, and expect_ran <docs> <code>.
+# touch_file <path>, run the gates not given as -, and expect_ran <docs> <code>
+# with each - read as 0.
 # A loop whose edits all leave one gate cached runs that gate once after the
 # last of them, with expect_still_cached, rather than once an edit: every edit
 # appends, so a hash none of them moved is one no single edit moved.
 edit_expecting() {
-  local path="$1" gates=()
+  local path="$1" want_docs="$2" want_code="$3" gates=()
   touch_file "$path"
-  [ "$2" = - ] || gates+=(docs)
-  [ "$3" = - ] || gates+=(code)
+  if [ "$want_docs" = - ]; then want_docs=0; else gates+=(docs); fi
+  if [ "$want_code" = - ]; then want_code=0; else gates+=(code); fi
   run_gates "${gates[@]}"
-  expect_ran "$2" "$3" || { echo "edited: $path" >&2; return 1; }
+  expect_ran "$want_docs" "$want_code" || { echo "edited: $path" >&2; return 1; }
 }
 
 # expect_still_cached <docs|code> <path>...: the gate, last run before the
@@ -55,7 +56,7 @@ expect_still_cached() {
   local gate="$1"
   shift
   run_gates "$gate"
-  if [ "$gate" = docs ]; then expect_ran 0 -; else expect_ran - 0; fi || {
+  expect_ran 0 0 || {
     printf 'edited: %s\n' "$@" >&2
     return 1
   }
