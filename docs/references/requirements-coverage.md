@@ -17,9 +17,9 @@ neighbour's symptom fails rather than double-reporting.
 events' recorded payloads, `tests/hook-malformed.bats` over malformed ones and a
 probe or verdict that dies mid-run, `tests/hook-locks.bats` over the probe call.
 
-**FR-4** — Where · pinned by: `lib/probes.sh`, `lib/probes-readonly*.sh` · the
-`tests/probes*.bats` family over synthetic trees and the `tests/hook-*.bats`
-family over the hook's calls.
+**FR-4** — Where · pinned by: `lib/probes.sh`, `lib/probes-resolve.sh`,
+`lib/probes-readonly*.sh` · the `tests/probes*.bats` family over synthetic trees
+and the `tests/hook-*.bats` family over the hook's calls.
 
 **FR-5** — Where · pinned by: `hooks/annotate.sh` · `tests/hook.bats`,
 `tests/hook-locks.bats` and `tests/hook-candidates.bats` pair each fixture with
@@ -31,7 +31,7 @@ length with no probe lines on stdin and runs `detect` over every verdict text
 expecting silence; `tests/verdicts-locks-flags.bats` asserts the D-17 flag
 wording for the lock verdicts, `tests/verdicts-readonly.bats` each
 `readonly-path` composition and its length, `tests/verdicts-readonly-path.bats`
-the `path=` display rule and two decode cases, `tests/verdicts-path-read.bats`
+the `path=` display rule and three decode cases, `tests/verdicts-path-read.bats`
 the rest of the decode; `tests/hook-cap.bats` asserts the 2 KB cap with stub
 paragraphs.
 

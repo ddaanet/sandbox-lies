@@ -173,6 +173,7 @@ hooks/check-jq.sh       SessionStart: a notice when jq is missing; annotates not
 bin/sandbox-lies-recover  recovery of a refused checkout or ff-only merge (FR-12)
 lib/matchers.sh         matchers + detect          (promoted from the pilot)
 lib/probes.sh           probe_<verdict> functions   (layer 3)
+lib/probes-resolve.sh   path resolution and the cd / git -C lookup
 lib/probes-readonly*.sh probe_readonly_path, its D-17 facts and command scan
 lib/verdicts.sh         agent paragraph + human line per verdict
 lib/verdicts-locks.sh   the same, for git-lock and config-lock

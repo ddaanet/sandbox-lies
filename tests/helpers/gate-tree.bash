@@ -134,9 +134,9 @@ spy_code_runs() {
 # run_gates [docs|code]...: the gates named, gate-docs then gate-code by
 # default, run directly, the uncached checks left out. Sets RAN_DOCS and
 # RAN_CODE to 1 for a gate that ran its checks, 0 for one that printed "cached"
-# or was not named (the spy's log then proves it did not run)
-# and - for one not named, and fails when the printed line and the spy's log
-# disagree, so a gate cannot be taken for having run on its say-so.
+# or was not named (the spy's log then proves it did not run), and fails when
+# the printed line and the spy's log disagree, so a gate cannot be taken for
+# having run on its say-so.
 run_gates() {
   local gate out docs_before code_before
   [ "$#" -gt 0 ] || set -- docs code
@@ -164,7 +164,7 @@ run_gates() {
 
 # expect_ran <docs> <code>: what the last run_gates ran, 1 or 0 each.
 expect_ran() {
-  if [ "$RAN_DOCS" != "$1" ] || [ "$RAN_CODE" != "$2" ]; then
+  if [ "$RAN_DOCS" -ne "$1" ] || [ "$RAN_CODE" -ne "$2" ]; then
     printf 'gate-docs ran=%s (want %s), gate-code ran=%s (want %s)\n' \
       "$RAN_DOCS" "$1" "$RAN_CODE" "$2" >&2
     return 1
